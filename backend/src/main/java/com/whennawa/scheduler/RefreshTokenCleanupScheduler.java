@@ -1,0 +1,33 @@
+package com.whennawa.scheduler;
+
+import com.whennawa.repository.UserRefreshTokenRepository;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class RefreshTokenCleanupScheduler {
+
+    private final UserRefreshTokenRepository tokenRepository;
+
+    @Scheduled(cron = "0 0 12 * * *")
+    @Transactional
+    public void cleanupRefreshTokens() {
+        LocalDateTime cutoff = LocalDateTime.now(ZoneOffset.UTC).minusDays(1);
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        int deleted = tokenRepository.deleteExpiredOrRevokedBefore(now, cutoff);
+        if (deleted > 0) {
+            log.info("Deleted {} expired or revoked(refresh>1d) tokens", deleted);
+        }
+    }
+}
+

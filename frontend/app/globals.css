@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Light mode: blue-neutral base with brand primary */
+  --background: #f8faff;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #3b5bdb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2ff;
+  --secondary-foreground: #1f2937;
+  --muted: #f1f5ff;
+  --muted-foreground: #64748b;
+  --accent: #e8edff;
+  --accent-foreground: #2137a3;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #dbe4ff;
+  --input: #eef2ff;
+  --ring: #3b5bdb;
+  --chart-1: #3b5bdb;
+  --chart-2: #5c7cfa;
+  --chart-3: #748ffc;
+  --chart-4: #91a7ff;
+  --chart-5: #b3c2ff;
+  --radius: 1rem;
+  --sidebar-background: #f8faff;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #3b5bdb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef2ff;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: #dbe4ff;
+  --sidebar-ring: #3b5bdb;
+}
+
+.dark {
+  /* Dark mode: blue-neutral base with brand primary */
+  --background: #0b1220;
+  --foreground: #e5e7eb;
+  --card: #111a2c;
+  --card-foreground: #e5e7eb;
+  --popover: #111a2c;
+  --popover-foreground: #e5e7eb;
+  --primary: #6f8bff;
+  --primary-foreground: #ffffff;
+  --secondary: #16213b;
+  --secondary-foreground: #d1d5db;
+  --muted: #16213b;
+  --muted-foreground: #94a3b8;
+  --accent: #1d2c70;
+  --accent-foreground: #dbe4ff;
+  --destructive: #b91c1c;
+  --destructive-foreground: #fee2e2;
+  --border: #24314f;
+  --input: #16213b;
+  --ring: #6f8bff;
+  --sidebar-background: #0b1220;
+  --sidebar-foreground: #e5e7eb;
+  --sidebar-primary: #6f8bff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #16213b;
+  --sidebar-accent-foreground: #e5e7eb;
+  --sidebar-border: #24314f;
+  --sidebar-ring: #6f8bff;
+}
+
+@theme inline {
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-sidebar-background: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* PWA full-screen app styles */
+html,
+body {
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* Safe area padding for mobile devices */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Rejected card muted styles - desaturated and calm */
+.rejected-muted {
+  filter: saturate(0.5);
+  opacity: 0.7;
+}
+
+.rejected-muted:hover {
+  filter: saturate(0.7);
+  opacity: 0.85;
+}
