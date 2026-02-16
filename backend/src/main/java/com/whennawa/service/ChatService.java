@@ -1,5 +1,6 @@
 package com.whennawa.service;
 
+import com.whennawa.config.AppProperties;
 import com.whennawa.dto.chat.ChatMessageRequest;
 import com.whennawa.dto.chat.ChatMessageResponse;
 import com.whennawa.entity.ChatMessage;
@@ -16,8 +17,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,8 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class ChatService {
-    private static final int MAX_MESSAGE_LENGTH = 300;
-
+    private final AppProperties appProperties;
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
@@ -34,8 +34,6 @@ public class ChatService {
     private final NicknameGenerator nicknameGenerator;
     private final ProfanityMasker profanityMasker;
     private final ConcurrentMap<Long, Long> lastChatAtByUserId = new ConcurrentHashMap<>();
-    @Value("${app.chat.cooldown-ms:500}")
-    private long chatCooldownMs;
 
     @Transactional
     public ChatMessageResponse processAndSave(ChatMessageRequest request, Long userId) {
@@ -68,8 +66,12 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> listRecentMessages(Long companyId, int limit) {
-        int boundedLimit = Math.max(1, Math.min(limit, 100));
-        List<ChatMessage> recent = chatMessageRepository.findTop100ByCompanyCompanyIdOrderByCreatedAtDesc(companyId);
+        int maxFetch = Math.max(1, appProperties.getChat().getRecentFetchMax());
+        int boundedLimit = Math.max(1, Math.min(limit, maxFetch));
+        List<ChatMessage> recent = chatMessageRepository.findByCompanyCompanyIdOrderByCreatedAtDesc(
+            companyId,
+            PageRequest.of(0, maxFetch)
+        );
         return recent.stream()
             .limit(boundedLimit)
             .sorted(Comparator.comparing(ChatMessage::getCreatedAt))
@@ -104,7 +106,7 @@ public class ChatService {
         if (trimmed.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message is required");
         }
-        if (trimmed.length() > MAX_MESSAGE_LENGTH) {
+        if (trimmed.length() > appProperties.getChat().getMaxMessageLength()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message too long");
         }
         return trimmed;
@@ -115,6 +117,7 @@ public class ChatService {
             return;
         }
         long now = System.currentTimeMillis();
+        long chatCooldownMs = appProperties.getChat().getCooldownMs();
         Long last = lastChatAtByUserId.put(userId, now);
         if (last != null && now - last < chatCooldownMs) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many chat messages");

@@ -48,6 +48,12 @@ public class ReportController {
         return reportService.findStepsForCompany(companyName, channelType, category);
     }
 
+    @GetMapping("/rolling-steps")
+    public List<String> rollingSteps(@RequestParam("companyName") String companyName,
+                                     @RequestParam(value = "q", required = false) String query) {
+        return reportService.findRollingStepNameSuggestions(companyName, query);
+    }
+
     private String resolveClientIp(HttpServletRequest request) {
         if (request == null) {
             return null;

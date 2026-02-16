@@ -25,4 +25,7 @@ public class Company {
 
     @Column(name = "company_name", length = 100, nullable = false, unique = true)
     private String companyName;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
 }

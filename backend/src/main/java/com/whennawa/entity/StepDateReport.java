@@ -1,10 +1,12 @@
 package com.whennawa.entity;
 
 import com.whennawa.entity.enums.ReportStatus;
+import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.entity.enums.RecruitmentChannelType;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.UnitCategory;
 import com.whennawa.entity.RecruitmentUnit;
+import com.whennawa.entity.converter.RollingReportTypeConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Convert;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import lombok.Getter;
@@ -51,13 +54,17 @@ public class StepDateReport extends BaseEntity {
     @Column(name = "recruitment_mode", length = 16, nullable = false)
     private RecruitmentMode recruitmentMode = RecruitmentMode.REGULAR;
 
+    @Convert(converter = RollingReportTypeConverter.class)
+    @Column(name = "rolling_result_type", length = 32)
+    private RollingReportType rollingResultType;
+
     @Column(name = "prev_reported_date")
     private LocalDate prevReportedDate;
 
     @Column(name = "current_step_name", length = 100)
     private String currentStepName;
 
-    @Column(name = "reported_date", nullable = false)
+    @Column(name = "reported_date")
     private LocalDate reportedDate;
 
     @ManyToOne

@@ -15,6 +15,7 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
     }
 
     Optional<Company> findByCompanyNameIgnoreCase(String companyName);
+    Optional<Company> findByCompanyNameIgnoreCaseAndIsActiveTrue(String companyName);
 
     @Query("""
         select c.companyName as companyName,
@@ -24,7 +25,8 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
         left join RecruitmentChannel ch on ch.unit = u
         left join RecruitmentStep s on s.channel = ch
         left join StepDateLog l on l.step = s
-        where lower(c.companyName) like lower(concat('%', :query, '%'))
+        where c.isActive = true
+          and lower(c.companyName) like lower(concat('%', :query, '%'))
         group by c.companyName
         order by c.companyName
         """)

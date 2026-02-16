@@ -41,7 +41,13 @@ public class AuthCookieService {
     }
 
     public void setLoginNextCookie(HttpServletResponse response, String nextPath) {
-        addCookie(response, LOGIN_NEXT_COOKIE, nextPath, Duration.ofMinutes(10), true);
+        addCookie(
+            response,
+            LOGIN_NEXT_COOKIE,
+            nextPath,
+            Duration.ofMinutes(appProperties.getAuth().getLoginNextCookieTtlMinutes()),
+            true
+        );
     }
 
     public String resolveLoginNext(HttpServletRequest request) {

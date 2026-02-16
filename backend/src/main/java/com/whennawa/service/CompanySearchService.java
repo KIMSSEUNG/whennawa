@@ -11,17 +11,16 @@ import com.whennawa.entity.Company;
 import com.whennawa.entity.RecruitmentChannel;
 import com.whennawa.entity.RecruitmentStep;
 import com.whennawa.entity.RecruitmentUnit;
-import com.whennawa.entity.StepDateReport;
-import com.whennawa.entity.enums.ReportStatus;
+import com.whennawa.entity.RollingStepLog;
+import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.entity.enums.RecruitmentChannelType;
-import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.UnitCategory;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.RecruitmentChannelRepository;
 import com.whennawa.repository.RecruitmentStepRepository;
 import com.whennawa.repository.RecruitmentUnitRepository;
+import com.whennawa.repository.RollingStepLogRepository;
 import com.whennawa.repository.StepDateLogRepository;
-import com.whennawa.repository.StepDateReportRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -38,23 +37,22 @@ public class CompanySearchService {
     private final RecruitmentStepRepository stepRepository;
     private final RecruitmentUnitRepository unitRepository;
     private final StepDateLogRepository stepDateLogRepository;
-    private final StepDateReportRepository stepDateReportRepository;
+    private final RollingStepLogRepository rollingStepLogRepository;
     private final com.whennawa.config.AppProperties appProperties;
-    private static final long MAX_ROLLING_DIFF_DAYS = 92;
 
     public CompanySearchService(CompanyRepository companyRepository,
                                 RecruitmentChannelRepository channelRepository,
                                 RecruitmentStepRepository stepRepository,
                                 RecruitmentUnitRepository unitRepository,
                                 StepDateLogRepository stepDateLogRepository,
-                                StepDateReportRepository stepDateReportRepository,
+                                RollingStepLogRepository rollingStepLogRepository,
                                 com.whennawa.config.AppProperties appProperties) {
         this.companyRepository = companyRepository;
         this.channelRepository = channelRepository;
         this.stepRepository = stepRepository;
         this.unitRepository = unitRepository;
         this.stepDateLogRepository = stepDateLogRepository;
-        this.stepDateReportRepository = stepDateReportRepository;
+        this.rollingStepLogRepository = rollingStepLogRepository;
         this.appProperties = appProperties;
     }
 
@@ -73,7 +71,7 @@ public class CompanySearchService {
         if (companyName == null || companyName.isBlank()) {
             return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
         }
-        Company company = companyRepository.findByCompanyNameIgnoreCase(companyName).orElse(null);
+        Company company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName).orElse(null);
         if (company == null) {
             return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
         }
@@ -117,7 +115,7 @@ public class CompanySearchService {
         if (companyName == null || companyName.isBlank()) {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
-        Company company = companyRepository.findByCompanyNameIgnoreCase(companyName).orElse(null);
+        Company company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName).orElse(null);
         if (company == null) {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
@@ -185,7 +183,11 @@ public class CompanySearchService {
         if (stepName == null || stepName.isBlank() || previousStepDate == null) {
             return null;
         }
-        List<RollingStepStatsResponse> stats = buildRollingStats(companyName);
+        Company company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName.trim()).orElse(null);
+        if (company == null) {
+            return null;
+        }
+        List<RollingStepStatsResponse> stats = buildRollingStats(company.getCompanyName());
         String normalized = normalizeKeyword(stepName);
         RollingStepStatsResponse matched = stats.stream()
             .filter(item -> normalizeKeyword(item.getStepName()).equals(normalized))
@@ -397,59 +399,85 @@ public class CompanySearchService {
         if (companyName == null || companyName.isBlank()) {
             return List.of();
         }
-
-        List<StepDateReport> rollingReports = stepDateReportRepository
-            .findByCompanyNameIgnoreCaseAndRecruitmentModeAndStatusAndDeletedAtIsNull(
-                companyName.trim(),
-                RecruitmentMode.ROLLING,
-                ReportStatus.PROCESSED
-            );
-        if (rollingReports.isEmpty()) {
+        Company company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName.trim()).orElse(null);
+        if (company == null) {
             return List.of();
         }
 
-        java.util.Map<String, java.util.List<Long>> grouped = new java.util.HashMap<>();
+        List<RollingStepLog> rollingLogs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
+        if (rollingLogs.isEmpty()) {
+            return List.of();
+        }
+
+        java.util.Map<String, Long> sampleCounts = new java.util.HashMap<>();
+        java.util.Map<String, Long> sampleSums = new java.util.HashMap<>();
+        java.util.Map<String, Long> sampleMins = new java.util.HashMap<>();
+        java.util.Map<String, Long> sampleMaxs = new java.util.HashMap<>();
+        java.util.Map<String, Long> noResponseCounts = new java.util.HashMap<>();
         java.util.Map<String, String> labels = new java.util.HashMap<>();
-        for (StepDateReport report : rollingReports) {
-            if (report == null || report.getPrevReportedDate() == null || report.getReportedDate() == null) {
+        for (RollingStepLog log : rollingLogs) {
+            if (log == null) {
                 continue;
             }
-            String stepName = report.getCurrentStepName();
+            String stepName = log.getCurrentStepName();
             if (stepName == null || stepName.isBlank()) {
-                continue;
-            }
-            long diff = ChronoUnit.DAYS.between(report.getPrevReportedDate(), report.getReportedDate());
-            if (diff < 0 || diff > MAX_ROLLING_DIFF_DAYS) {
                 continue;
             }
             String key = normalizeKeyword(stepName);
             if (key.isBlank()) {
                 continue;
             }
-            grouped.computeIfAbsent(key, unused -> new ArrayList<>()).add(diff);
             labels.putIfAbsent(key, stepName.trim());
-        }
-
-        List<RollingStepStatsResponse> result = new ArrayList<>();
-        for (java.util.Map.Entry<String, java.util.List<Long>> entry : grouped.entrySet()) {
-            List<Long> values = entry.getValue();
-            if (values.isEmpty()) {
+            int reportCount = log.getReportCount() == null ? 1 : Math.max(log.getReportCount(), 1);
+            RollingReportType rollingResultType = log.getRollingResultType() == null
+                ? RollingReportType.DATE_REPORTED
+                : log.getRollingResultType();
+            if (rollingResultType == RollingReportType.NO_RESPONSE_REPORTED) {
+                noResponseCounts.merge(key, (long) reportCount, Long::sum);
                 continue;
             }
-            long count = values.size();
-            long min = values.stream().mapToLong(Long::longValue).min().orElse(0L);
-            long max = values.stream().mapToLong(Long::longValue).max().orElse(0L);
-            long sum = values.stream().mapToLong(Long::longValue).sum();
-            long avg = Math.round((double) sum / (double) count);
+            if (log.getPrevReportedDate() == null || log.getReportedDate() == null) {
+                continue;
+            }
+            long diff = ChronoUnit.DAYS.between(log.getPrevReportedDate(), log.getReportedDate());
+            if (diff < 0 || diff > appProperties.getReport().getRollingMaxDiffDays()) {
+                continue;
+            }
+            sampleCounts.merge(key, (long) reportCount, Long::sum);
+            sampleSums.merge(key, diff * (long) reportCount, Long::sum);
+            sampleMins.merge(key, diff, Math::min);
+            sampleMaxs.merge(key, diff, Math::max);
+        }
+
+        java.util.Set<String> allKeys = new java.util.HashSet<>();
+        allKeys.addAll(sampleCounts.keySet());
+        allKeys.addAll(noResponseCounts.keySet());
+        List<RollingStepStatsResponse> result = new ArrayList<>();
+        for (String key : allKeys) {
+            long count = sampleCounts.getOrDefault(key, 0L);
+            long noResponseCount = noResponseCounts.getOrDefault(key, 0L);
+            if (count == 0L && noResponseCount == 0L) {
+                continue;
+            }
+            Long min = count == 0L ? null : sampleMins.get(key);
+            Long max = count == 0L ? null : sampleMaxs.get(key);
+            Long avg = count == 0L ? null : Math.round((double) sampleSums.getOrDefault(key, 0L) / (double) count);
             result.add(new RollingStepStatsResponse(
-                labels.getOrDefault(entry.getKey(), entry.getKey()),
+                labels.getOrDefault(key, key),
                 count,
+                noResponseCount,
                 avg,
                 min,
                 max
             ));
         }
-        result.sort((a, b) -> Long.compare(b.getSampleCount(), a.getSampleCount()));
+        result.sort((a, b) -> {
+            int bySample = Long.compare(b.getSampleCount(), a.getSampleCount());
+            if (bySample != 0) {
+                return bySample;
+            }
+            return Long.compare(b.getNoResponseCount(), a.getNoResponseCount());
+        });
         return result;
     }
 }

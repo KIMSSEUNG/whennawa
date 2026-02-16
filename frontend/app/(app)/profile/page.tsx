@@ -67,12 +67,6 @@ export default function ProfilePage() {
     router.push("/login")
   }
 
-  const settingsItems = [
-    { label: "알림 설정", description: "알림과 리마인더를 관리합니다." },
-    { label: "개인 정보", description: "프로필 정보를 수정합니다." },
-    { label: "고객센터", description: "자주 묻는 질문을 확인합니다." },
-  ]
-
   return (
     <div className="container mx-auto px-4 py-6">
       {/* Header - mobile only */}
@@ -126,38 +120,6 @@ export default function ProfilePage() {
         </div>
       </AppCard>
 
-      {/* Settings */}
-      <AppCard className="mb-4 p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <h3 className="text-sm font-medium text-foreground">설정</h3>
-        </div>
-        <div className="divide-y divide-border">
-          {settingsItems.map((item) => (
-            <button
-              key={item.label}
-              className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-accent/50 active:bg-accent"
-            >
-              <div>
-                <p className="text-sm font-medium text-foreground">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.description}</p>
-              </div>
-              <span className="text-muted-foreground"></span>
-            </button>
-          ))}
-        </div>
-      </AppCard>
-
-      {/* PWA Install Hint */}
-      <AppCard className="mb-4" gradient="blue">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-medium text-foreground">앱 설치</p>
-            <p className="text-sm text-muted-foreground">홈 화면에 추가해 빠르게 접근하세요.</p>
-          </div>
-          <span className="text-sm text-muted-foreground">PWA</span>
-        </div>
-      </AppCard>
-
       {/* Logout Button */}
       <Button
         variant="outline"
@@ -176,11 +138,6 @@ export default function ProfilePage() {
       >
         회원 탈퇴
       </Button>
-
-      {/* App Version */}
-      <p className="mt-6 text-center text-xs text-muted-foreground">
-        언제나와 v1.0.0
-      </p>
 
       <AlertDialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
         <AlertDialogContent className="max-w-sm rounded-2xl">

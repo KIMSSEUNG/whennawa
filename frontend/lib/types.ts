@@ -32,6 +32,7 @@ export interface KeywordLeadTime {
 
 export type RecruitmentChannelType = "FIRST_HALF" | "SECOND_HALF" | "ALWAYS"
 export type RecruitmentMode = "REGULAR" | "ROLLING"
+export type RollingReportType = "DATE_REPORTED" | "NO_RESPONSE_REPORTED"
 
 export type ReportStatus = "PENDING" | "PROCESSED" | "DISCARDED"
 
@@ -45,11 +46,12 @@ export interface ReportItem {
   reportCount: number
   companyName: string
   recruitmentMode: RecruitmentMode
+  rollingResultType: RollingReportType | null
   channelType: RecruitmentChannelType | null
   unitName: string | null
   prevReportedDate: Date | null
   currentStepName: string | null
-  reportedDate: Date
+  reportedDate: Date | null
   stepId: number | null
   stepName: string | null
   stepNameRaw: string | null
@@ -60,6 +62,7 @@ export interface ReportItem {
 export interface RollingStepStat {
   stepName: string
   sampleCount: number
+  noResponseCount: number
   avgDays: number | null
   minDays: number | null
   maxDays: number | null

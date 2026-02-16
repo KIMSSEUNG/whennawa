@@ -25,10 +25,12 @@ CREATE INDEX idx_user_refresh_tokens_user_id ON user_refresh_tokens (user_id);
 
 CREATE TABLE IF NOT EXISTS company (
   company_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  company_name VARCHAR(100) NOT NULL UNIQUE
+  company_name VARCHAR(100) NOT NULL UNIQUE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE INDEX idx_company_name ON company (company_name);
+CREATE INDEX idx_company_is_active ON company (is_active);
 
 CREATE TABLE IF NOT EXISTS recruitment_unit (
   unit_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -85,10 +87,11 @@ CREATE TABLE IF NOT EXISTS step_date_report (
   company_id BIGINT,
   company_name VARCHAR(100) NOT NULL,
   recruitment_mode ENUM('REGULAR', 'ROLLING') NOT NULL DEFAULT 'REGULAR',
+  rolling_result_type VARCHAR(32),
   unit_id BIGINT,
   unit_name ENUM('GENERAL', 'DESIGN_ART', 'IT', 'TECH_ENGINEERING', 'INTEGRATED'),
   channel_type ENUM('FIRST_HALF', 'SECOND_HALF', 'ALWAYS'),
-  reported_date DATE NOT NULL,
+  reported_date DATE,
   prev_reported_date DATE,
   step_id BIGINT,
   step_name_raw VARCHAR(100),
@@ -109,8 +112,56 @@ CREATE INDEX idx_step_date_report_unit ON step_date_report (unit_id);
 CREATE INDEX idx_step_date_report_channel_type ON step_date_report (channel_type);
 CREATE INDEX idx_step_date_report_date ON step_date_report (reported_date);
 CREATE INDEX idx_step_date_report_mode ON step_date_report (recruitment_mode);
+CREATE INDEX idx_step_date_report_rolling_result_type ON step_date_report (rolling_result_type);
 CREATE INDEX idx_step_date_report_prev_date ON step_date_report (prev_reported_date);
 CREATE INDEX idx_step_date_report_current_step_name ON step_date_report (current_step_name);
+
+CREATE TABLE IF NOT EXISTS rolling_step_log (
+  rolling_log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  company_id BIGINT,
+  company_name VARCHAR(100) NOT NULL,
+  current_step_name VARCHAR(100) NOT NULL,
+  rolling_result_type VARCHAR(32) NOT NULL,
+  prev_reported_date DATE,
+  reported_date DATE,
+  report_count INT NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT fk_rolling_step_log_company FOREIGN KEY (company_id) REFERENCES company(company_id)
+);
+
+CREATE INDEX idx_rolling_step_log_company_name ON rolling_step_log (company_name);
+CREATE INDEX idx_rolling_step_log_step_name ON rolling_step_log (current_step_name);
+CREATE INDEX idx_rolling_step_log_result_type ON rolling_step_log (rolling_result_type);
+CREATE INDEX idx_rolling_step_log_prev_date ON rolling_step_log (prev_reported_date);
+CREATE INDEX idx_rolling_step_log_reported_date ON rolling_step_log (reported_date);
+
+DROP VIEW IF EXISTS vw_step_date_log_readable;
+
+CREATE VIEW vw_step_date_log_readable AS
+SELECT
+  l.log_id,
+  c.company_id,
+  c.company_name,
+  ru.unit_id,
+  ru.unit_name,
+  rc.channel_id,
+  rc.channel_type,
+  rc.year AS channel_year,
+  rc.is_active AS channel_is_active,
+  s.step_id,
+  s.step_name,
+  s.step_order,
+  l.target_date,
+  l.date_type,
+  l.report_count,
+  l.created_at,
+  l.updated_at
+FROM step_date_log l
+JOIN recruitment_step s ON s.step_id = l.step_id
+JOIN recruitment_channel rc ON rc.channel_id = s.channel_id
+JOIN recruitment_unit ru ON ru.unit_id = rc.unit_id
+JOIN company c ON c.company_id = ru.company_id;
 
 CREATE TABLE IF NOT EXISTS chat_room_member (
   member_id BIGINT AUTO_INCREMENT PRIMARY KEY,

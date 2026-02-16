@@ -22,7 +22,7 @@ interface CompanyDetailPanelProps {
   isCalendarVisible: boolean
   isTimelineLoading: boolean
   isLeadTimeLoading: boolean
-  onQuickReport: (companyName: string) => void
+  onQuickReport: (companyName: string, mode: "REGULAR" | "ROLLING") => void
   className?: string
 }
 
@@ -399,7 +399,9 @@ function RollingSection({ companyName, steps }: { companyName: string; steps: Co
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-4">
       <h3 className="text-sm font-medium text-muted-foreground mb-1">수시 전형 예측</h3>
-      <p className="mb-3 text-xs text-muted-foreground">선택 전형, 이전 합격일 날짜 기준 예상 발표일을 보여줍니다.</p>
+      <p className="mb-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground/85">
+        선택 전형, 이전 합격일 날짜 기준 예상 발표일을 보여줍니다.
+      </p>
 
       <div className="grid gap-3 md:grid-cols-2">
         <select
@@ -430,9 +432,17 @@ function RollingSection({ companyName, steps }: { companyName: string; steps: Co
       )}
 
       {selectedStat && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          평균 {selectedStat.avgDays ?? "-"}일 · 최소 {selectedStat.minDays ?? "-"}일 · 최대 {selectedStat.maxDays ?? "-"}일
-        </p>
+        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+          {selectedStat.avgDays != null && (
+            <p>평균 {selectedStat.avgDays}일 · 최소 {selectedStat.minDays ?? "-"}일 · 최대 {selectedStat.maxDays ?? "-"}일</p>
+          )}
+          {selectedStat.noResponseCount > 0 && (
+            <p className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-700 dark:text-emerald-300">
+              <span aria-hidden="true">✓</span>
+              <span>참고: 결과발표 미수신 제보가 있어요</span>
+            </p>
+          )}
+        </div>
       )}
 
       {prediction && (
@@ -511,11 +521,12 @@ export function CompanyDetailPanel({
 
   if (!company) {
     return (
-      <div className={cn("flex items-center justify-center", className)}>
+      <div className={cn("flex h-full min-h-[320px] items-center justify-center", className)}>
         <div className="text-center">
           <div className="mb-4 rounded-2xl bg-muted px-6 py-4 inline-block">
             <span className="text-2xl font-bold text-muted-foreground">선택</span>
           </div>
+          <p className="text-sm font-medium text-foreground/80">회사를 선택하면 공채/수시 정보를 확인할 수 있어요.</p>
         </div>
       </div>
     )
@@ -555,7 +566,9 @@ export function CompanyDetailPanel({
           <>
             <section className="rounded-2xl border border-border/60 bg-card p-4">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">대표 타임라인</h3>
-              <p className="mb-3 text-xs text-muted-foreground">회사별 전형 흐름과 평균 진행 속도를 확인하세요.</p>
+              <p className="mb-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground/85">
+                회사별 전형 흐름과 평균 진행 속도를 확인하세요.
+              </p>
               {isTimelineLoading ? (
                 <p className="text-sm text-muted-foreground">로딩 중...</p>
               ) : (
@@ -576,8 +589,8 @@ export function CompanyDetailPanel({
             <div className="flex">
               <button
                 type="button"
-                onClick={() => onQuickReport(company.companyName)}
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-primary/35 bg-primary/12 px-6 text-base font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/18 hover:shadow-md"
+                onClick={() => onQuickReport(company.companyName, "REGULAR")}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
               >
                 오늘 결과 발표 제보하기
               </button>
@@ -585,7 +598,9 @@ export function CompanyDetailPanel({
 
             <section ref={leadTimeSectionRef} className="rounded-2xl border border-border/60 bg-card p-4">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">전형 기간 검색</h3>
-              <p className="mb-3 text-xs text-muted-foreground">전형 키워드로 합격 발표까지 걸린 기간을 확인하세요.</p>
+              <p className="mb-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground/85">
+                전형 키워드로 합격 발표까지 걸린 기간을 확인하세요.
+              </p>
 
               <form onSubmit={onKeywordSearch} className="flex gap-2">
                 <Input
@@ -664,8 +679,8 @@ export function CompanyDetailPanel({
             <div className="flex">
               <button
                 type="button"
-                onClick={() => onQuickReport(company.companyName)}
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-primary/35 bg-primary/12 px-6 text-base font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/18 hover:shadow-md"
+                onClick={() => onQuickReport(company.companyName, "ROLLING")}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-500/35 bg-emerald-500/12 px-5 text-sm font-semibold text-emerald-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-emerald-500/18 hover:shadow-md dark:text-emerald-300"
               >
                 수시 발표 제보하기
               </button>
@@ -675,11 +690,10 @@ export function CompanyDetailPanel({
 
         {!hasRegular && !hasRolling && (
           <section className="rounded-2xl border border-border/60 bg-card p-4">
-            <p className="text-sm text-muted-foreground">공채/수시 데이터가 없습니다.</p>
+            <p className="text-sm font-medium text-foreground/85">공채/수시 데이터가 아직 없습니다.</p>
           </section>
         )}
       </div>
     </div>
   )
 }
-

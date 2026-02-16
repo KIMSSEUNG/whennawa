@@ -10,7 +10,10 @@ import {
   fetchCompanyTimeline,
   fetchCompanyLeadTime,
   fetchReportSteps,
+  fetchRollingReportStepNames,
   createReport,
+  getUser,
+  logout,
 } from "@/lib/api"
 import type {
   CompanySearchItem,
@@ -30,7 +33,7 @@ import { cn } from "@/lib/utils"
 import { UNIT_CATEGORY_EXAMPLES, UNIT_CATEGORY_OPTIONS } from "@/lib/unit-category"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toCompanySlug } from "@/lib/company-slug"
 
@@ -75,6 +78,8 @@ export default function SearchPage() {
   const [isLeadTimeLoading, setIsLeadTimeLoading] = useState(false)
   const [isCalendarVisible, setIsCalendarVisible] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   // report modal states
   const [reportCompany, setReportCompany] = useState("")
@@ -85,7 +90,10 @@ export default function SearchPage() {
   const [reportPrevDate, setReportPrevDate] = useState(() => getKoreaToday())
   const [reportCurrentStepName, setReportCurrentStepName] = useState("")
   const [reportDate, setReportDate] = useState(() => getKoreaToday())
+  const [reportRollingNoResponse, setReportRollingNoResponse] = useState(false)
   const [reportSteps, setReportSteps] = useState<ReportStep[]>([])
+  const [rollingStepSuggestions, setRollingStepSuggestions] = useState<string[]>([])
+  const [showRollingStepSuggestions, setShowRollingStepSuggestions] = useState(false)
   const [selectedStepKey, setSelectedStepKey] = useState<string>("")
   const [reportStepNameRaw, setReportStepNameRaw] = useState("")
   const [isReportSubmitting, setIsReportSubmitting] = useState(false)
@@ -127,15 +135,21 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (reportMode === "REGULAR") {
+      setReportRollingNoResponse(false)
       setReportPrevDate(getKoreaToday())
       setReportCurrentStepName("")
+      setRollingStepSuggestions([])
+      setShowRollingStepSuggestions(false)
       return
     }
     setReportChannelType("")
     setReportUnitName("")
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
+    setReportRollingNoResponse(false)
     setReportSteps([])
+    setRollingStepSuggestions([])
+    setShowRollingStepSuggestions(false)
     setSelectedStepKey("")
     setReportStepNameRaw("")
   }, [reportMode])
@@ -144,11 +158,13 @@ export default function SearchPage() {
     if (prevReportCompanyRef.current === normalizedReportCompany) return
     prevReportCompanyRef.current = normalizedReportCompany
     setReportChannelType("")
-    setReportMode("REGULAR")
     setReportUnitName("")
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
+    setReportRollingNoResponse(false)
     setReportSteps([])
+    setRollingStepSuggestions([])
+    setShowRollingStepSuggestions(false)
     setSelectedStepKey("")
     setReportStepNameRaw("")
     setReportDate(getKoreaToday())
@@ -243,7 +259,52 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  const openReportModal = (companyName?: string, withToday?: boolean) => {
+  useEffect(() => {
+    let mounted = true
+
+    const loadAuth = async () => {
+      try {
+        const user = await getUser()
+        if (!mounted) return
+        setIsAuthenticated(Boolean(user))
+      } catch {
+        if (!mounted) return
+        setIsAuthenticated(false)
+      }
+    }
+
+    const handleSessionUpdate = () => {
+      loadAuth()
+    }
+
+    loadAuth()
+    window.addEventListener("session_update", handleSessionUpdate)
+    window.addEventListener("storage", handleSessionUpdate)
+
+    return () => {
+      mounted = false
+      window.removeEventListener("session_update", handleSessionUpdate)
+      window.removeEventListener("storage", handleSessionUpdate)
+    }
+  }, [])
+
+  const handleMobileLogout = async () => {
+    if (isLoggingOut) return
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      setIsAuthenticated(false)
+      router.push("/login")
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
+  const openReportModal = (
+    companyName?: string,
+    withToday?: boolean,
+    preferredMode?: RecruitmentMode,
+  ) => {
     if (companyName) {
       setReportCompany(companyName)
       setShowReportSuggestions(false)
@@ -260,6 +321,10 @@ export default function SearchPage() {
     setReportSteps([])
     setSelectedStepKey("")
     setReportStepNameRaw("")
+    setReportRollingNoResponse(false)
+    if (preferredMode) {
+      setReportMode(preferredMode)
+    }
     if (withToday) setReportDate(getKoreaToday())
     setReportMessage(null)
     setIsReportOpen(true)
@@ -312,11 +377,26 @@ export default function SearchPage() {
     )}`
   }
 
+  const reportModalTitle = reportMode === "REGULAR" ? "공채 발표일 제보" : "수시 발표 제보"
+  const reportModalDescription =
+    reportMode === "REGULAR"
+      ? "공채는 채용 종류, 직군, 전형과 결과 발표일을 입력해 주세요."
+      : "수시는 현재 전형명을 필수로 입력해 주세요. 결과 미수신일 경우 날짜 없이 제보할 수 있어요."
+
   const handleReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
 
     const companyName = normalizedReportCompany
     if (!companyName) return
+
+    const candidates = await searchCompanies(companyName, 5)
+    const hasExactCompany = (candidates ?? []).some(
+      (item) => item.companyName.toLowerCase() === companyName.toLowerCase(),
+    )
+    if (!hasExactCompany) {
+      setReportMessage("활성 회사 목록에서 선택한 회사만 제보할 수 있어요.")
+      return
+    }
 
     const isRegular = reportMode === "REGULAR"
     if (isRegular && !reportChannelType) {
@@ -350,11 +430,20 @@ export default function SearchPage() {
       await createReport({
         companyName,
         recruitmentMode: reportMode,
+        rollingResultType: isRegular
+          ? undefined
+          : reportRollingNoResponse
+            ? "NO_RESPONSE_REPORTED"
+            : "DATE_REPORTED",
         channelType: isRegular ? (reportChannelType as RecruitmentChannelType) : undefined,
         unitName: isRegular ? reportUnitName : undefined,
-        prevReportedDate: isRegular ? undefined : toDateInput(reportPrevDate),
+        prevReportedDate: isRegular || reportRollingNoResponse ? undefined : toDateInput(reportPrevDate),
         currentStepName: isRegular ? undefined : reportCurrentStepName.trim(),
-        reportedDate: toDateInput(reportDate),
+        reportedDate: isRegular
+          ? toDateInput(reportDate)
+          : reportRollingNoResponse
+            ? undefined
+            : toDateInput(reportDate),
         stepId: isRegular ? (stepId ?? undefined) : undefined,
         stepNameRaw: isRegular ? (stepNameRaw ?? undefined) : undefined,
       })
@@ -450,6 +539,26 @@ export default function SearchPage() {
     }
   }, [normalizedReportCompany, reportMode, reportChannelType, reportUnitName]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (reportMode !== "ROLLING" || !normalizedReportCompany) {
+      setRollingStepSuggestions([])
+      setShowRollingStepSuggestions(false)
+      return
+    }
+
+    let cancelled = false
+    const handle = setTimeout(async () => {
+      const data = await fetchRollingReportStepNames(normalizedReportCompany, reportCurrentStepName)
+      if (cancelled) return
+      setRollingStepSuggestions(data ?? [])
+    }, 150)
+
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [reportMode, normalizedReportCompany, reportCurrentStepName])
+
   // 데스크탑 전환 시 모바일 시트 닫기
   useEffect(() => {
     if (isDesktop) setSheetOpen(false)
@@ -468,7 +577,10 @@ export default function SearchPage() {
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>리포트</DialogTitle>
+            <DialogTitle>{reportModalTitle}</DialogTitle>
+            <DialogDescription className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground/85">
+              {reportModalDescription}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleReportSubmit} className="space-y-4">
@@ -609,6 +721,27 @@ export default function SearchPage() {
             </div>
             ) : (
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setReportRollingNoResponse((prev) => !prev)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                    reportRollingNoResponse
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border/60 text-muted-foreground hover:bg-muted/40",
+                  )}
+                >
+                  결과발표 메일을 안 받았어요
+                </button>
+              </div>
+              {reportRollingNoResponse && (
+                <p className="md:col-span-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                  현재 전형명만 입력하면 제보할 수 있어요.
+                </p>
+              )}
+              {!reportRollingNoResponse && (
+              <>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">이전 전형 발표일</label>
                 <Input
@@ -616,16 +749,6 @@ export default function SearchPage() {
                   value={toDateInput(reportPrevDate)}
                   onChange={(e) => setReportPrevDate(new Date(`${e.target.value}T00:00:00+09:00`))}
                   className="h-11 max-w-[220px]"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">현재 전형명</label>
-                <Input
-                  value={reportCurrentStepName}
-                  onChange={(e) => setReportCurrentStepName(e.target.value)}
-                  placeholder="예: 1차면접"
-                  className="h-11"
                   required
                 />
               </div>
@@ -638,6 +761,46 @@ export default function SearchPage() {
                   className="h-11 max-w-[220px]"
                   required
                 />
+              </div>
+              </>
+              )}
+              <div className={cn("space-y-2", reportRollingNoResponse ? "md:col-span-2" : "")}>
+                <label className="text-sm font-medium text-foreground">현재 전형명</label>
+                <div className="relative">
+                  <Input
+                    value={reportCurrentStepName}
+                    onChange={(e) => {
+                      setReportCurrentStepName(e.target.value)
+                      setShowRollingStepSuggestions(true)
+                    }}
+                    onFocus={() => setShowRollingStepSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowRollingStepSuggestions(false), 120)}
+                    placeholder="예: 1차면접"
+                    className="h-11"
+                    required
+                  />
+                  {showRollingStepSuggestions && rollingStepSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
+                      <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">전형 연관 검색어</p>
+                      <div className="max-h-56 overflow-auto">
+                        {rollingStepSuggestions.map((stepName) => (
+                          <button
+                            key={`rolling-step-${stepName}`}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setReportCurrentStepName(stepName)
+                              setShowRollingStepSuggestions(false)
+                            }}
+                            className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
+                          >
+                            {stepName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             )}
@@ -662,7 +825,26 @@ export default function SearchPage() {
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">회사 검색</h1>
           <p className="text-sm text-muted-foreground">회사명을 검색해서 지원 이력과 전형 타임라인을 확인해 보세요.</p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={handleMobileLogout}
+              disabled={isLoggingOut}
+              className="inline-flex h-9 min-w-[88px] items-center justify-center rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 disabled:opacity-50"
+            >
+              {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="inline-flex h-9 min-w-[88px] items-center justify-center rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60"
+            >
+              로그인
+            </Link>
+          )}
+          <ThemeToggle />
+        </div>
       </header>
 
       {/* Search Area */}
@@ -812,7 +994,7 @@ export default function SearchPage() {
               isCalendarVisible={isCalendarVisible}
               isTimelineLoading={isTimelineLoading}
               isLeadTimeLoading={isLeadTimeLoading}
-              onQuickReport={(companyName) => openReportModal(companyName, true)}
+              onQuickReport={(companyName, mode) => openReportModal(companyName, true, mode)}
               className="h-full"
             />
             </div>
@@ -834,7 +1016,7 @@ export default function SearchPage() {
         isCalendarVisible={isCalendarVisible}
         isTimelineLoading={isTimelineLoading}
         isLeadTimeLoading={isLeadTimeLoading}
-        onQuickReport={(companyName) => openReportModal(companyName, true)}
+        onQuickReport={(companyName, mode) => openReportModal(companyName, true, mode)}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />

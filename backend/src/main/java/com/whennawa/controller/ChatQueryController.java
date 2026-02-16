@@ -18,7 +18,7 @@ public class ChatQueryController {
 
     @GetMapping("/room/{companyId}/messages")
     public List<ChatMessageResponse> messages(@PathVariable("companyId") Long companyId,
-                                              @RequestParam(value = "limit", defaultValue = "100") int limit) {
+                                              @RequestParam(value = "limit", defaultValue = "200") int limit) {
         return chatService.listRecentMessages(companyId, limit);
     }
 }

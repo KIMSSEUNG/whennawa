@@ -10,6 +10,7 @@ import type {
   ReportStep,
   RecruitmentChannelType,
   RecruitmentMode,
+  RollingReportType,
   User,
 } from "./types"
 import { normalizeUnitCategory } from "./unit-category"
@@ -51,6 +52,7 @@ type CompanyTimelineInput = {
   rollingSteps?: Array<{
     stepName: string
     sampleCount: number
+    noResponseCount: number
     avgDays: number | null
     minDays: number | null
     maxDays: number | null
@@ -74,11 +76,12 @@ type ReportItemInput = {
   reportCount: number
   companyName: string
   recruitmentMode: RecruitmentMode
+  rollingResultType: RollingReportType | null
   channelType: RecruitmentChannelType | null
   unitName: string | null
   prevReportedDate: Date | string | null
   currentStepName: string | null
-  reportedDate: Date | string
+  reportedDate: Date | string | null
   stepId: number | null
   stepName: string | null
   stepNameRaw: string | null
@@ -137,6 +140,7 @@ const normalizeTimeline = (timeline: CompanyTimelineInput): CompanyTimeline => (
   rollingSteps: (timeline.rollingSteps ?? []).map((item) => ({
     stepName: item.stepName,
     sampleCount: item.sampleCount ?? 0,
+    noResponseCount: item.noResponseCount ?? 0,
     avgDays: item.avgDays,
     minDays: item.minDays,
     maxDays: item.maxDays,
@@ -147,7 +151,7 @@ const normalizeReportItem = (item: ReportItemInput): ReportItem => ({
   ...item,
   unitName: normalizeUnitCategory(item.unitName) ?? item.unitName,
   prevReportedDate: toDateOrNull(item.prevReportedDate),
-  reportedDate: toDate(item.reportedDate),
+  reportedDate: toDateOrNull(item.reportedDate),
 })
 
 const normalizeChatMessage = (item: ChatMessageInput): ChatMessage => ({
@@ -346,7 +350,7 @@ export async function fetchRollingPrediction(
   }
 }
 
-export async function fetchChatMessages(companyId: number, limit = 100): Promise<ChatMessage[]> {
+export async function fetchChatMessages(companyId: number, limit = 200): Promise<ChatMessage[]> {
   if (!Number.isFinite(companyId) || companyId <= 0) return []
   if (USE_MOCK) {
     await delay(120)
@@ -360,11 +364,12 @@ export async function fetchChatMessages(companyId: number, limit = 100): Promise
 export type ReportCreateRequest = {
   companyName: string
   recruitmentMode: RecruitmentMode
+  rollingResultType?: RollingReportType | null
   channelType?: RecruitmentChannelType | null
   unitName?: string | null
   prevReportedDate?: string | null
   currentStepName?: string | null
-  reportedDate: string
+  reportedDate?: string | null
   stepId?: number | null
   stepNameRaw?: string | null
 }
@@ -394,6 +399,22 @@ export async function fetchReportSteps(
   return data
 }
 
+export async function fetchRollingReportStepNames(companyName: string, query?: string): Promise<string[]> {
+  if (!companyName.trim()) return []
+  if (USE_MOCK) {
+    await delay(120)
+    const samples = ["서류 합격", "코딩 테스트", "1차 면접", "2차 면접", "최종 합격"]
+    const normalizedQuery = query?.trim().toLowerCase() ?? ""
+    if (!normalizedQuery) return samples
+    return samples.filter((name) => name.toLowerCase().includes(normalizedQuery))
+  }
+  const params = new URLSearchParams({ companyName })
+  if (query?.trim()) {
+    params.set("q", query.trim())
+  }
+  return await request<string[]>(`/api/reports/rolling-steps?${params.toString()}`)
+}
+
 export async function createReport(payload: ReportCreateRequest): Promise<{ reportId: number }> {
   if (USE_MOCK) {
     await delay(300)
@@ -414,6 +435,7 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         reportCount: 3,
         companyName: "Naver",
         recruitmentMode: "REGULAR",
+        rollingResultType: null,
         channelType: "FIRST_HALF",
         unitName: "IT",
         prevReportedDate: null,
@@ -430,6 +452,7 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         reportCount: 1,
         companyName: "Kakao",
         recruitmentMode: "ROLLING",
+        rollingResultType: "DATE_REPORTED",
         channelType: null,
         unitName: null,
         prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
@@ -465,11 +488,12 @@ export async function fetchAdminReportSteps(reportId: number): Promise<ReportSte
 export type ReportUpdateRequest = {
   companyName: string
   recruitmentMode: RecruitmentMode
+  rollingResultType?: RollingReportType | null
   channelType?: RecruitmentChannelType | null
   unitName?: string | null
   prevReportedDate?: string | null
   currentStepName?: string | null
-  reportedDate: string
+  reportedDate?: string | null
   stepId?: number | null
   stepNameRaw?: string | null
 }
@@ -482,11 +506,12 @@ export async function updateAdminReport(reportId: number, payload: ReportUpdateR
       reportCount: 1,
       companyName: payload.companyName,
       recruitmentMode: payload.recruitmentMode,
+      rollingResultType: payload.rollingResultType ?? null,
       channelType: payload.channelType ?? null,
       unitName: payload.unitName ?? null,
       prevReportedDate: payload.prevReportedDate ? new Date(payload.prevReportedDate) : null,
       currentStepName: payload.currentStepName ?? null,
-      reportedDate: new Date(payload.reportedDate),
+      reportedDate: payload.reportedDate ? new Date(payload.reportedDate) : null,
       stepId: payload.stepId ?? null,
       stepName: payload.stepId ? "선택 전형" : null,
       stepNameRaw: payload.stepNameRaw ?? null,
@@ -509,6 +534,7 @@ export async function processAdminReport(reportId: number, stepId?: number | nul
       reportCount: 1,
       companyName: "Processed",
       recruitmentMode: "REGULAR",
+      rollingResultType: null,
       channelType: "FIRST_HALF",
       unitName: "IT",
       prevReportedDate: null,
@@ -537,6 +563,7 @@ export async function assignAdminReport(reportId: number): Promise<ReportItem> {
       reportCount: 1,
       companyName: "Assigned",
       recruitmentMode: "REGULAR",
+      rollingResultType: null,
       channelType: "FIRST_HALF",
       unitName: "IT",
       prevReportedDate: null,
@@ -574,6 +601,7 @@ export async function discardAdminReport(reportId: number): Promise<ReportItem> 
       reportCount: 1,
       companyName: "Discarded",
       recruitmentMode: "REGULAR",
+      rollingResultType: null,
       channelType: "FIRST_HALF",
       unitName: "IT",
       prevReportedDate: null,

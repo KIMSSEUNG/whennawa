@@ -2,6 +2,7 @@ package com.whennawa.repository;
 
 import com.whennawa.entity.StepDateReport;
 import com.whennawa.entity.enums.ReportStatus;
+import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.UnitCategory;
 import java.util.List;
@@ -32,12 +33,21 @@ public interface StepDateReportRepository extends JpaRepository<StepDateReport, 
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
         String companyName,
         RecruitmentMode recruitmentMode,
+        RollingReportType rollingResultType,
         String currentStepName,
         java.time.LocalDate prevReportedDate,
         java.time.LocalDate reportedDate,
+        ReportStatus status
+    );
+
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndCurrentStepNameAndStatusAndDeletedAtIsNull(
+        String companyName,
+        RecruitmentMode recruitmentMode,
+        RollingReportType rollingResultType,
+        String currentStepName,
         ReportStatus status
     );
 

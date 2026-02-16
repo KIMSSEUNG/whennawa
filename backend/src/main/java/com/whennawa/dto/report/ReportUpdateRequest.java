@@ -2,6 +2,7 @@ package com.whennawa.dto.report;
 
 import com.whennawa.entity.enums.RecruitmentChannelType;
 import com.whennawa.entity.enums.RecruitmentMode;
+import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.entity.enums.UnitCategory;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,9 +22,9 @@ public class ReportUpdateRequest {
 
     private UnitCategory unitName;
 
-    @NotNull
     private LocalDate reportedDate;
 
+    private RollingReportType rollingResultType;
     private LocalDate prevReportedDate;
     private String currentStepName;
 

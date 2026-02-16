@@ -15,6 +15,7 @@ import type {
   ReportStep,
   RecruitmentChannelType,
   RecruitmentMode,
+  RollingReportType,
 } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,7 @@ import { normalizeUnitCategory } from "@/lib/unit-category"
 type EditFormState = {
   companyName: string
   recruitmentMode: RecruitmentMode
+  rollingResultType: RollingReportType
   channelType: RecruitmentChannelType | ""
   unitName: string
   prevReportedDate: string
@@ -40,7 +42,7 @@ type EditFormState = {
   stepNameRaw: string
 }
 
-const toDateInput = (value: Date) => value.toISOString().slice(0, 10)
+const toDateInput = (value: Date | null) => (value ? value.toISOString().slice(0, 10) : "")
 
 export default function AdminReportPage() {
   const [reports, setReports] = useState<ReportItem[]>([])
@@ -157,6 +159,7 @@ export default function AdminReportPage() {
     setEditForm({
       companyName: report.companyName,
       recruitmentMode: report.recruitmentMode,
+      rollingResultType: report.rollingResultType ?? "DATE_REPORTED",
       channelType: report.channelType ?? "",
       unitName: normalizeUnitCategory(report.unitName) ?? report.unitName ?? "",
       prevReportedDate: report.prevReportedDate ? toDateInput(report.prevReportedDate) : "",
@@ -185,20 +188,33 @@ export default function AdminReportPage() {
       setMessage("전형을 선택하거나, 기타 전형명을 입력해 주세요.")
       return
     }
-    if (!isRegular && (!editForm.currentStepName.trim() || !editForm.prevReportedDate)) {
-      setMessage("수시는 이전 발표일과 현재 전형명이 필요합니다.")
-      return
+    if (!isRegular) {
+      if (!editForm.currentStepName.trim()) {
+        setMessage("수시는 현재 전형명이 필요합니다.")
+        return
+      }
+      if (editForm.rollingResultType !== "NO_RESPONSE_REPORTED" && (!editForm.prevReportedDate || !editForm.reportedDate)) {
+        setMessage("수시는 이전 발표일과 현재 발표일이 필요합니다.")
+        return
+      }
     }
 
     try {
       await updateAdminReport(editingId, {
         companyName: editForm.companyName.trim(),
         recruitmentMode: editForm.recruitmentMode,
+        rollingResultType: isRegular ? undefined : editForm.rollingResultType,
         channelType: isRegular ? (editForm.channelType as RecruitmentChannelType) : undefined,
         unitName: isRegular ? editForm.unitName : undefined,
-        prevReportedDate: isRegular ? undefined : editForm.prevReportedDate,
+        prevReportedDate:
+          isRegular || editForm.rollingResultType === "NO_RESPONSE_REPORTED"
+            ? undefined
+            : editForm.prevReportedDate,
         currentStepName: isRegular ? undefined : editForm.currentStepName.trim(),
-        reportedDate: editForm.reportedDate,
+        reportedDate:
+          isRegular || editForm.rollingResultType !== "NO_RESPONSE_REPORTED"
+            ? editForm.reportedDate
+            : undefined,
         stepId: isRegular ? (stepId ?? undefined) : undefined,
         stepNameRaw: isRegular ? (stepNameRaw ?? undefined) : undefined,
       })
@@ -256,7 +272,9 @@ export default function AdminReportPage() {
                   <div>
                     <h3 className="text-lg font-semibold">{report.companyName}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {report.recruitmentMode === "REGULAR" ? `${report.channelType ?? "-"} · ${toDateInput(report.reportedDate)}` : `수시 · ${toDateInput(report.reportedDate)}`}
+                      {report.recruitmentMode === "REGULAR"
+                        ? `${report.channelType ?? "-"} · ${toDateInput(report.reportedDate)}`
+                        : `수시 · ${report.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : toDateInput(report.reportedDate)}`}
                     </p>
                     <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}회</p>
                     {report.recruitmentMode === "REGULAR" ? (
@@ -265,6 +283,7 @@ export default function AdminReportPage() {
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
+                        유형: {report.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : "날짜 제보"} ·
                         이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} · 현재 전형: {report.currentStepName ?? "-"}
                       </p>
                     )}
@@ -372,6 +391,16 @@ export default function AdminReportPage() {
 
                     {editForm.recruitmentMode === "ROLLING" && (
                     <div className="space-y-2">
+                      <label className="text-sm font-medium">수시 결과 유형</label>
+                      <Input
+                        value={editForm.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : "날짜 제보"}
+                        disabled
+                      />
+                    </div>
+                    )}
+
+                    {editForm.recruitmentMode === "ROLLING" && editForm.rollingResultType !== "NO_RESPONSE_REPORTED" && (
+                    <div className="space-y-2">
                       <label className="text-sm font-medium">이전 발표일</label>
                       <Input
                         type="date"
@@ -387,7 +416,7 @@ export default function AdminReportPage() {
                         type="date"
                         value={editForm.reportedDate}
                         onChange={(e) => setEditForm({ ...editForm, reportedDate: e.target.value })}
-                        disabled
+                        disabled={editForm.recruitmentMode === "ROLLING" && editForm.rollingResultType === "NO_RESPONSE_REPORTED"}
                       />
                     </div>
 

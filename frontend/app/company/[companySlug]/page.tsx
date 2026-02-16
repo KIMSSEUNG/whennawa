@@ -127,7 +127,7 @@ export default async function CompanyPublicPage({ params }: PageProps) {
                 {rollingSteps.map((item) => (
                   <li key={`rolling-${item.stepName}`} className="rounded-lg border border-border/60 px-3 py-2">
                     <p className="font-medium text-foreground">{item.stepName}</p>
-                    <p>표본 {item.sampleCount}건 · 평균 {item.avgDays ?? "-"}일 · 최소 {item.minDays ?? "-"}일 · 최대 {item.maxDays ?? "-"}일</p>
+                    <p>평균 {item.avgDays ?? "-"}일 · 최소 {item.minDays ?? "-"}일 · 최대 {item.maxDays ?? "-"}일</p>
                   </li>
                 ))}
               </ul>

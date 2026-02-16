@@ -17,7 +17,7 @@ public class ReportCleanupScheduler {
         this.reportRepository = reportRepository;
     }
 
-    @Scheduled(cron = "0 0 12 * * *")
+    @Scheduled(cron = "${app.scheduler.report-cleanup-cron:0 0 12 * * *}")
     //@Scheduled(cron = "*/30 * * * * *")
     @Transactional
     public void purgeHandledReports() {
