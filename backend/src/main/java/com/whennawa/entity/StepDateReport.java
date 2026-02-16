@@ -2,6 +2,7 @@ package com.whennawa.entity;
 
 import com.whennawa.entity.enums.ReportStatus;
 import com.whennawa.entity.enums.RecruitmentChannelType;
+import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.UnitCategory;
 import com.whennawa.entity.RecruitmentUnit;
 import jakarta.persistence.Column;
@@ -43,8 +44,18 @@ public class StepDateReport extends BaseEntity {
     private UnitCategory unitName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "channel_type", length = 16, nullable = false)
+    @Column(name = "channel_type", length = 16)
     private RecruitmentChannelType channelType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recruitment_mode", length = 16, nullable = false)
+    private RecruitmentMode recruitmentMode = RecruitmentMode.REGULAR;
+
+    @Column(name = "prev_reported_date")
+    private LocalDate prevReportedDate;
+
+    @Column(name = "current_step_name", length = 100)
+    private String currentStepName;
 
     @Column(name = "reported_date", nullable = false)
     private LocalDate reportedDate;

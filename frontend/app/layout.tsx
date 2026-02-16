@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { SiteFooter } from "@/components/site-footer"
 import { getSiteUrl } from "@/lib/seo"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -73,7 +74,12 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className="font-sans antialiased min-h-dvh bg-background">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <div className="flex min-h-dvh flex-col">
+            <div className="flex-1">{children}</div>
+            <div className="pb-20 md:pb-0">
+              <SiteFooter />
+            </div>
+          </div>
         </ThemeProvider>
         <Analytics />
       </body>

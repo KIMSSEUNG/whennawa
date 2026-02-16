@@ -5,17 +5,24 @@ import com.whennawa.dto.company.CompanyTimelineResponse;
 import com.whennawa.dto.company.CompanyTimelineStep;
 import com.whennawa.dto.company.CompanyUnitTimelineResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
+import com.whennawa.dto.company.RollingPredictionResponse;
+import com.whennawa.dto.company.RollingStepStatsResponse;
 import com.whennawa.entity.Company;
 import com.whennawa.entity.RecruitmentChannel;
 import com.whennawa.entity.RecruitmentStep;
 import com.whennawa.entity.RecruitmentUnit;
+import com.whennawa.entity.StepDateReport;
+import com.whennawa.entity.enums.ReportStatus;
 import com.whennawa.entity.enums.RecruitmentChannelType;
+import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.UnitCategory;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.RecruitmentChannelRepository;
 import com.whennawa.repository.RecruitmentStepRepository;
 import com.whennawa.repository.RecruitmentUnitRepository;
 import com.whennawa.repository.StepDateLogRepository;
+import com.whennawa.repository.StepDateReportRepository;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -31,19 +38,23 @@ public class CompanySearchService {
     private final RecruitmentStepRepository stepRepository;
     private final RecruitmentUnitRepository unitRepository;
     private final StepDateLogRepository stepDateLogRepository;
+    private final StepDateReportRepository stepDateReportRepository;
     private final com.whennawa.config.AppProperties appProperties;
+    private static final long MAX_ROLLING_DIFF_DAYS = 92;
 
     public CompanySearchService(CompanyRepository companyRepository,
                                 RecruitmentChannelRepository channelRepository,
                                 RecruitmentStepRepository stepRepository,
                                 RecruitmentUnitRepository unitRepository,
                                 StepDateLogRepository stepDateLogRepository,
+                                StepDateReportRepository stepDateReportRepository,
                                 com.whennawa.config.AppProperties appProperties) {
         this.companyRepository = companyRepository;
         this.channelRepository = channelRepository;
         this.stepRepository = stepRepository;
         this.unitRepository = unitRepository;
         this.stepDateLogRepository = stepDateLogRepository;
+        this.stepDateReportRepository = stepDateReportRepository;
         this.appProperties = appProperties;
     }
 
@@ -60,22 +71,26 @@ public class CompanySearchService {
 
     public CompanyTimelineResponse getRepresentativeTimeline(String companyName) {
         if (companyName == null || companyName.isBlank()) {
-            return new CompanyTimelineResponse(null, companyName, List.of());
+            return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
         }
         Company company = companyRepository.findByCompanyNameIgnoreCase(companyName).orElse(null);
         if (company == null) {
-            return new CompanyTimelineResponse(null, companyName, List.of());
+            return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
         }
+        List<RollingStepStatsResponse> rollingSteps = buildRollingStats(company.getCompanyName());
 
         List<RecruitmentUnit> units = unitRepository.findByCompanyId(company.getCompanyId());
         if (units.isEmpty()) {
-            return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), List.of());
+            return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), List.of(), rollingSteps);
         }
 
         List<CompanyUnitTimelineResponse> timelines = new ArrayList<>();
         for (RecruitmentUnit unit : units) {
             RecruitmentChannel channel = pickRepresentativeChannel(unit);
             if (channel == null) {
+                continue;
+            }
+            if (channel.getChannelType() == RecruitmentChannelType.ALWAYS) {
                 continue;
             }
             List<RecruitmentStep> steps = stepRepository.findByChannelId(channel.getChannelId());
@@ -92,7 +107,7 @@ public class CompanySearchService {
         }
 
         timelines = excludeIntegratedWhenSpecificExists(timelines);
-        return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), timelines);
+        return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), timelines, rollingSteps);
     }
 
     public KeywordLeadTimeResponse getKeywordLeadTime(String companyName, String keyword) {
@@ -108,12 +123,17 @@ public class CompanySearchService {
         }
 
         String normalizedKeyword = normalizeKeyword(keyword);
+        if (normalizedKeyword.isBlank()) {
+            return new KeywordLeadTimeResponse(keyword, null, null, null);
+        }
+
         List<RecruitmentChannel> channels = channelRepository.findByCompanyId(company.getCompanyId());
         if (channels.isEmpty()) {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
 
-        List<Long> diffs = new ArrayList<>();
+        List<Long> seasonalDiffs = new ArrayList<>();
+        List<Long> alwaysDiffs = new ArrayList<>();
         for (RecruitmentChannel channel : channels) {
             List<RecruitmentStep> steps = stepRepository.findByChannelId(channel.getChannelId());
             if (steps.size() < 2) {
@@ -136,19 +156,68 @@ public class CompanySearchService {
                 }
                 long diff = ChronoUnit.DAYS.between(prevDate.toLocalDate(), currDate.toLocalDate());
                 if (diff >= 0) {
-                    diffs.add(diff);
+                    if (channel.getChannelType() == RecruitmentChannelType.ALWAYS) {
+                        alwaysDiffs.add(diff);
+                    } else {
+                        seasonalDiffs.add(diff);
+                    }
                 }
             }
         }
 
-        if (diffs.isEmpty()) {
+        List<Long> targetDiffs = pickLeadTimeDiffs(seasonalDiffs, alwaysDiffs);
+        if (targetDiffs.isEmpty()) {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
-        Collections.sort(diffs);
-        Long median = diffs.get(diffs.size() / 2);
-        Long min = diffs.get(0);
-        Long max = diffs.get(diffs.size() - 1);
+        Collections.sort(targetDiffs);
+        Long median = targetDiffs.get(targetDiffs.size() / 2);
+        Long min = targetDiffs.get(0);
+        Long max = targetDiffs.get(targetDiffs.size() - 1);
         return new KeywordLeadTimeResponse(keyword, median, min, max);
+    }
+
+    public RollingPredictionResponse predictRollingResult(String companyName,
+                                                          String stepName,
+                                                          LocalDate previousStepDate) {
+        if (companyName == null || companyName.isBlank()) {
+            return null;
+        }
+        if (stepName == null || stepName.isBlank() || previousStepDate == null) {
+            return null;
+        }
+        List<RollingStepStatsResponse> stats = buildRollingStats(companyName);
+        String normalized = normalizeKeyword(stepName);
+        RollingStepStatsResponse matched = stats.stream()
+            .filter(item -> normalizeKeyword(item.getStepName()).equals(normalized))
+            .findFirst()
+            .orElse(null);
+        if (matched == null || matched.getAvgDays() == null) {
+            return null;
+        }
+        LocalDate expected = previousStepDate.plusDays(matched.getAvgDays());
+        LocalDate expectedStart = matched.getMinDays() == null ? null : previousStepDate.plusDays(matched.getMinDays());
+        LocalDate expectedEnd = matched.getMaxDays() == null ? null : previousStepDate.plusDays(matched.getMaxDays());
+        return new RollingPredictionResponse(
+            matched.getStepName(),
+            previousStepDate,
+            matched.getSampleCount(),
+            expected,
+            expectedStart,
+            expectedEnd
+        );
+    }
+
+    private List<Long> pickLeadTimeDiffs(List<Long> seasonalDiffs,
+                                         List<Long> alwaysDiffs) {
+        if (seasonalDiffs.isEmpty()) {
+            return new ArrayList<>(alwaysDiffs);
+        }
+        if (alwaysDiffs.isEmpty()) {
+            return new ArrayList<>(seasonalDiffs);
+        }
+        return seasonalDiffs.size() >= alwaysDiffs.size()
+            ? new ArrayList<>(seasonalDiffs)
+            : new ArrayList<>(alwaysDiffs);
     }
 
     private List<CompanyTimelineStep> buildTimeline(List<RecruitmentStep> steps,
@@ -322,5 +391,65 @@ public class CompanySearchService {
 
     private String buildStepLabel(RecruitmentStep step, List<RecruitmentChannel> channels) {
         return step.getStepName();
+    }
+
+    private List<RollingStepStatsResponse> buildRollingStats(String companyName) {
+        if (companyName == null || companyName.isBlank()) {
+            return List.of();
+        }
+
+        List<StepDateReport> rollingReports = stepDateReportRepository
+            .findByCompanyNameIgnoreCaseAndRecruitmentModeAndStatusAndDeletedAtIsNull(
+                companyName.trim(),
+                RecruitmentMode.ROLLING,
+                ReportStatus.PROCESSED
+            );
+        if (rollingReports.isEmpty()) {
+            return List.of();
+        }
+
+        java.util.Map<String, java.util.List<Long>> grouped = new java.util.HashMap<>();
+        java.util.Map<String, String> labels = new java.util.HashMap<>();
+        for (StepDateReport report : rollingReports) {
+            if (report == null || report.getPrevReportedDate() == null || report.getReportedDate() == null) {
+                continue;
+            }
+            String stepName = report.getCurrentStepName();
+            if (stepName == null || stepName.isBlank()) {
+                continue;
+            }
+            long diff = ChronoUnit.DAYS.between(report.getPrevReportedDate(), report.getReportedDate());
+            if (diff < 0 || diff > MAX_ROLLING_DIFF_DAYS) {
+                continue;
+            }
+            String key = normalizeKeyword(stepName);
+            if (key.isBlank()) {
+                continue;
+            }
+            grouped.computeIfAbsent(key, unused -> new ArrayList<>()).add(diff);
+            labels.putIfAbsent(key, stepName.trim());
+        }
+
+        List<RollingStepStatsResponse> result = new ArrayList<>();
+        for (java.util.Map.Entry<String, java.util.List<Long>> entry : grouped.entrySet()) {
+            List<Long> values = entry.getValue();
+            if (values.isEmpty()) {
+                continue;
+            }
+            long count = values.size();
+            long min = values.stream().mapToLong(Long::longValue).min().orElse(0L);
+            long max = values.stream().mapToLong(Long::longValue).max().orElse(0L);
+            long sum = values.stream().mapToLong(Long::longValue).sum();
+            long avg = Math.round((double) sum / (double) count);
+            result.add(new RollingStepStatsResponse(
+                labels.getOrDefault(entry.getKey(), entry.getKey()),
+                count,
+                avg,
+                min,
+                max
+            ));
+        }
+        result.sort((a, b) -> Long.compare(b.getSampleCount(), a.getSampleCount()));
+        return result;
     }
 }

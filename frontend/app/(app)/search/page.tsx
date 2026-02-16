@@ -17,6 +17,7 @@ import type {
   CompanyTimeline,
   KeywordLeadTime,
   RecruitmentChannelType,
+  RecruitmentMode,
   ReportStep,
 } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -78,8 +79,11 @@ export default function SearchPage() {
   // report modal states
   const [reportCompany, setReportCompany] = useState("")
   const [reportSuggestions, setReportSuggestions] = useState<CompanySearchItem[]>([])
+  const [reportMode, setReportMode] = useState<RecruitmentMode>("REGULAR")
   const [reportChannelType, setReportChannelType] = useState<RecruitmentChannelType | "">("")
   const [reportUnitName, setReportUnitName] = useState("")
+  const [reportPrevDate, setReportPrevDate] = useState(() => getKoreaToday())
+  const [reportCurrentStepName, setReportCurrentStepName] = useState("")
   const [reportDate, setReportDate] = useState(() => getKoreaToday())
   const [reportSteps, setReportSteps] = useState<ReportStep[]>([])
   const [selectedStepKey, setSelectedStepKey] = useState<string>("")
@@ -122,10 +126,28 @@ export default function SearchPage() {
   }, [reportChannelType])
 
   useEffect(() => {
+    if (reportMode === "REGULAR") {
+      setReportPrevDate(getKoreaToday())
+      setReportCurrentStepName("")
+      return
+    }
+    setReportChannelType("")
+    setReportUnitName("")
+    setReportPrevDate(getKoreaToday())
+    setReportCurrentStepName("")
+    setReportSteps([])
+    setSelectedStepKey("")
+    setReportStepNameRaw("")
+  }, [reportMode])
+
+  useEffect(() => {
     if (prevReportCompanyRef.current === normalizedReportCompany) return
     prevReportCompanyRef.current = normalizedReportCompany
     setReportChannelType("")
+    setReportMode("REGULAR")
     setReportUnitName("")
+    setReportPrevDate(getKoreaToday())
+    setReportCurrentStepName("")
     setReportSteps([])
     setSelectedStepKey("")
     setReportStepNameRaw("")
@@ -296,12 +318,13 @@ export default function SearchPage() {
     const companyName = normalizedReportCompany
     if (!companyName) return
 
-    if (!reportChannelType) {
+    const isRegular = reportMode === "REGULAR"
+    if (isRegular && !reportChannelType) {
       setReportMessage("채용 종류를 선택해 주세요.")
       return
     }
 
-    if (!reportUnitName) {
+    if (isRegular && !reportUnitName) {
       setReportMessage("직군을 선택해 주세요.")
       return
     }
@@ -310,8 +333,13 @@ export default function SearchPage() {
     const stepId = !isOther && selectedStepKey ? Number(selectedStepKey) : null
     const stepNameRaw = isOther ? reportStepNameRaw.trim() : null
 
-    if (!stepId && !stepNameRaw) {
+    if (isRegular && !stepId && !stepNameRaw) {
       setReportMessage("전형을 선택하거나, 기타 전형명을 입력해 주세요.")
+      return
+    }
+
+    if (!isRegular && !reportCurrentStepName.trim()) {
+      setReportMessage("현재 전형명을 입력해 주세요.")
       return
     }
 
@@ -321,16 +349,20 @@ export default function SearchPage() {
     try {
       await createReport({
         companyName,
-        channelType: reportChannelType as RecruitmentChannelType,
-        unitName: reportUnitName,
+        recruitmentMode: reportMode,
+        channelType: isRegular ? (reportChannelType as RecruitmentChannelType) : undefined,
+        unitName: isRegular ? reportUnitName : undefined,
+        prevReportedDate: isRegular ? undefined : toDateInput(reportPrevDate),
+        currentStepName: isRegular ? undefined : reportCurrentStepName.trim(),
         reportedDate: toDateInput(reportDate),
-        stepId: stepId ?? undefined,
-        stepNameRaw: stepNameRaw ?? undefined,
+        stepId: isRegular ? (stepId ?? undefined) : undefined,
+        stepNameRaw: isRegular ? (stepNameRaw ?? undefined) : undefined,
       })
 
       setReportMessage("리포트가 접수되었습니다. 감사합니다!")
       setSelectedStepKey("")
       setReportStepNameRaw("")
+      setReportCurrentStepName("")
       setIsReportOpen(false)
     } catch (error) {
       console.error("Failed to create report", error)
@@ -385,7 +417,7 @@ export default function SearchPage() {
   }, [normalizedReportCompany, showReportSuggestions])
 
   useEffect(() => {
-    if (!normalizedReportCompany || !reportUnitName || !reportChannelType) {
+    if (reportMode !== "REGULAR" || !normalizedReportCompany || !reportUnitName || !reportChannelType) {
       setReportSteps([])
       setSelectedStepKey("")
       return
@@ -416,7 +448,7 @@ export default function SearchPage() {
       cancelled = true
       clearTimeout(handle)
     }
-  }, [normalizedReportCompany, reportChannelType, reportUnitName]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [normalizedReportCompany, reportMode, reportChannelType, reportUnitName]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 데스크탑 전환 시 모바일 시트 닫기
   useEffect(() => {
@@ -428,9 +460,9 @@ export default function SearchPage() {
       <Button
         type="button"
         onClick={() => openReportModal()}
-        className="fixed bottom-24 right-6 z-40 rounded-full px-6 py-3 shadow-lg shadow-primary/20 md:bottom-8"
+        className="fixed bottom-24 right-6 z-40 h-14 rounded-full border border-primary/30 bg-primary px-7 text-base font-semibold text-primary-foreground shadow-xl shadow-primary/30 transition-all hover:-translate-y-0.5 hover:bg-primary/90 md:bottom-8"
       >
-        리포트
+        발표날짜 제보
       </Button>
 
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
@@ -477,20 +509,35 @@ export default function SearchPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">채용 종류</label>
-                <Select value={reportChannelType} onValueChange={(v) => setReportChannelType(v as RecruitmentChannelType)}>
+                <label className="text-sm font-medium text-foreground">제보 유형</label>
+                <Select value={reportMode} onValueChange={(v) => setReportMode(v as RecruitmentMode)}>
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="채용 종류 선택" />
+                    <SelectValue placeholder="유형 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="FIRST_HALF">{CHANNEL_LABELS.FIRST_HALF}</SelectItem>
-                    <SelectItem value="SECOND_HALF">{CHANNEL_LABELS.SECOND_HALF}</SelectItem>
-                    <SelectItem value="ALWAYS">{CHANNEL_LABELS.ALWAYS}</SelectItem>
+                    <SelectItem value="REGULAR">공채</SelectItem>
+                    <SelectItem value="ROLLING">수시</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
+            {reportMode === "REGULAR" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">채용 종류</label>
+              <Select value={reportChannelType} onValueChange={(v) => setReportChannelType(v as RecruitmentChannelType)}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="채용 종류 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FIRST_HALF">{CHANNEL_LABELS.FIRST_HALF}</SelectItem>
+                  <SelectItem value="SECOND_HALF">{CHANNEL_LABELS.SECOND_HALF}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            )}
+
+            {reportMode === "REGULAR" && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">직군 선택</label>
               <Select
@@ -519,7 +566,9 @@ export default function SearchPage() {
                 <p className="text-xs text-muted-foreground">예시: {reportUnitExamples.join(", ")}</p>
               )}
             </div>
+            )}
 
+            {reportMode === "REGULAR" ? (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">결과 발표일</label>
@@ -558,6 +607,40 @@ export default function SearchPage() {
                 )}
               </div>
             </div>
+            ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">이전 전형 발표일</label>
+                <Input
+                  type="date"
+                  value={toDateInput(reportPrevDate)}
+                  onChange={(e) => setReportPrevDate(new Date(`${e.target.value}T00:00:00+09:00`))}
+                  className="h-11 max-w-[220px]"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">현재 전형명</label>
+                <Input
+                  value={reportCurrentStepName}
+                  onChange={(e) => setReportCurrentStepName(e.target.value)}
+                  placeholder="예: 1차면접"
+                  className="h-11"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">현재 전형 발표일</label>
+                <Input
+                  type="date"
+                  value={toDateInput(reportDate)}
+                  onChange={(e) => setReportDate(new Date(`${e.target.value}T00:00:00+09:00`))}
+                  className="h-11 max-w-[220px]"
+                  required
+                />
+              </div>
+            </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" disabled={isReportSubmitting}>
@@ -586,16 +669,40 @@ export default function SearchPage() {
       <section className="mb-6 rounded-2xl border border-border/60 bg-card p-3 md:p-4">
         <form onSubmit={handleSearch}>
           <div className="flex gap-2">
-            <Input
-              type="search"
-              placeholder="회사명을 입력해 주세요."
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setShowRelatedSuggestions(true)
-              }}
-              className="h-12 rounded-xl border-border bg-card"
-            />
+            <div className="relative flex-1">
+              <Input
+                type="search"
+                placeholder="회사명을 입력해 주세요."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setShowRelatedSuggestions(true)
+                }}
+                onFocus={() => setShowRelatedSuggestions(true)}
+                className="h-12 rounded-xl border-border bg-card"
+              />
+              {showRelatedSuggestions && normalizedQuery && relatedResults.length > 0 && !exactMatch && (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
+                  <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">연관 검색어</p>
+                  <div className="max-h-64 overflow-auto">
+                    {relatedResults.slice(0, 5).map((company) => (
+                      <button
+                        key={`related-${company.companyName}`}
+                        type="button"
+                        onClick={() => {
+                          setQuery(company.companyName)
+                          setShowRelatedSuggestions(false)
+                          runSearch(company.companyName)
+                        }}
+                        className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
+                      >
+                        {company.companyName}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               type="submit"
               disabled={isSearching || !normalizedQuery}
@@ -609,9 +716,14 @@ export default function SearchPage() {
       </section>
 
       {/* Results Area */}
-      <section className="grid gap-6 md:grid-cols-[400px_minmax(0,1fr)]">
+      <section
+        className={cn(
+          "grid gap-6",
+          hasSearched ? "md:grid-cols-[400px_minmax(0,1fr)]" : "md:grid-cols-1",
+        )}
+      >
         {/* Results List */}
-        <div className="min-w-0">
+        <div className={cn("min-w-0", !hasSearched && "mx-auto w-full max-w-xl")}>
           {hasSearched && (
             <div className="mb-3 rounded-xl border border-border/60 bg-background px-3 py-2">
               <div className="flex items-center justify-between gap-2">
@@ -621,27 +733,6 @@ export default function SearchPage() {
                 </span>
               </div>
               <p className="mt-1 truncate text-sm font-semibold text-foreground">{searchedQuery}</p>
-            </div>
-          )}
-
-          {showRelatedSuggestions && normalizedQuery && relatedResults.length > 0 && !exactMatch && (
-            <div className="mb-4 rounded-2xl border border-border/50 bg-card p-4">
-              <p className="text-sm font-medium text-foreground mb-2">연관 검색어</p>
-              <div className="flex flex-wrap gap-2">
-                {relatedResults.map((company) => (
-                  <button
-                    key={`related-${company.companyName}`}
-                    type="button"
-                    onClick={() => {
-                      setQuery(company.companyName)
-                      runSearch(company.companyName)
-                    }}
-                    className="px-3 py-1.5 rounded-full border border-border/60 text-sm text-foreground hover:bg-accent/60"
-                  >
-                    {company.companyName}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
@@ -750,6 +841,3 @@ export default function SearchPage() {
     </div>
   )
 }
-
-
-

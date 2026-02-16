@@ -3,7 +3,9 @@ package com.whennawa.controller;
 import com.whennawa.dto.company.CompanySearchResponse;
 import com.whennawa.dto.company.CompanyTimelineResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
+import com.whennawa.dto.company.RollingPredictionResponse;
 import com.whennawa.service.CompanySearchService;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,5 +40,11 @@ public class CompanySearchController {
         return companySearchService.getKeywordLeadTime(companyName, keyword);
     }
 
+    @GetMapping("/{companyName}/rolling-predict")
+    public RollingPredictionResponse rollingPredict(@PathVariable("companyName") String companyName,
+                                                    @RequestParam("stepName") String stepName,
+                                                    @RequestParam("prevDate") LocalDate prevDate) {
+        return companySearchService.predictRollingResult(companyName, stepName, prevDate);
+    }
 }
 

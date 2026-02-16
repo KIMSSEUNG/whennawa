@@ -1,0 +1,12 @@
+# One word per line
+# Lines starting with # are ignored
+
+시발
+씨발
+병신
+개새끼
+좆
+fuck
+shit
+bitch
+

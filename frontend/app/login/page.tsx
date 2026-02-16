@@ -43,9 +43,9 @@ function LoginPageContent() {
           {showSessionExpired && (
             <div className="mb-6">
               <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">Session expired</AlertTitle>
+                <AlertTitle className="text-center">세션이 만료되었습니다</AlertTitle>
                 <AlertDescription className="justify-items-center text-center">
-                  Please log in again.
+                  다시 로그인해 주세요.
                 </AlertDescription>
               </Alert>
             </div>
@@ -54,9 +54,9 @@ function LoginPageContent() {
           {showAuthRequired && (
             <div className="mb-6">
               <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">Login required</AlertTitle>
+                <AlertTitle className="text-center">로그인이 필요합니다</AlertTitle>
                 <AlertDescription className="justify-items-center text-center">
-                  Use your Google account to continue.
+                  Google 계정으로 계속 진행해 주세요.
                 </AlertDescription>
               </Alert>
             </div>
@@ -65,9 +65,9 @@ function LoginPageContent() {
           {showConsentDenied && (
             <div className="mb-6">
               <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">Consent required</AlertTitle>
+                <AlertTitle className="text-center">권한 동의가 필요합니다</AlertTitle>
                 <AlertDescription className="justify-items-center text-center">
-                  Please allow the required Google permissions and try again.
+                  Google 필수 권한에 동의한 뒤 다시 시도해 주세요.
                 </AlertDescription>
               </Alert>
             </div>
@@ -76,9 +76,9 @@ function LoginPageContent() {
           {showOauthFailed && (
             <div className="mb-6">
               <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">Login failed</AlertTitle>
+                <AlertTitle className="text-center">로그인에 실패했습니다</AlertTitle>
                 <AlertDescription className="justify-items-center text-center">
-                  Try again in a moment.
+                  잠시 후 다시 시도해 주세요.
                 </AlertDescription>
               </Alert>
             </div>
@@ -87,7 +87,7 @@ function LoginPageContent() {
           <div className="mb-8 flex flex-col items-center">
             <Image src="/logo.png" alt="언제나와 로고" width={80} height={80} className="mb-4 rounded-2xl" priority />
             <h1 className="text-3xl font-bold tracking-tight text-foreground">언제나와</h1>
-            <p className="mt-2 text-muted-foreground">Track your job search timeline.</p>
+            <p className="mt-2 text-muted-foreground">취업 전형 타임라인을 한눈에 확인하세요.</p>
           </div>
 
           <Button
@@ -96,7 +96,7 @@ function LoginPageContent() {
             onClick={handleGoogleLogin}
             disabled={isLoading}
           >
-            {isLoading ? "Signing in..." : "Continue with Google"}
+            {isLoading ? "로그인 중..." : "Google로 계속하기"}
           </Button>
 
           <Link
@@ -107,7 +107,7 @@ function LoginPageContent() {
           </Link>
 
           <p className="mt-8 text-xs text-muted-foreground">
-            By continuing, you agree to our terms and privacy policy.
+            계속 진행하면 이용약관 및 개인정보처리방침에 동의하는 것으로 간주됩니다.
           </p>
         </AppCard>
       </div>

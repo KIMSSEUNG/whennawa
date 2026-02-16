@@ -1,18 +1,20 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import {
   fetchAdminReports,
   fetchAdminReportSteps,
+  assignAdminReport,
+  assignAllPendingAdminReports,
   processAdminReport,
   discardAdminReport,
   updateAdminReport,
 } from "@/lib/api"
 import type {
   ReportItem,
-  ReportStatus,
   ReportStep,
   RecruitmentChannelType,
+  RecruitmentMode,
 } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,12 +28,13 @@ import {
 import { cn } from "@/lib/utils"
 import { normalizeUnitCategory } from "@/lib/unit-category"
 
-type StatusFilter = ReportStatus | "ALL"
-
 type EditFormState = {
   companyName: string
-  channelType: RecruitmentChannelType
+  recruitmentMode: RecruitmentMode
+  channelType: RecruitmentChannelType | ""
   unitName: string
+  prevReportedDate: string
+  currentStepName: string
   reportedDate: string
   stepKey: string
   stepNameRaw: string
@@ -40,24 +43,20 @@ type EditFormState = {
 const toDateInput = (value: Date) => value.toISOString().slice(0, 10)
 
 export default function AdminReportPage() {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("PENDING")
   const [reports, setReports] = useState<ReportItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [stepsByReportId, setStepsByReportId] = useState<Record<number, ReportStep[]>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<EditFormState | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-
-  const filteredStatus = useMemo(
-    () => (statusFilter === "ALL" ? undefined : statusFilter),
-    [statusFilter],
-  )
+  const [assigningReportId, setAssigningReportId] = useState<number | null>(null)
+  const [isAssigningAll, setIsAssigningAll] = useState(false)
 
   const loadReports = async () => {
     setIsLoading(true)
     setMessage(null)
     try {
-      const data = await fetchAdminReports(filteredStatus)
+      const data = await fetchAdminReports("PENDING")
       setReports(data ?? [])
     } catch (error) {
       console.error("Failed to load reports", error)
@@ -70,7 +69,7 @@ export default function AdminReportPage() {
   useEffect(() => {
     loadReports()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredStatus])
+  }, [])
 
   const loadSteps = async (reportId: number) => {
     if (stepsByReportId[reportId]) return
@@ -85,6 +84,17 @@ export default function AdminReportPage() {
 
   const handleProcess = async (report: ReportItem) => {
     if (report.onHold) return
+    if (report.recruitmentMode === "ROLLING") {
+      setMessage(null)
+      try {
+        await processAdminReport(report.reportId, null)
+        await loadReports()
+      } catch (error) {
+        console.error("Failed to process report", error)
+        setMessage("처리에 실패했습니다.")
+      }
+      return
+    }
     const stepId = report.stepId ?? null
 
     if (!stepId) {
@@ -102,6 +112,20 @@ export default function AdminReportPage() {
     }
   }
 
+  const handleAssign = async (reportId: number) => {
+    setMessage(null)
+    setAssigningReportId(reportId)
+    try {
+      await assignAdminReport(reportId)
+      await loadReports()
+    } catch (error) {
+      console.error("Failed to assign report values", error)
+      setMessage("값할당에 실패했습니다.")
+    } finally {
+      setAssigningReportId(null)
+    }
+  }
+
   const handleDiscard = async (reportId: number) => {
     setMessage(null)
     try {
@@ -113,12 +137,30 @@ export default function AdminReportPage() {
     }
   }
 
+  const handleAssignAllPending = async () => {
+    setMessage(null)
+    setIsAssigningAll(true)
+    try {
+      const result = await assignAllPendingAdminReports()
+      setMessage(`PENDING 전체 값할당 완료: ${result.updatedCount}건 반영`)
+      await loadReports()
+    } catch (error) {
+      console.error("Failed to assign pending reports", error)
+      setMessage("전체 값할당에 실패했습니다.")
+    } finally {
+      setIsAssigningAll(false)
+    }
+  }
+
   const beginEdit = async (report: ReportItem) => {
     setEditingId(report.reportId)
     setEditForm({
       companyName: report.companyName,
-      channelType: report.channelType,
+      recruitmentMode: report.recruitmentMode,
+      channelType: report.channelType ?? "",
       unitName: normalizeUnitCategory(report.unitName) ?? report.unitName ?? "",
+      prevReportedDate: report.prevReportedDate ? toDateInput(report.prevReportedDate) : "",
+      currentStepName: report.currentStepName ?? "",
       reportedDate: toDateInput(report.reportedDate),
       stepKey: report.stepId ? String(report.stepId) : "OTHER",
       stepNameRaw: report.stepNameRaw ?? "",
@@ -134,23 +176,31 @@ export default function AdminReportPage() {
   const saveEdit = async () => {
     if (!editingId || !editForm) return
 
+    const isRegular = editForm.recruitmentMode === "REGULAR"
     const isOther = editForm.stepKey === "OTHER"
     const stepId = !isOther && editForm.stepKey ? Number(editForm.stepKey) : null
     const stepNameRaw = isOther ? editForm.stepNameRaw.trim() : null
 
-    if (!stepId && !stepNameRaw) {
+    if (isRegular && !stepId && !stepNameRaw) {
       setMessage("전형을 선택하거나, 기타 전형명을 입력해 주세요.")
+      return
+    }
+    if (!isRegular && (!editForm.currentStepName.trim() || !editForm.prevReportedDate)) {
+      setMessage("수시는 이전 발표일과 현재 전형명이 필요합니다.")
       return
     }
 
     try {
       await updateAdminReport(editingId, {
         companyName: editForm.companyName.trim(),
-        channelType: editForm.channelType,
-        unitName: editForm.unitName,
+        recruitmentMode: editForm.recruitmentMode,
+        channelType: isRegular ? (editForm.channelType as RecruitmentChannelType) : undefined,
+        unitName: isRegular ? editForm.unitName : undefined,
+        prevReportedDate: isRegular ? undefined : editForm.prevReportedDate,
+        currentStepName: isRegular ? undefined : editForm.currentStepName.trim(),
         reportedDate: editForm.reportedDate,
-        stepId: stepId ?? undefined,
-        stepNameRaw: stepNameRaw ?? undefined,
+        stepId: isRegular ? (stepId ?? undefined) : undefined,
+        stepNameRaw: isRegular ? (stepNameRaw ?? undefined) : undefined,
       })
       await loadReports()
       cancelEdit()
@@ -170,16 +220,15 @@ export default function AdminReportPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        {(["PENDING", "PROCESSED", "DISCARDED", "ALL"] as StatusFilter[]).map((status) => (
-          <Button
-            key={status}
-            type="button"
-            variant={statusFilter === status ? "default" : "outline"}
-            onClick={() => setStatusFilter(status)}
-          >
-            {status === "ALL" ? "전체" : status}
-          </Button>
-        ))}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handleAssignAllPending}
+          disabled={isAssigningAll}
+          className="transition-all hover:-translate-y-0.5 active:translate-y-0"
+        >
+          {isAssigningAll ? "전체 값할당 중..." : "PENDING 전체 값할당"}
+        </Button>
       </div>
 
       {message && <p className="mb-4 text-sm text-muted-foreground">{message}</p>}
@@ -207,12 +256,18 @@ export default function AdminReportPage() {
                   <div>
                     <h3 className="text-lg font-semibold">{report.companyName}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {report.channelType} · {toDateInput(report.reportedDate)}
+                      {report.recruitmentMode === "REGULAR" ? `${report.channelType ?? "-"} · ${toDateInput(report.reportedDate)}` : `수시 · ${toDateInput(report.reportedDate)}`}
                     </p>
                     <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}회</p>
-                    <p className="text-sm text-muted-foreground">
-                      Unit: {normalizeUnitCategory(report.unitName) ?? report.unitName ?? "-"}
-                    </p>
+                    {report.recruitmentMode === "REGULAR" ? (
+                      <p className="text-sm text-muted-foreground">
+                        Unit: {normalizeUnitCategory(report.unitName) ?? report.unitName ?? "-"}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} · 현재 전형: {report.currentStepName ?? "-"}
+                      </p>
+                    )}
                     <p className="text-sm mt-1">
                       {report.stepName
                         ? report.stepName
@@ -231,8 +286,18 @@ export default function AdminReportPage() {
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
+                      variant="secondary"
+                      onClick={() => handleAssign(report.reportId)}
+                      disabled={report.status !== "PENDING" || assigningReportId === report.reportId}
+                      className="transition-all hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                      {assigningReportId === report.reportId ? "값할당 중..." : "값할당"}
+                    </Button>
+
+                    <Button
+                      type="button"
                       onClick={() => handleProcess(report)}
-                      disabled={isOnHold || report.status !== "PENDING" || !report.stepId}
+                      disabled={isOnHold || report.status !== "PENDING" || (report.recruitmentMode === "REGULAR" && !report.stepId)}
                     >
                       처리
                     </Button>
@@ -263,12 +328,30 @@ export default function AdminReportPage() {
                     </div>
 
                     <div className="space-y-2">
+                      <label className="text-sm font-medium">유형</label>
+                      <Select
+                        value={editForm.recruitmentMode}
+                        onValueChange={(value) =>
+                          setEditForm({ ...editForm, recruitmentMode: value as RecruitmentMode })
+                        }
+                        disabled
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="유형 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="REGULAR">공채</SelectItem>
+                          <SelectItem value="ROLLING">수시</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {editForm.recruitmentMode === "REGULAR" && (
+                    <div className="space-y-2">
                       <label className="text-sm font-medium">채용 채널</label>
                       <Select
                         value={editForm.channelType}
-                        onValueChange={(value) =>
-                          setEditForm({ ...editForm, channelType: value as RecruitmentChannelType })
-                        }
+                        onValueChange={(value) => setEditForm({ ...editForm, channelType: value as RecruitmentChannelType })}
                         disabled
                       >
                         <SelectTrigger className="h-10">
@@ -277,15 +360,26 @@ export default function AdminReportPage() {
                         <SelectContent>
                           <SelectItem value="FIRST_HALF">상반기</SelectItem>
                           <SelectItem value="SECOND_HALF">하반기</SelectItem>
-                          <SelectItem value="ALWAYS">상시</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    )}
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Unit</label>
-                      <Input value={editForm.unitName} disabled />
+                      <Input value={editForm.recruitmentMode === "REGULAR" ? editForm.unitName : "-"} disabled />
                     </div>
+
+                    {editForm.recruitmentMode === "ROLLING" && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">이전 발표일</label>
+                      <Input
+                        type="date"
+                        value={editForm.prevReportedDate}
+                        onChange={(e) => setEditForm({ ...editForm, prevReportedDate: e.target.value })}
+                      />
+                    </div>
+                    )}
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium">결과 발표일</label>
@@ -297,6 +391,7 @@ export default function AdminReportPage() {
                       />
                     </div>
 
+                    {editForm.recruitmentMode === "REGULAR" ? (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">전형 선택</label>
                       <Select
@@ -327,6 +422,16 @@ export default function AdminReportPage() {
                         />
                       )}
                     </div>
+                    ) : (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">현재 전형명</label>
+                      <Input
+                        value={editForm.currentStepName}
+                        onChange={(e) => setEditForm({ ...editForm, currentStepName: e.target.value })}
+                        placeholder="예: 1차면접"
+                      />
+                    </div>
+                    )}
 
                     <div className="md:col-span-2 flex flex-wrap gap-2">
                       <Button type="button" onClick={saveEdit}>

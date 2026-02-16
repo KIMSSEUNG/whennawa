@@ -14,12 +14,13 @@ export interface CompanyTimelineStep {
 export interface CompanyTimeline {
   companyId: number | null
   companyName: string
-  timelines: Array<{
+  regularTimelines: Array<{
     unitName: string
     channelType: "FIRST_HALF" | "SECOND_HALF" | "ALWAYS"
     year: number
     steps: CompanyTimelineStep[]
   }>
+  rollingSteps: RollingStepStat[]
 }
 
 export interface KeywordLeadTime {
@@ -30,6 +31,7 @@ export interface KeywordLeadTime {
 }
 
 export type RecruitmentChannelType = "FIRST_HALF" | "SECOND_HALF" | "ALWAYS"
+export type RecruitmentMode = "REGULAR" | "ROLLING"
 
 export type ReportStatus = "PENDING" | "PROCESSED" | "DISCARDED"
 
@@ -42,14 +44,34 @@ export interface ReportItem {
   reportId: number
   reportCount: number
   companyName: string
-  channelType: RecruitmentChannelType
+  recruitmentMode: RecruitmentMode
+  channelType: RecruitmentChannelType | null
   unitName: string | null
+  prevReportedDate: Date | null
+  currentStepName: string | null
   reportedDate: Date
   stepId: number | null
   stepName: string | null
   stepNameRaw: string | null
   status: ReportStatus
   onHold: boolean
+}
+
+export interface RollingStepStat {
+  stepName: string
+  sampleCount: number
+  avgDays: number | null
+  minDays: number | null
+  maxDays: number | null
+}
+
+export interface RollingPrediction {
+  stepName: string
+  previousStepDate: Date
+  sampleCount: number
+  expectedDate: Date | null
+  expectedStartDate: Date | null
+  expectedEndDate: Date | null
 }
 
 export interface User {

@@ -13,7 +13,10 @@ import com.whennawa.repository.UserRepository;
 import com.whennawa.util.NicknameGenerator;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +32,17 @@ public class ChatService {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final NicknameGenerator nicknameGenerator;
+    private final ProfanityMasker profanityMasker;
+    private final ConcurrentMap<Long, Long> lastChatAtByUserId = new ConcurrentHashMap<>();
+    @Value("${app.chat.cooldown-ms:500}")
+    private long chatCooldownMs;
 
     @Transactional
     public ChatMessageResponse processAndSave(ChatMessageRequest request, Long userId) {
         if (request == null || request.getCompanyId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid request");
         }
+        enforceChatCooldown(userId);
         String messageText = normalizeMessage(request.getMessage());
         Company company = companyRepository.findById(request.getCompanyId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
@@ -47,7 +55,7 @@ public class ChatService {
         message.setCompany(company);
         message.setMember(member);
         message.setSenderNickname(member.getNickname());
-        message.setMessage(messageText);
+        message.setMessage(profanityMasker.mask(messageText));
         ChatMessage saved = chatMessageRepository.save(message);
 
         return new ChatMessageResponse(
@@ -68,7 +76,7 @@ public class ChatService {
             .map(m -> new ChatMessageResponse(
                 m.getCompany().getCompanyId(),
                 m.getSenderNickname(),
-                m.getMessage(),
+                profanityMasker.mask(m.getMessage()),
                 m.getCreatedAt()
             ))
             .toList();
@@ -100,5 +108,18 @@ public class ChatService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message too long");
         }
         return trimmed;
+    }
+
+    private void enforceChatCooldown(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Long last = lastChatAtByUserId.put(userId, now);
+        if (last != null && now - last < chatCooldownMs) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many chat messages");
+        }
+        long staleThreshold = chatCooldownMs * 20;
+        lastChatAtByUserId.entrySet().removeIf(entry -> now - entry.getValue() > staleThreshold);
     }
 }

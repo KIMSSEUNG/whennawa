@@ -1,6 +1,7 @@
 package com.whennawa.controller;
 
 import com.whennawa.dto.report.ReportAdminItem;
+import com.whennawa.dto.report.ReportAssignBatchResponse;
 import com.whennawa.dto.report.ReportProcessRequest;
 import com.whennawa.dto.report.ReportStepResponse;
 import com.whennawa.dto.report.ReportUpdateRequest;
@@ -57,6 +58,20 @@ public class AdminReportController {
                                    @RequestBody(required = false) ReportProcessRequest request) {
         ensureAuthenticated(authentication);
         return reportService.processReport(reportId, request);
+    }
+
+    @PostMapping("/{reportId}/assign")
+    public ReportAdminItem assign(Authentication authentication,
+                                  @PathVariable("reportId") Long reportId) {
+        ensureAuthenticated(authentication);
+        return reportService.assignReportValues(reportId);
+    }
+
+    @PostMapping("/assign-pending")
+    public ReportAssignBatchResponse assignPending(Authentication authentication) {
+        ensureAuthenticated(authentication);
+        int updatedCount = reportService.assignAllPendingReports();
+        return new ReportAssignBatchResponse(updatedCount);
     }
 
     @PostMapping("/{reportId}/discard")

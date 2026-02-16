@@ -84,12 +84,15 @@ CREATE TABLE IF NOT EXISTS step_date_report (
   report_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   company_id BIGINT,
   company_name VARCHAR(100) NOT NULL,
+  recruitment_mode ENUM('REGULAR', 'ROLLING') NOT NULL DEFAULT 'REGULAR',
   unit_id BIGINT,
   unit_name ENUM('GENERAL', 'DESIGN_ART', 'IT', 'TECH_ENGINEERING', 'INTEGRATED'),
-  channel_type ENUM('FIRST_HALF', 'SECOND_HALF', 'ALWAYS') NOT NULL,
+  channel_type ENUM('FIRST_HALF', 'SECOND_HALF', 'ALWAYS'),
   reported_date DATE NOT NULL,
+  prev_reported_date DATE,
   step_id BIGINT,
   step_name_raw VARCHAR(100),
+  current_step_name VARCHAR(100),
   report_count INT NOT NULL DEFAULT 1,
   status ENUM('PENDING', 'PROCESSED', 'DISCARDED') NOT NULL DEFAULT 'PENDING',
   deleted_at DATETIME NULL,
@@ -105,6 +108,9 @@ CREATE INDEX idx_step_date_report_company ON step_date_report (company_id);
 CREATE INDEX idx_step_date_report_unit ON step_date_report (unit_id);
 CREATE INDEX idx_step_date_report_channel_type ON step_date_report (channel_type);
 CREATE INDEX idx_step_date_report_date ON step_date_report (reported_date);
+CREATE INDEX idx_step_date_report_mode ON step_date_report (recruitment_mode);
+CREATE INDEX idx_step_date_report_prev_date ON step_date_report (prev_reported_date);
+CREATE INDEX idx_step_date_report_current_step_name ON step_date_report (current_step_name);
 
 CREATE TABLE IF NOT EXISTS chat_room_member (
   member_id BIGINT AUTO_INCREMENT PRIMARY KEY,

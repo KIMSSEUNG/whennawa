@@ -19,7 +19,7 @@ function toDateKey(date: Date) {
 }
 
 export function TimelineProjectionCalendar({ timeline }: Props) {
-  const units = timeline?.timelines ?? []
+  const units = timeline?.regularTimelines ?? []
   const [selectedUnitIndex, setSelectedUnitIndex] = useState("0")
   const [deadlineDate, setDeadlineDate] = useState("")
   const [month, setMonth] = useState(() => {
@@ -156,9 +156,9 @@ export function TimelineProjectionCalendar({ timeline }: Props) {
               key={dateKey}
               onClick={() => setDeadlineDate(dateKey)}
               className={cn(
-                "h-16 rounded-xl border border-transparent bg-card/60 px-1 py-1 text-foreground shadow-[inset_0_0_0_1px_rgba(59,91,219,0.06)] cursor-pointer hover:bg-accent/50",
-                labels.length > 0 && "border-border/60 bg-muted/30",
-                isDeadline && "border-primary/30 bg-primary/10 ring-2 ring-primary/70",
+                "h-16 rounded-xl border border-transparent bg-card/60 px-1 py-1 text-foreground shadow-[inset_0_0_0_1px_rgba(59,91,219,0.06)] cursor-pointer transition-all hover:bg-accent/50",
+                labels.length > 0 && "border-primary/40 bg-primary/5",
+                isDeadline && "border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-sm",
               )}
             >
               <div className="flex h-full flex-col items-center gap-1">
@@ -166,7 +166,7 @@ export function TimelineProjectionCalendar({ timeline }: Props) {
                 {labels.slice(0, 2).map((label) => (
                   <span
                     key={label}
-                    className="max-w-full truncate rounded-md border border-border/60 bg-background px-1.5 text-[10px] text-foreground"
+                    className="max-w-full truncate rounded-md border border-primary/30 bg-primary/5 px-1.5 text-[10px] text-primary/95"
                   >
                     {label}
                   </span>
