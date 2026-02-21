@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import {
   fetchAdminReports,
-  fetchAdminReportSteps,
   assignAdminReport,
   assignAllPendingAdminReports,
   processAdminReport,
@@ -12,8 +11,6 @@ import {
 } from "@/lib/api"
 import type {
   ReportItem,
-  ReportStep,
-  RecruitmentChannelType,
   RecruitmentMode,
   RollingReportType,
 } from "@/lib/types"
@@ -33,13 +30,10 @@ type EditFormState = {
   companyName: string
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType
-  channelType: RecruitmentChannelType | ""
-  unitName: string
   prevReportedDate: string
   currentStepName: string
   reportedDate: string
-  stepKey: string
-  stepNameRaw: string
+  noResponse: boolean
 }
 
 const toDateInput = (value: Date | null) => (value ? value.toISOString().slice(0, 10) : "")
@@ -47,7 +41,6 @@ const toDateInput = (value: Date | null) => (value ? value.toISOString().slice(0
 export default function AdminReportPage() {
   const [reports, setReports] = useState<ReportItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [stepsByReportId, setStepsByReportId] = useState<Record<number, ReportStep[]>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<EditFormState | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -73,40 +66,11 @@ export default function AdminReportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const loadSteps = async (reportId: number) => {
-    if (stepsByReportId[reportId]) return
-    try {
-      const data = await fetchAdminReportSteps(reportId)
-      setStepsByReportId((prev) => ({ ...prev, [reportId]: data ?? [] }))
-    } catch (error) {
-      console.error("Failed to load report steps", error)
-      setStepsByReportId((prev) => ({ ...prev, [reportId]: [] }))
-    }
-  }
-
   const handleProcess = async (report: ReportItem) => {
     if (report.onHold) return
-    if (report.recruitmentMode === "ROLLING") {
-      setMessage(null)
-      try {
-        await processAdminReport(report.reportId, null)
-        await loadReports()
-      } catch (error) {
-        console.error("Failed to process report", error)
-        setMessage("처리에 실패했습니다.")
-      }
-      return
-    }
-    const stepId = report.stepId ?? null
-
-    if (!stepId) {
-      setMessage("처리할 전형을 선택해 주세요.")
-      return
-    }
-
     setMessage(null)
     try {
-      await processAdminReport(report.reportId, stepId)
+      await processAdminReport(report.reportId, null)
       await loadReports()
     } catch (error) {
       console.error("Failed to process report", error)
@@ -156,19 +120,19 @@ export default function AdminReportPage() {
 
   const beginEdit = async (report: ReportItem) => {
     setEditingId(report.reportId)
+    const rawCurrent = (report.stepNameRaw ?? report.stepName ?? "").trim()
+    const isNoResponse =
+      report.rollingResultType === "NO_RESPONSE_REPORTED" ||
+      (!report.prevReportedDate && !report.reportedDate)
     setEditForm({
       companyName: report.companyName,
       recruitmentMode: report.recruitmentMode,
       rollingResultType: report.rollingResultType ?? "DATE_REPORTED",
-      channelType: report.channelType ?? "",
-      unitName: normalizeUnitCategory(report.unitName) ?? report.unitName ?? "",
       prevReportedDate: report.prevReportedDate ? toDateInput(report.prevReportedDate) : "",
-      currentStepName: report.currentStepName ?? "",
+      currentStepName: rawCurrent,
       reportedDate: toDateInput(report.reportedDate),
-      stepKey: report.stepId ? String(report.stepId) : "OTHER",
-      stepNameRaw: report.stepNameRaw ?? "",
+      noResponse: isNoResponse,
     })
-    await loadSteps(report.reportId)
   }
 
   const cancelEdit = () => {
@@ -180,21 +144,20 @@ export default function AdminReportPage() {
     if (!editingId || !editForm) return
 
     const isRegular = editForm.recruitmentMode === "REGULAR"
-    const isOther = editForm.stepKey === "OTHER"
-    const stepId = !isOther && editForm.stepKey ? Number(editForm.stepKey) : null
-    const stepNameRaw = isOther ? editForm.stepNameRaw.trim() : null
+    const currentStepName = editForm.currentStepName.trim()
 
-    if (isRegular && !stepId && !stepNameRaw) {
-      setMessage("전형을 선택하거나, 기타 전형명을 입력해 주세요.")
+    if (!currentStepName) {
+      setMessage("현재 전형명을 입력해 주세요.")
       return
     }
-    if (!isRegular) {
-      if (!editForm.currentStepName.trim()) {
-        setMessage("수시는 현재 전형명이 필요합니다.")
+
+    if (!editForm.noResponse) {
+      if (!editForm.prevReportedDate || !editForm.reportedDate) {
+        setMessage("이전 발표일과 현재 발표일을 입력해 주세요.")
         return
       }
-      if (editForm.rollingResultType !== "NO_RESPONSE_REPORTED" && (!editForm.prevReportedDate || !editForm.reportedDate)) {
-        setMessage("수시는 이전 발표일과 현재 발표일이 필요합니다.")
+      if (new Date(editForm.prevReportedDate) >= new Date(editForm.reportedDate)) {
+        setMessage("이전 발표일은 현재 발표일보다 이전 날짜여야 합니다.")
         return
       }
     }
@@ -203,20 +166,18 @@ export default function AdminReportPage() {
       await updateAdminReport(editingId, {
         companyName: editForm.companyName.trim(),
         recruitmentMode: editForm.recruitmentMode,
-        rollingResultType: isRegular ? undefined : editForm.rollingResultType,
-        channelType: isRegular ? (editForm.channelType as RecruitmentChannelType) : undefined,
-        unitName: isRegular ? editForm.unitName : undefined,
-        prevReportedDate:
-          isRegular || editForm.rollingResultType === "NO_RESPONSE_REPORTED"
-            ? undefined
-            : editForm.prevReportedDate,
-        currentStepName: isRegular ? undefined : editForm.currentStepName.trim(),
-        reportedDate:
-          isRegular || editForm.rollingResultType !== "NO_RESPONSE_REPORTED"
-            ? editForm.reportedDate
-            : undefined,
-        stepId: isRegular ? (stepId ?? undefined) : undefined,
-        stepNameRaw: isRegular ? (stepNameRaw ?? undefined) : undefined,
+        rollingResultType: isRegular
+          ? undefined
+          : editForm.noResponse
+            ? "NO_RESPONSE_REPORTED"
+            : "DATE_REPORTED",
+        channelType: isRegular ? "ALWAYS" : undefined,
+        unitName: undefined,
+        prevReportedDate: editForm.noResponse ? undefined : editForm.prevReportedDate,
+        currentStepName: isRegular ? undefined : currentStepName,
+        reportedDate: editForm.noResponse ? undefined : editForm.reportedDate,
+        stepId: undefined,
+        stepNameRaw: isRegular ? currentStepName : undefined,
       })
       await loadReports()
       cancelEdit()
@@ -256,7 +217,6 @@ export default function AdminReportPage() {
       ) : (
         <div className="space-y-4">
           {reports.map((report) => {
-            const steps = stepsByReportId[report.reportId] ?? []
             const isEditing = editingId === report.reportId
             const isOnHold = report.onHold
 
@@ -316,7 +276,7 @@ export default function AdminReportPage() {
                     <Button
                       type="button"
                       onClick={() => handleProcess(report)}
-                      disabled={isOnHold || report.status !== "PENDING" || (report.recruitmentMode === "REGULAR" && !report.stepId)}
+                      disabled={isOnHold || report.status !== "PENDING"}
                     >
                       처리
                     </Button>
@@ -365,93 +325,50 @@ export default function AdminReportPage() {
                       </Select>
                     </div>
 
-                    {editForm.recruitmentMode === "REGULAR" && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">채용 채널</label>
-                      <Select
-                        value={editForm.channelType}
-                        onValueChange={(value) => setEditForm({ ...editForm, channelType: value as RecruitmentChannelType })}
-                        disabled
+                    <div className="md:col-span-2 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditForm({
+                            ...editForm,
+                            noResponse: !editForm.noResponse,
+                            prevReportedDate: !editForm.noResponse ? "" : editForm.prevReportedDate,
+                            reportedDate: !editForm.noResponse ? "" : editForm.reportedDate,
+                          })
+                        }
+                        className={cn(
+                          "inline-flex h-10 items-center rounded-lg border px-3 text-sm transition-colors",
+                          editForm.noResponse
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border/60 text-muted-foreground hover:bg-muted/40",
+                        )}
                       >
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="채용 채널 선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="FIRST_HALF">상반기</SelectItem>
-                          <SelectItem value="SECOND_HALF">하반기</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        결과발표 메일을 받지 못했습니다
+                      </button>
                     </div>
+
+                    {!editForm.noResponse && (
+                      <>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">이전 전형 발표일</label>
+                          <Input
+                            type="date"
+                            value={editForm.prevReportedDate}
+                            onChange={(e) => setEditForm({ ...editForm, prevReportedDate: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">현재 전형 발표일</label>
+                          <Input
+                            type="date"
+                            value={editForm.reportedDate}
+                            onChange={(e) => setEditForm({ ...editForm, reportedDate: e.target.value })}
+                          />
+                        </div>
+                      </>
                     )}
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Unit</label>
-                      <Input value={editForm.recruitmentMode === "REGULAR" ? editForm.unitName : "-"} disabled />
-                    </div>
-
-                    {editForm.recruitmentMode === "ROLLING" && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">수시 결과 유형</label>
-                      <Input
-                        value={editForm.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : "날짜 제보"}
-                        disabled
-                      />
-                    </div>
-                    )}
-
-                    {editForm.recruitmentMode === "ROLLING" && editForm.rollingResultType !== "NO_RESPONSE_REPORTED" && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">이전 발표일</label>
-                      <Input
-                        type="date"
-                        value={editForm.prevReportedDate}
-                        onChange={(e) => setEditForm({ ...editForm, prevReportedDate: e.target.value })}
-                      />
-                    </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">결과 발표일</label>
-                      <Input
-                        type="date"
-                        value={editForm.reportedDate}
-                        onChange={(e) => setEditForm({ ...editForm, reportedDate: e.target.value })}
-                        disabled={editForm.recruitmentMode === "ROLLING" && editForm.rollingResultType === "NO_RESPONSE_REPORTED"}
-                      />
-                    </div>
-
-                    {editForm.recruitmentMode === "REGULAR" ? (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">전형 선택</label>
-                      <Select
-                        value={editForm.stepKey}
-                        onValueChange={(value) => setEditForm({ ...editForm, stepKey: value })}
-                      >
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="전형 선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {steps.map((step) => (
-                            <SelectItem
-                              key={`edit-${report.reportId}-${step.stepId}`}
-                              value={String(step.stepId)}
-                            >
-                              {step.stepName}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="OTHER">기타</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {editForm.stepKey === "OTHER" && (
-                        <Input
-                          value={editForm.stepNameRaw}
-                          onChange={(e) => setEditForm({ ...editForm, stepNameRaw: e.target.value })}
-                          placeholder="기타 전형명을 입력해 주세요."
-                        />
-                      )}
-                    </div>
-                    ) : (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">현재 전형명</label>
                       <Input
@@ -460,7 +377,6 @@ export default function AdminReportPage() {
                         placeholder="예: 1차면접"
                       />
                     </div>
-                    )}
 
                     <div className="md:col-span-2 flex flex-wrap gap-2">
                       <Button type="button" onClick={saveEdit}>

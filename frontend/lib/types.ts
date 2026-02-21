@@ -16,7 +16,7 @@ export interface CompanyTimeline {
   companyName: string
   regularTimelines: Array<{
     unitName: string
-    channelType: "FIRST_HALF" | "SECOND_HALF" | "ALWAYS"
+    channelType: "ALWAYS" | "FIRST_HALF" | "SECOND_HALF"
     year: number
     steps: CompanyTimelineStep[]
   }>
@@ -30,7 +30,7 @@ export interface KeywordLeadTime {
   maxDays: number | null
 }
 
-export type RecruitmentChannelType = "FIRST_HALF" | "SECOND_HALF" | "ALWAYS"
+export type RecruitmentChannelType = "ALWAYS" | "FIRST_HALF" | "SECOND_HALF"
 export type RecruitmentMode = "REGULAR" | "ROLLING"
 export type RollingReportType = "DATE_REPORTED" | "NO_RESPONSE_REPORTED"
 

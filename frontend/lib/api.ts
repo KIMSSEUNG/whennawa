@@ -1,4 +1,4 @@
-﻿import { mockCompanies, mockUser } from "./mock-data"
+import { mockCompanies, mockUser } from "./mock-data"
 import type {
   ChatMessage,
   CompanySearchItem,
@@ -27,7 +27,7 @@ type CompanyTimelineInput = {
   companyName: string
   regularTimelines?: Array<{
     unitName: string
-    channelType: "FIRST_HALF" | "SECOND_HALF" | "ALWAYS"
+    channelType: "ALWAYS" | "FIRST_HALF" | "SECOND_HALF"
     year: number
     steps: Array<{
       eventType: string
@@ -39,7 +39,7 @@ type CompanyTimelineInput = {
   }>
   timelines?: Array<{
     unitName: string
-    channelType: "FIRST_HALF" | "SECOND_HALF" | "ALWAYS"
+    channelType: "ALWAYS" | "FIRST_HALF" | "SECOND_HALF"
     year: number
     steps: Array<{
       eventType: string
@@ -259,7 +259,7 @@ export async function fetchCompanyTimeline(companyName: string): Promise<Company
         regularTimelines: [
           {
             unitName: "통합직군",
-            channelType: "SECOND_HALF",
+            channelType: "ALWAYS",
             year: new Date().getFullYear(),
             steps: [
               {
@@ -436,7 +436,7 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         companyName: "Naver",
         recruitmentMode: "REGULAR",
         rollingResultType: null,
-        channelType: "FIRST_HALF",
+        channelType: "ALWAYS",
         unitName: "IT",
         prevReportedDate: null,
         currentStepName: null,
@@ -535,7 +535,7 @@ export async function processAdminReport(reportId: number, stepId?: number | nul
       companyName: "Processed",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      channelType: "FIRST_HALF",
+      channelType: "ALWAYS",
       unitName: "IT",
       prevReportedDate: null,
       currentStepName: null,
@@ -564,7 +564,7 @@ export async function assignAdminReport(reportId: number): Promise<ReportItem> {
       companyName: "Assigned",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      channelType: "FIRST_HALF",
+      channelType: "ALWAYS",
       unitName: "IT",
       prevReportedDate: null,
       currentStepName: null,
@@ -602,7 +602,7 @@ export async function discardAdminReport(reportId: number): Promise<ReportItem> 
       companyName: "Discarded",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      channelType: "FIRST_HALF",
+      channelType: "ALWAYS",
       unitName: "IT",
       prevReportedDate: null,
       currentStepName: null,

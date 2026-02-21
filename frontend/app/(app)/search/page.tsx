@@ -9,7 +9,6 @@ import {
   searchCompanies,
   fetchCompanyTimeline,
   fetchCompanyLeadTime,
-  fetchReportSteps,
   fetchRollingReportStepNames,
   createReport,
   getUser,
@@ -21,7 +20,6 @@ import type {
   KeywordLeadTime,
   RecruitmentChannelType,
   RecruitmentMode,
-  ReportStep,
 } from "@/lib/types"
 import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/empty-state"
@@ -30,7 +28,6 @@ import { CompanyDetailSheet } from "@/components/company-detail-sheet"
 import { CompanyDetailPanel } from "@/components/company-detail-panel"
 import { CompanyChatRoom } from "@/components/chat/company-chat-room"
 import { cn } from "@/lib/utils"
-import { UNIT_CATEGORY_EXAMPLES, UNIT_CATEGORY_OPTIONS } from "@/lib/unit-category"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -49,12 +46,6 @@ function getKoreaToday() {
   const utc = now.getTime() + now.getTimezoneOffset() * 60000
   const kst = new Date(utc + 9 * 60 * 60000)
   return new Date(kst.getFullYear(), kst.getMonth(), kst.getDate())
-}
-
-const CHANNEL_LABELS: Record<RecruitmentChannelType, string> = {
-  FIRST_HALF: "상반기",
-  SECOND_HALF: "하반기",
-  ALWAYS: "상시",
 }
 
 export default function SearchPage() {
@@ -85,17 +76,16 @@ export default function SearchPage() {
   const [reportCompany, setReportCompany] = useState("")
   const [reportSuggestions, setReportSuggestions] = useState<CompanySearchItem[]>([])
   const [reportMode, setReportMode] = useState<RecruitmentMode>("REGULAR")
-  const [reportChannelType, setReportChannelType] = useState<RecruitmentChannelType | "">("")
-  const [reportUnitName, setReportUnitName] = useState("")
+  const [reportChannelType, setReportChannelType] = useState<RecruitmentChannelType>("ALWAYS")
   const [reportPrevDate, setReportPrevDate] = useState(() => getKoreaToday())
   const [reportCurrentStepName, setReportCurrentStepName] = useState("")
   const [reportDate, setReportDate] = useState(() => getKoreaToday())
   const [reportRollingNoResponse, setReportRollingNoResponse] = useState(false)
-  const [reportSteps, setReportSteps] = useState<ReportStep[]>([])
   const [rollingStepSuggestions, setRollingStepSuggestions] = useState<string[]>([])
   const [showRollingStepSuggestions, setShowRollingStepSuggestions] = useState(false)
-  const [selectedStepKey, setSelectedStepKey] = useState<string>("")
-  const [reportStepNameRaw, setReportStepNameRaw] = useState("")
+  const [reportPrevStepName, setReportPrevStepName] = useState("")
+  const [rollingPrevStepSuggestions, setRollingPrevStepSuggestions] = useState<string[]>([])
+  const [showRollingPrevStepSuggestions, setShowRollingPrevStepSuggestions] = useState(false)
   const [isReportSubmitting, setIsReportSubmitting] = useState(false)
   const [reportMessage, setReportMessage] = useState<string | null>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
@@ -105,8 +95,6 @@ export default function SearchPage() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const normalizedQuery = useMemo(() => query.trim(), [query])
   const normalizedReportCompany = useMemo(() => reportCompany.trim(), [reportCompany])
-  const reportUnitExamples = reportUnitName ? UNIT_CATEGORY_EXAMPLES[reportUnitName] ?? [] : []
-  const prevReportUnitRef = useRef<string>("")
   const prevReportCompanyRef = useRef<string>("")
   const restoredFromUrlRef = useRef(false)
 
@@ -127,10 +115,7 @@ export default function SearchPage() {
   }
 
   useEffect(() => {
-    setReportUnitName("")
-    setReportSteps([])
-    setSelectedStepKey("")
-    setReportStepNameRaw("")
+    setReportChannelType("ALWAYS")
   }, [reportChannelType])
 
   useEffect(() => {
@@ -142,31 +127,29 @@ export default function SearchPage() {
       setShowRollingStepSuggestions(false)
       return
     }
-    setReportChannelType("")
-    setReportUnitName("")
+    setReportChannelType("ALWAYS")
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
+    setReportPrevStepName("")
     setReportRollingNoResponse(false)
-    setReportSteps([])
     setRollingStepSuggestions([])
     setShowRollingStepSuggestions(false)
-    setSelectedStepKey("")
-    setReportStepNameRaw("")
+    setRollingPrevStepSuggestions([])
+    setShowRollingPrevStepSuggestions(false)
   }, [reportMode])
 
   useEffect(() => {
     if (prevReportCompanyRef.current === normalizedReportCompany) return
     prevReportCompanyRef.current = normalizedReportCompany
-    setReportChannelType("")
-    setReportUnitName("")
+    setReportChannelType("ALWAYS")
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
+    setReportPrevStepName("")
     setReportRollingNoResponse(false)
-    setReportSteps([])
     setRollingStepSuggestions([])
     setShowRollingStepSuggestions(false)
-    setSelectedStepKey("")
-    setReportStepNameRaw("")
+    setRollingPrevStepSuggestions([])
+    setShowRollingPrevStepSuggestions(false)
     setReportDate(getKoreaToday())
   }, [normalizedReportCompany])
 
@@ -316,12 +299,12 @@ export default function SearchPage() {
       setIsReportCompanyLocked(false)
     }
 
-    setReportChannelType("")
-    setReportUnitName("")
-    setReportSteps([])
-    setSelectedStepKey("")
-    setReportStepNameRaw("")
+    setReportChannelType("ALWAYS")
+    setReportCurrentStepName("")
+    setReportPrevStepName("")
     setReportRollingNoResponse(false)
+    setRollingPrevStepSuggestions([])
+    setShowRollingPrevStepSuggestions(false)
     if (preferredMode) {
       setReportMode(preferredMode)
     }
@@ -377,11 +360,8 @@ export default function SearchPage() {
     )}`
   }
 
-  const reportModalTitle = reportMode === "REGULAR" ? "공채 발표일 제보" : "수시 발표 제보"
-  const reportModalDescription =
-    reportMode === "REGULAR"
-      ? "공채는 채용 종류, 직군, 전형과 결과 발표일을 입력해 주세요."
-      : "수시는 현재 전형명을 필수로 입력해 주세요. 결과 미수신일 경우 날짜 없이 제보할 수 있어요."
+  const reportModalTitle = "오늘 결과발표 제보하기"
+  const reportModalDescription = "현재 전형명을 필수로 입력해 주세요. 결과 미수신일 경우 날짜 없이 제보할 수 있어요."
 
   const handleReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -389,37 +369,42 @@ export default function SearchPage() {
     const companyName = normalizedReportCompany
     if (!companyName) return
 
-    const candidates = await searchCompanies(companyName, 5)
-    const hasExactCompany = (candidates ?? []).some(
-      (item) => item.companyName.toLowerCase() === companyName.toLowerCase(),
-    )
-    if (!hasExactCompany) {
-      setReportMessage("활성 회사 목록에서 선택한 회사만 제보할 수 있어요.")
-      return
-    }
-
     const isRegular = reportMode === "REGULAR"
-    if (isRegular && !reportChannelType) {
-      setReportMessage("채용 종류를 선택해 주세요.")
-      return
-    }
+    const prevStepName = reportPrevStepName.trim()
+    const currentStepName = reportCurrentStepName.trim()
 
-    if (isRegular && !reportUnitName) {
-      setReportMessage("직군을 선택해 주세요.")
-      return
-    }
-
-    const isOther = selectedStepKey === "OTHER"
-    const stepId = !isOther && selectedStepKey ? Number(selectedStepKey) : null
-    const stepNameRaw = isOther ? reportStepNameRaw.trim() : null
-
-    if (isRegular && !stepId && !stepNameRaw) {
-      setReportMessage("전형을 선택하거나, 기타 전형명을 입력해 주세요.")
-      return
-    }
-
-    if (!isRegular && !reportCurrentStepName.trim()) {
+    if (!currentStepName) {
       setReportMessage("현재 전형명을 입력해 주세요.")
+      return
+    }
+    if (!reportRollingNoResponse && !prevStepName) {
+      setReportMessage("이전 전형명을 입력해 주세요.")
+      return
+    }
+    if (!reportRollingNoResponse && prevStepName === currentStepName) {
+      setReportMessage("이전 전형명과 현재 전형명은 다르게 입력해 주세요.")
+      return
+    }
+
+    if (!reportRollingNoResponse) {
+      const today = getKoreaToday()
+      if (reportDate > today) {
+        setReportMessage("현재 전형 발표일은 오늘까지 입력할 수 있어요.")
+        return
+      }
+      if (reportPrevDate >= reportDate) {
+        setReportMessage("이전 전형 발표일은 현재 전형 발표일보다 이전 날짜여야 해요.")
+        return
+      }
+    }
+
+    if (isRegular && !reportRollingNoResponse && !reportPrevDate) {
+      setReportMessage("이전 전형 발표일을 입력해 주세요.")
+      return
+    }
+
+    if (isRegular && !reportRollingNoResponse && !reportDate) {
+      setReportMessage("현재 전형 발표일을 입력해 주세요.")
       return
     }
 
@@ -431,26 +416,33 @@ export default function SearchPage() {
         companyName,
         recruitmentMode: reportMode,
         rollingResultType: isRegular
-          ? undefined
+          ? reportRollingNoResponse
+            ? "NO_RESPONSE_REPORTED"
+            : "DATE_REPORTED"
           : reportRollingNoResponse
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
-        channelType: isRegular ? (reportChannelType as RecruitmentChannelType) : undefined,
-        unitName: isRegular ? reportUnitName : undefined,
-        prevReportedDate: isRegular || reportRollingNoResponse ? undefined : toDateInput(reportPrevDate),
-        currentStepName: isRegular ? undefined : reportCurrentStepName.trim(),
-        reportedDate: isRegular
-          ? toDateInput(reportDate)
+        channelType: isRegular ? ("ALWAYS" as RecruitmentChannelType) : undefined,
+        unitName: undefined,
+        prevReportedDate: reportRollingNoResponse ? undefined : toDateInput(reportPrevDate),
+        currentStepName: isRegular
+          ? reportRollingNoResponse
+            ? undefined
+            : prevStepName
+          : currentStepName,
+        reportedDate: reportRollingNoResponse
+          ? undefined
+          : toDateInput(reportDate),
+        stepId: undefined,
+        stepNameRaw: isRegular
+          ? currentStepName
           : reportRollingNoResponse
             ? undefined
-            : toDateInput(reportDate),
-        stepId: isRegular ? (stepId ?? undefined) : undefined,
-        stepNameRaw: isRegular ? (stepNameRaw ?? undefined) : undefined,
+            : currentStepName,
       })
 
       setReportMessage("리포트가 접수되었습니다. 감사합니다!")
-      setSelectedStepKey("")
-      setReportStepNameRaw("")
+      setReportPrevStepName("")
       setReportCurrentStepName("")
       setIsReportOpen(false)
     } catch (error) {
@@ -506,43 +498,11 @@ export default function SearchPage() {
   }, [normalizedReportCompany, showReportSuggestions])
 
   useEffect(() => {
-    if (reportMode !== "REGULAR" || !normalizedReportCompany || !reportUnitName || !reportChannelType) {
-      setReportSteps([])
-      setSelectedStepKey("")
-      return
-    }
-
-    let cancelled = false
-    const handle = setTimeout(async () => {
-      const unitChanged = prevReportUnitRef.current !== reportUnitName
-      if (unitChanged) prevReportUnitRef.current = reportUnitName
-
-      const data = await fetchReportSteps(
-        normalizedReportCompany,
-        reportChannelType as RecruitmentChannelType,
-        reportUnitName,
-      )
-
-      if (cancelled) return
-      setReportSteps(data ?? [])
-
-      if (!data || data.length === 0) {
-        setSelectedStepKey("OTHER")
-      } else if (unitChanged || !selectedStepKey || selectedStepKey === "OTHER") {
-        setSelectedStepKey(String(data[0].stepId))
-      }
-    }, 150)
-
-    return () => {
-      cancelled = true
-      clearTimeout(handle)
-    }
-  }, [normalizedReportCompany, reportMode, reportChannelType, reportUnitName]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (reportMode !== "ROLLING" || !normalizedReportCompany) {
+    if (!normalizedReportCompany) {
       setRollingStepSuggestions([])
       setShowRollingStepSuggestions(false)
+      setRollingPrevStepSuggestions([])
+      setShowRollingPrevStepSuggestions(false)
       return
     }
 
@@ -558,6 +518,26 @@ export default function SearchPage() {
       clearTimeout(handle)
     }
   }, [reportMode, normalizedReportCompany, reportCurrentStepName])
+
+  useEffect(() => {
+    if (!normalizedReportCompany || reportRollingNoResponse) {
+      setRollingPrevStepSuggestions([])
+      setShowRollingPrevStepSuggestions(false)
+      return
+    }
+
+    let cancelled = false
+    const handle = setTimeout(async () => {
+      const data = await fetchRollingReportStepNames(normalizedReportCompany, reportPrevStepName)
+      if (cancelled) return
+      setRollingPrevStepSuggestions(data ?? [])
+    }, 150)
+
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [normalizedReportCompany, reportPrevStepName, reportRollingNoResponse])
 
   // 데스크탑 전환 시 모바일 시트 닫기
   useEffect(() => {
@@ -634,92 +614,6 @@ export default function SearchPage() {
               </div>
             </div>
 
-            {reportMode === "REGULAR" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">채용 종류</label>
-              <Select value={reportChannelType} onValueChange={(v) => setReportChannelType(v as RecruitmentChannelType)}>
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="채용 종류 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FIRST_HALF">{CHANNEL_LABELS.FIRST_HALF}</SelectItem>
-                  <SelectItem value="SECOND_HALF">{CHANNEL_LABELS.SECOND_HALF}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            )}
-
-            {reportMode === "REGULAR" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">직군 선택</label>
-              <Select
-                value={reportUnitName}
-                onValueChange={(value) => {
-                  setReportUnitName(value)
-                  setReportSteps([])
-                  setSelectedStepKey("")
-                  setReportStepNameRaw("")
-                }}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="직군 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIT_CATEGORY_OPTIONS.map((unit) => (
-                    <SelectItem key={`report-unit-${unit.value}`} value={unit.value}>
-                      {unit.label}
-                      {unit.hint ? ` (${unit.hint})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {reportUnitExamples.length > 0 && (
-                <p className="text-xs text-muted-foreground">예시: {reportUnitExamples.join(", ")}</p>
-              )}
-            </div>
-            )}
-
-            {reportMode === "REGULAR" ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">결과 발표일</label>
-                <Input
-                  type="date"
-                  value={toDateInput(reportDate)}
-                  onChange={(e) => setReportDate(new Date(`${e.target.value}T00:00:00+09:00`))}
-                  className="h-11 max-w-[220px]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">전형 선택</label>
-                <Select value={selectedStepKey} onValueChange={setSelectedStepKey}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="전형 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {reportSteps.map((step) => (
-                      <SelectItem key={`step-${step.stepId}`} value={String(step.stepId)}>
-                        {step.stepName}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="OTHER">기타</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {selectedStepKey === "OTHER" && (
-                  <Input
-                    value={reportStepNameRaw}
-                    onChange={(e) => setReportStepNameRaw(e.target.value)}
-                    placeholder="기타 전형명을 입력해 주세요."
-                    className="h-11"
-                  />
-                )}
-              </div>
-            </div>
-            ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2 flex items-center">
                 <button
@@ -732,7 +626,7 @@ export default function SearchPage() {
                       : "border-border/60 text-muted-foreground hover:bg-muted/40",
                   )}
                 >
-                  결과발표 메일을 안 받았어요
+                  결과발표 메일을 받지 못했습니다
                 </button>
               </div>
               {reportRollingNoResponse && (
@@ -763,6 +657,46 @@ export default function SearchPage() {
                 />
               </div>
               </>
+              )}
+              {!reportRollingNoResponse && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">이전 전형명</label>
+                  <div className="relative">
+                    <Input
+                      value={reportPrevStepName}
+                      onChange={(e) => {
+                        setReportPrevStepName(e.target.value)
+                        setShowRollingPrevStepSuggestions(true)
+                      }}
+                      onFocus={() => setShowRollingPrevStepSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowRollingPrevStepSuggestions(false), 120)}
+                      placeholder="예: 서류합격"
+                      className="h-11"
+                      required
+                    />
+                    {showRollingPrevStepSuggestions && rollingPrevStepSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
+                        <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">전형 연관 검색어</p>
+                        <div className="max-h-56 overflow-auto">
+                          {rollingPrevStepSuggestions.map((stepName) => (
+                            <button
+                              key={`rolling-prev-step-${stepName}`}
+                              type="button"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                setReportPrevStepName(stepName)
+                                setShowRollingPrevStepSuggestions(false)
+                              }}
+                              className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
+                            >
+                              {stepName}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
               <div className={cn("space-y-2", reportRollingNoResponse ? "md:col-span-2" : "")}>
                 <label className="text-sm font-medium text-foreground">현재 전형명</label>
@@ -802,8 +736,12 @@ export default function SearchPage() {
                   )}
                 </div>
               </div>
+              <p className="md:col-span-2 text-xs text-muted-foreground">
+                예시: {reportMode === "REGULAR" ? "지원서 접수 마감" : "지원서 접수"} {"->"} 서류 합격
+                <br />
+                코딩테스트 합격 {"->"} 1차 면접 합격
+              </p>
             </div>
-            )}
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" disabled={isReportSubmitting}>

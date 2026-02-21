@@ -62,7 +62,7 @@ public class ReportService {
         enforceCooldown(clientIp);
 
         String companyName = normalizeCompanyName(request.getCompanyName());
-        Company company = findActiveCompanyOrThrow(companyName);
+        Company company = findCompany(companyName);
         RecruitmentMode mode = request.getRecruitmentMode();
         if (mode == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recruitment mode is required");
@@ -79,7 +79,7 @@ public class ReportService {
         StepDateReport duplicate = null;
         UnitCategory finalUnitName = unit == null ? unitName : unit.getUnitName();
         if (mode == RecruitmentMode.REGULAR) {
-            validateRegularFields(request.getChannelType(), request.getUnitName(), step, stepNameRaw, reportedDate);
+            validateRegularFields(request.getChannelType(), step, stepNameRaw, reportedDate);
             if (step != null) {
                 duplicate = reportRepository
                     .findFirstByCompanyNameAndUnitNameAndChannelTypeAndReportedDateAndStepStepIdAndStatusAndDeletedAtIsNull(
@@ -142,9 +142,9 @@ public class ReportService {
         report.setCompanyName(companyName);
         report.setRecruitmentMode(mode);
         report.setRollingResultType(mode == RecruitmentMode.ROLLING ? rollingResultType : null);
-        report.setUnit(unit);
+        report.setUnit(mode == RecruitmentMode.REGULAR ? unit : null);
         report.setUnitName(mode == RecruitmentMode.REGULAR ? finalUnitName : null);
-        report.setChannelType(mode == RecruitmentMode.REGULAR ? request.getChannelType() : null);
+        report.setChannelType(mode == RecruitmentMode.REGULAR ? normalizeChannelType(request.getChannelType()) : null);
         report.setPrevReportedDate(mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED ? prevReportedDate : null);
         report.setCurrentStepName(mode == RecruitmentMode.ROLLING ? currentStepName : null);
         report.setReportedDate(mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : reportedDate);
@@ -263,7 +263,7 @@ public class ReportService {
         }
 
         String companyName = normalizeCompanyName(request.getCompanyName());
-        Company company = findActiveCompanyOrThrow(companyName);
+        Company company = findCompany(companyName);
         RecruitmentStep step = resolveStep(request.getStepId(), company);
         String stepNameRaw = normalizeStepNameRaw(request.getStepNameRaw());
         String currentStepName = normalizeCurrentStepName(request.getCurrentStepName());
@@ -274,7 +274,7 @@ public class ReportService {
         RollingReportType rollingResultType = resolveRollingResultType(mode, request.getRollingResultType());
         LocalDate reportedDate = request.getReportedDate();
         if (mode == RecruitmentMode.REGULAR) {
-            validateRegularFields(request.getChannelType(), request.getUnitName(), step, stepNameRaw, reportedDate);
+            validateRegularFields(request.getChannelType(), step, stepNameRaw, reportedDate);
         } else {
             validateRollingFields(currentStepName, request.getPrevReportedDate(), reportedDate, rollingResultType);
         }
@@ -292,7 +292,7 @@ public class ReportService {
             report.setUnit(null);
             report.setUnitName(null);
         }
-        report.setChannelType(mode == RecruitmentMode.REGULAR ? request.getChannelType() : null);
+        report.setChannelType(mode == RecruitmentMode.REGULAR ? normalizeChannelType(request.getChannelType()) : null);
         report.setPrevReportedDate(
             mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
                 ? request.getPrevReportedDate()
@@ -398,6 +398,62 @@ public class ReportService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Report is on hold");
         }
 
+        // New regular flow: process regular reports as interval logs (same shape as rolling).
+        if (isValidRegularReport(report)) {
+            int reportCountToApply = report.getReportCount() == null ? 1 : Math.max(report.getReportCount(), 1);
+            RollingReportType regularResultType =
+                report.getReportedDate() == null ? RollingReportType.NO_RESPONSE_REPORTED : RollingReportType.DATE_REPORTED;
+
+            String regularCurrentStep = normalizeCurrentStepName(report.getStepNameRaw());
+            if (regularCurrentStep == null && report.getStep() != null) {
+                regularCurrentStep = normalizeCurrentStepName(report.getStep().getStepName());
+            }
+            if (regularCurrentStep == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current step name is required");
+            }
+            final String finalRegularCurrentStep = regularCurrentStep;
+            String regularCompanyName = normalizeCompanyName(report.getCompanyName());
+
+            java.util.Optional<RollingStepLog> existingRegular;
+            if (regularResultType == RollingReportType.NO_RESPONSE_REPORTED) {
+                existingRegular = rollingStepLogRepository.findFirstByCompanyNameAndCurrentStepNameAndRollingResultType(
+                    regularCompanyName,
+                    finalRegularCurrentStep,
+                    RollingReportType.NO_RESPONSE_REPORTED
+                );
+            } else {
+                existingRegular = rollingStepLogRepository
+                    .findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndPrevReportedDateAndReportedDate(
+                        regularCompanyName,
+                        finalRegularCurrentStep,
+                        RollingReportType.DATE_REPORTED,
+                        report.getPrevReportedDate(),
+                        report.getReportedDate()
+                    );
+            }
+
+            RollingStepLog regularLog = existingRegular.orElseGet(() -> {
+                RollingStepLog created = new RollingStepLog();
+                created.setCompany(report.getCompany());
+                created.setCompanyName(regularCompanyName);
+                created.setCurrentStepName(finalRegularCurrentStep);
+                created.setRollingResultType(regularResultType);
+                created.setPrevReportedDate(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getPrevReportedDate());
+                created.setReportedDate(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getReportedDate());
+                created.setReportCount(reportCountToApply);
+                return created;
+            });
+            if (existingRegular.isPresent()) {
+                int currentCount = regularLog.getReportCount() == null ? 0 : regularLog.getReportCount();
+                regularLog.setReportCount(currentCount + reportCountToApply);
+            }
+            rollingStepLogRepository.save(regularLog);
+            report.setStatus(ReportStatus.PROCESSED);
+            report.setDeletedAt(LocalDateTime.now());
+            return toAdminItem(report);
+        }
+
+        // Legacy regular flow fallback (step-id based).
         RecruitmentStep step = report.getStep();
         if (request != null && request.getStepId() != null) {
             step = resolveStep(request.getStepId(), report.getCompany());
@@ -478,14 +534,7 @@ public class ReportService {
         if (report.getRecruitmentMode() == RecruitmentMode.ROLLING) {
             return !isValidRollingReport(report);
         }
-        if (report.getStep() == null && report.getStepNameRaw() != null) {
-            return true;
-        }
-        if (report.getCompany() == null) {
-            return true;
-        }
-        RecruitmentChannel channel = resolveChannelForReport(report);
-        return channel == null;
+        return !isValidRegularReport(report);
     }
 
     private RecruitmentChannel resolveChannelForReport(StepDateReport report) {
@@ -541,9 +590,8 @@ public class ReportService {
         return raw.trim();
     }
 
-    private Company findActiveCompanyOrThrow(String companyName) {
-        return companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active company is required"));
+    private Company findCompany(String companyName) {
+        return companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName).orElse(null);
     }
 
     private String normalizeStepNameRaw(String raw) {
@@ -574,18 +622,11 @@ public class ReportService {
     }
 
     private void validateRegularFields(RecruitmentChannelType channelType,
-                                       UnitCategory unitName,
                                        RecruitmentStep step,
                                        String stepNameRaw,
                                        LocalDate reportedDate) {
-        if (channelType == null) {
+        if (normalizeChannelType(channelType) == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel type is required");
-        }
-        if (unitName == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unit name is required");
-        }
-        if (reportedDate == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reported date is required");
         }
         if (step == null && stepNameRaw == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Step is required");
@@ -637,11 +678,46 @@ public class ReportService {
         return diff >= 0 && diff <= appProperties.getReport().getRollingMaxDiffDays();
     }
 
+    private boolean isValidRegularReport(StepDateReport report) {
+        if (report == null) {
+            return false;
+        }
+        String currentStepName = normalizeCurrentStepName(report.getStepNameRaw());
+        if (currentStepName == null && report.getStep() != null) {
+            currentStepName = normalizeCurrentStepName(report.getStep().getStepName());
+        }
+        if (currentStepName == null) {
+            return false;
+        }
+        LocalDate prevDate = report.getPrevReportedDate();
+        LocalDate currentDate = report.getReportedDate();
+        if (prevDate == null && currentDate == null) {
+            // no-response report: current step only
+            return true;
+        }
+        if (prevDate == null || currentDate == null) {
+            return false;
+        }
+        long diff = java.time.temporal.ChronoUnit.DAYS.between(prevDate, currentDate);
+        return diff > 0;
+    }
+
     private RollingReportType resolveRollingResultType(RecruitmentMode mode, RollingReportType requested) {
         if (mode != RecruitmentMode.ROLLING) {
             return null;
         }
         return requested == null ? RollingReportType.DATE_REPORTED : requested;
+    }
+
+    private RecruitmentChannelType normalizeChannelType(RecruitmentChannelType requested) {
+        if (requested == null) {
+            return RecruitmentChannelType.ALWAYS;
+        }
+        return requested == RecruitmentChannelType.ALWAYS
+            || requested == RecruitmentChannelType.FIRST_HALF
+            || requested == RecruitmentChannelType.SECOND_HALF
+            ? requested
+            : RecruitmentChannelType.ALWAYS;
     }
 
     private RecruitmentUnit resolveUnit(Company company, UnitCategory unitName) {
@@ -710,10 +786,14 @@ public class ReportService {
         Company company = report.getCompany();
         if (company == null && report.getCompanyName() != null && !report.getCompanyName().isBlank()) {
             company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(report.getCompanyName().trim()).orElse(null);
-            if (company != null) {
-                report.setCompany(company);
-                changed = true;
+            if (company == null) {
+                Company created = new Company();
+                created.setCompanyName(report.getCompanyName().trim());
+                created.setActive(true);
+                company = companyRepository.save(created);
             }
+            report.setCompany(company);
+            changed = true;
         }
 
         if (report.getUnit() == null && company != null && report.getUnitName() != null) {
