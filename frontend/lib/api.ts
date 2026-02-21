@@ -72,11 +72,11 @@ type ReportItemInput = {
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
   prevReportedDate: Date | string | null
+  prevStepName: string | null
   currentStepName: string | null
   reportedDate: Date | string | null
   stepId: number | null
   stepName: string | null
-  stepNameRaw: string | null
   status: ReportStatus
   onHold: boolean
 }
@@ -354,10 +354,10 @@ export type ReportCreateRequest = {
   recruitmentMode: RecruitmentMode
   rollingResultType?: RollingReportType | null
   prevReportedDate?: string | null
+  prevStepName?: string | null
   currentStepName?: string | null
   reportedDate?: string | null
   stepId?: number | null
-  stepNameRaw?: string | null
 }
 
 export async function fetchReportSteps(
@@ -417,11 +417,11 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         recruitmentMode: "REGULAR",
         rollingResultType: null,
         prevReportedDate: null,
+        prevStepName: null,
         currentStepName: null,
         reportedDate: new Date(),
         stepId: 1,
         stepName: "서류발표",
-        stepNameRaw: null,
         status: "PENDING",
         onHold: false,
       },
@@ -432,11 +432,11 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         recruitmentMode: "ROLLING",
         rollingResultType: "DATE_REPORTED",
         prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
+        prevStepName: "서류 합격",
         currentStepName: "1차면접",
         reportedDate: new Date(),
         stepId: null,
         stepName: null,
-        stepNameRaw: null,
         status: "PENDING",
         onHold: false,
       },
@@ -466,10 +466,10 @@ export type ReportUpdateRequest = {
   recruitmentMode: RecruitmentMode
   rollingResultType?: RollingReportType | null
   prevReportedDate?: string | null
+  prevStepName?: string | null
   currentStepName?: string | null
   reportedDate?: string | null
   stepId?: number | null
-  stepNameRaw?: string | null
 }
 
 export async function updateAdminReport(reportId: number, payload: ReportUpdateRequest): Promise<ReportItem> {
@@ -482,11 +482,11 @@ export async function updateAdminReport(reportId: number, payload: ReportUpdateR
       recruitmentMode: payload.recruitmentMode,
       rollingResultType: payload.rollingResultType ?? null,
       prevReportedDate: payload.prevReportedDate ? new Date(payload.prevReportedDate) : null,
+      prevStepName: payload.prevStepName ?? null,
       currentStepName: payload.currentStepName ?? null,
       reportedDate: payload.reportedDate ? new Date(payload.reportedDate) : null,
       stepId: payload.stepId ?? null,
       stepName: payload.stepId ? "선택 전형" : null,
-      stepNameRaw: payload.stepNameRaw ?? null,
       status: "PENDING",
       onHold: false,
     }
@@ -508,11 +508,11 @@ export async function processAdminReport(reportId: number, stepId?: number | nul
       recruitmentMode: "REGULAR",
       rollingResultType: null,
       prevReportedDate: null,
+      prevStepName: null,
       currentStepName: null,
       reportedDate: new Date(),
       stepId: stepId ?? 1,
       stepName: "서류발표",
-      stepNameRaw: null,
       status: "PROCESSED",
       onHold: false,
     }
@@ -535,11 +535,11 @@ export async function assignAdminReport(reportId: number): Promise<ReportItem> {
       recruitmentMode: "REGULAR",
       rollingResultType: null,
       prevReportedDate: null,
+      prevStepName: null,
       currentStepName: null,
       reportedDate: new Date(),
       stepId: 1,
       stepName: "서류합격",
-      stepNameRaw: null,
       status: "PENDING",
       onHold: false,
     }
@@ -571,11 +571,11 @@ export async function discardAdminReport(reportId: number): Promise<ReportItem> 
       recruitmentMode: "REGULAR",
       rollingResultType: null,
       prevReportedDate: null,
+      prevStepName: null,
       currentStepName: null,
       reportedDate: new Date(),
       stepId: null,
       stepName: null,
-      stepNameRaw: null,
       status: "DISCARDED",
       onHold: false,
     }

@@ -21,10 +21,10 @@ public interface StepDateReportRepository extends JpaRepository<StepDateReport, 
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndStepIsNullAndStepNameRawAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndStepIsNullAndCurrentStepNameAndStatusAndDeletedAtIsNull(
         String companyName,
         java.time.LocalDate reportedDate,
-        String stepNameRaw,
+        String currentStepName,
         ReportStatus status
     );
 

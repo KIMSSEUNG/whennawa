@@ -20,8 +20,8 @@ public class ReportCreateRequest {
 
     private RollingReportType rollingResultType;
     private LocalDate prevReportedDate;
+    private String prevStepName;
     private String currentStepName;
 
     private Long stepId;
-    private String stepNameRaw;
 }

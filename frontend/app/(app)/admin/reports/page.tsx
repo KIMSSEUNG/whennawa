@@ -28,6 +28,7 @@ type EditFormState = {
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType
   prevReportedDate: string
+  prevStepName: string
   currentStepName: string
   reportedDate: string
   noResponse: boolean
@@ -84,9 +85,9 @@ export default function AdminReportPage() {
     }
   }
 
-  const beginEdit = async (report: ReportItem) => {
+  const beginEdit = (report: ReportItem) => {
     setEditingId(report.reportId)
-    const rawCurrent = (report.stepNameRaw ?? report.stepName ?? "").trim()
+    const rawCurrent = (report.currentStepName ?? report.stepName ?? "").trim()
     const isNoResponse =
       report.rollingResultType === "NO_RESPONSE_REPORTED" ||
       (!report.prevReportedDate && !report.reportedDate)
@@ -95,6 +96,7 @@ export default function AdminReportPage() {
       recruitmentMode: report.recruitmentMode,
       rollingResultType: report.rollingResultType ?? "DATE_REPORTED",
       prevReportedDate: report.prevReportedDate ? toDateInput(report.prevReportedDate) : "",
+      prevStepName: report.prevStepName ?? "",
       currentStepName: rawCurrent,
       reportedDate: toDateInput(report.reportedDate),
       noResponse: isNoResponse,
@@ -110,6 +112,7 @@ export default function AdminReportPage() {
     if (!editingId || !editForm) return
 
     const isRegular = editForm.recruitmentMode === "REGULAR"
+    const prevStepName = editForm.prevStepName.trim()
     const currentStepName = editForm.currentStepName.trim()
 
     if (!currentStepName) {
@@ -120,6 +123,14 @@ export default function AdminReportPage() {
     if (!editForm.noResponse) {
       if (!editForm.prevReportedDate || !editForm.reportedDate) {
         setMessage("이전 발표일과 현재 발표일을 입력해 주세요.")
+        return
+      }
+      if (isRegular && !prevStepName) {
+        setMessage("이전 전형명을 입력해 주세요.")
+        return
+      }
+      if (isRegular && prevStepName === currentStepName) {
+        setMessage("이전 전형명과 현재 전형명은 다르게 입력해 주세요.")
         return
       }
       if (new Date(editForm.prevReportedDate) >= new Date(editForm.reportedDate)) {
@@ -138,10 +149,10 @@ export default function AdminReportPage() {
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
         prevReportedDate: editForm.noResponse ? undefined : editForm.prevReportedDate,
-        currentStepName: isRegular ? undefined : currentStepName,
+        prevStepName: editForm.noResponse ? undefined : prevStepName,
+        currentStepName: currentStepName,
         reportedDate: editForm.noResponse ? undefined : editForm.reportedDate,
         stepId: undefined,
-        stepNameRaw: isRegular ? currentStepName : undefined,
       })
       await loadReports()
       cancelEdit()
@@ -156,7 +167,7 @@ export default function AdminReportPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-foreground">리포트 처리</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          보류 상태(회색)는 해당 월/채용 채널 기준으로 비활성화된 리포트입니다.
+          보류 상태(회색)는 필수 데이터가 부족해 자동 처리할 수 없는 리포트입니다.
         </p>
       </div>
 
@@ -171,6 +182,12 @@ export default function AdminReportPage() {
           {reports.map((report) => {
             const isEditing = editingId === report.reportId
             const isOnHold = report.onHold
+            const isRegular = report.recruitmentMode === "REGULAR"
+            const isNoResponse =
+              report.rollingResultType === "NO_RESPONSE_REPORTED" ||
+              (!report.prevReportedDate && !report.reportedDate)
+            const currentStepLabel = report.currentStepName ?? report.stepName ?? "-"
+            const modeLabel = isRegular ? "공채" : "수시"
 
             return (
               <div
@@ -184,29 +201,33 @@ export default function AdminReportPage() {
                   <div>
                     <h3 className="text-lg font-semibold">{report.companyName}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {report.recruitmentMode === "REGULAR"
-                        ? `${toDateInput(report.reportedDate)}`
-                        : `수시 · ${report.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : toDateInput(report.reportedDate)}`}
+                      {modeLabel} · {isNoResponse ? "결과 미수신" : "날짜 제보"}
                     </p>
                     <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}회</p>
-                    {report.recruitmentMode !== "REGULAR" && (
+                    <p className="text-sm text-muted-foreground">
+                      이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} ·
+                      현재 발표일: {report.reportedDate ? toDateInput(report.reportedDate) : "-"}
+                    </p>
+                    {isRegular && (
                       <p className="text-sm text-muted-foreground">
-                        유형: {report.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : "날짜 제보"} ·
-                        이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} · 현재 전형: {report.currentStepName ?? "-"}
+                        이전 전형명: {report.prevStepName ?? "-"}
                       </p>
                     )}
                     <p className="text-sm mt-1">
-                      {report.stepName
-                        ? report.stepName
-                        : report.stepNameRaw
-                          ? `기타: ${report.stepNameRaw}`
-                          : "-"}
+                      현재 전형명: {currentStepLabel}
                     </p>
                   </div>
 
-                  <span className="text-xs rounded-full border px-3 py-1 text-muted-foreground">
-                    {report.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-xs rounded-full border px-3 py-1 text-muted-foreground">
+                      {report.status}
+                    </span>
+                    {isOnHold && (
+                      <span className="text-xs rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-700">
+                        보류
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {!isEditing && (
@@ -304,6 +325,16 @@ export default function AdminReportPage() {
                             onChange={(e) => setEditForm({ ...editForm, reportedDate: e.target.value })}
                           />
                         </div>
+                        {editForm.recruitmentMode === "REGULAR" && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">이전 전형명</label>
+                            <Input
+                              value={editForm.prevStepName}
+                              onChange={(e) => setEditForm({ ...editForm, prevStepName: e.target.value })}
+                              placeholder="예: 서류 합격"
+                            />
+                          </div>
+                        )}
                       </>
                     )}
 

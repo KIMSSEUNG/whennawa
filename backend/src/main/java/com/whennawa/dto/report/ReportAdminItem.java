@@ -16,11 +16,11 @@ public class ReportAdminItem {
     private final RecruitmentMode recruitmentMode;
     private final RollingReportType rollingResultType;
     private final LocalDate prevReportedDate;
+    private final String prevStepName;
     private final String currentStepName;
     private final LocalDate reportedDate;
     private final Long stepId;
     private final String stepName;
-    private final String stepNameRaw;
     private final ReportStatus status;
     private final boolean onHold;
 }

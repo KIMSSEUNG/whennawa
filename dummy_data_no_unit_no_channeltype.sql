@@ -74,8 +74,8 @@ INSERT INTO step_date_report (
   rolling_result_type,
   reported_date,
   prev_reported_date,
+  prev_step_name,
   step_id,
-  step_name_raw,
   current_step_name,
   report_count,
   status,
@@ -84,9 +84,9 @@ INSERT INTO step_date_report (
   updated_at
 )
 VALUES
-(@company_id, @company_name, 'REGULAR', 'DATE_REPORTED', '2026-02-24', '2026-02-10', NULL, '서류 합격', NULL, 1, 'PENDING', NULL, NOW(), NOW()),
-(@company_id, @company_name, 'REGULAR', 'DATE_REPORTED', '2026-03-09', '2026-02-24', NULL, '코딩테스트 합격', NULL, 1, 'PENDING', NULL, NOW(), NOW()),
-(@company_id, @company_name, 'ROLLING', 'DATE_REPORTED', '2026-02-20', '2026-02-05', NULL, NULL, '코딩테스트 합격', 1, 'PENDING', NULL, NOW(), NOW()),
+(@company_id, @company_name, 'REGULAR', 'DATE_REPORTED', '2026-02-24', '2026-02-10', '지원서 접수 마감', NULL, '서류 합격', 1, 'PENDING', NULL, NOW(), NOW()),
+(@company_id, @company_name, 'REGULAR', 'DATE_REPORTED', '2026-03-09', '2026-02-24', '서류 합격', NULL, '코딩테스트 합격', 1, 'PENDING', NULL, NOW(), NOW()),
+(@company_id, @company_name, 'ROLLING', 'DATE_REPORTED', '2026-02-20', '2026-02-05', '서류 합격', NULL, '코딩테스트 합격', 1, 'PENDING', NULL, NOW(), NOW()),
 (@company_id, @company_name, 'ROLLING', 'NO_RESPONSE_REPORTED', NULL, NULL, NULL, NULL, '최종 합격', 1, 'PENDING', NULL, NOW(), NOW());
 
 -- 수시/공채 간격 계산 로그(예상 발표일/연관검색어용)

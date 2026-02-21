@@ -46,6 +46,9 @@ public class StepDateReport extends BaseEntity {
     @Column(name = "prev_reported_date")
     private LocalDate prevReportedDate;
 
+    @Column(name = "prev_step_name", length = 100)
+    private String prevStepName;
+
     @Column(name = "current_step_name", length = 100)
     private String currentStepName;
 
@@ -55,9 +58,6 @@ public class StepDateReport extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "step_id")
     private RecruitmentStep step;
-
-    @Column(name = "step_name_raw", length = 100)
-    private String stepNameRaw;
 
     @Column(name = "report_count", nullable = false)
     private Integer reportCount = 1;

@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS step_date_report (
   rolling_result_type VARCHAR(32),
   reported_date DATE,
   prev_reported_date DATE,
+  prev_step_name VARCHAR(100),
   step_id BIGINT,
-  step_name_raw VARCHAR(100),
   current_step_name VARCHAR(100),
   report_count INT NOT NULL DEFAULT 1,
   status ENUM('PENDING', 'PROCESSED', 'DISCARDED') NOT NULL DEFAULT 'PENDING',
@@ -96,6 +96,7 @@ CREATE INDEX idx_step_date_report_date ON step_date_report (reported_date);
 CREATE INDEX idx_step_date_report_mode ON step_date_report (recruitment_mode);
 CREATE INDEX idx_step_date_report_rolling_result_type ON step_date_report (rolling_result_type);
 CREATE INDEX idx_step_date_report_prev_date ON step_date_report (prev_reported_date);
+CREATE INDEX idx_step_date_report_prev_step_name ON step_date_report (prev_step_name);
 CREATE INDEX idx_step_date_report_current_step_name ON step_date_report (current_step_name);
 
 CREATE TABLE IF NOT EXISTS rolling_step_log (

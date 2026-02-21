@@ -437,20 +437,12 @@ export default function SearchPage() {
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
         prevReportedDate: reportRollingNoResponse ? undefined : toDateInput(reportPrevDate),
-        currentStepName: isRegular
-          ? reportRollingNoResponse
-            ? undefined
-            : prevStepName
-          : currentStepName,
+        prevStepName: reportRollingNoResponse ? undefined : prevStepName,
+        currentStepName: currentStepName,
         reportedDate: reportRollingNoResponse
           ? undefined
           : toDateInput(reportDate),
         stepId: undefined,
-        stepNameRaw: isRegular
-          ? currentStepName
-          : reportRollingNoResponse
-            ? undefined
-            : currentStepName,
       })
 
       setReportMessage("리포트가 접수되었습니다. 감사합니다!")

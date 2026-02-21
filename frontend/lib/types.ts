@@ -45,11 +45,11 @@ export interface ReportItem {
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
   prevReportedDate: Date | null
+  prevStepName: string | null
   currentStepName: string | null
   reportedDate: Date | null
   stepId: number | null
   stepName: string | null
-  stepNameRaw: string | null
   status: ReportStatus
   onHold: boolean
 }
