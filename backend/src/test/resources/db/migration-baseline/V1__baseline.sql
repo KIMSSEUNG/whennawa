@@ -31,14 +31,13 @@ CREATE INDEX idx_company_name ON company (company_name);
 CREATE TABLE IF NOT EXISTS recruitment_channel (
   channel_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   company_id BIGINT NOT NULL,
-  channel_type ENUM('FIRST_HALF', 'SECOND_HALF', 'ALWAYS') NOT NULL,
   year INT NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
   CONSTRAINT fk_recruitment_channel_company FOREIGN KEY (company_id) REFERENCES company(company_id)
 );
 
 CREATE INDEX idx_recruitment_channel_company ON recruitment_channel (company_id);
-CREATE INDEX idx_recruitment_channel_type_year ON recruitment_channel (channel_type, year);
+CREATE UNIQUE INDEX uk_recruitment_channel_company_year ON recruitment_channel (company_id, year);
 
 CREATE TABLE IF NOT EXISTS recruitment_step (
   step_id BIGINT AUTO_INCREMENT PRIMARY KEY,

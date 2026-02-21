@@ -1,9 +1,7 @@
 package com.whennawa.dto.report;
 
-import com.whennawa.entity.enums.RecruitmentChannelType;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.RollingReportType;
-import com.whennawa.entity.enums.UnitCategory;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -17,10 +15,6 @@ public class ReportCreateRequest {
 
     @NotNull
     private RecruitmentMode recruitmentMode;
-
-    private RecruitmentChannelType channelType;
-
-    private UnitCategory unitName;
 
     private LocalDate reportedDate;
 

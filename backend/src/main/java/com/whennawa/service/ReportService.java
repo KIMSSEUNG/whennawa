@@ -10,20 +10,16 @@ import com.whennawa.dto.report.ReportUpdateRequest;
 import com.whennawa.entity.Company;
 import com.whennawa.entity.RecruitmentChannel;
 import com.whennawa.entity.RecruitmentStep;
-import com.whennawa.entity.RecruitmentUnit;
 import com.whennawa.entity.RollingStepLog;
 import com.whennawa.entity.StepDateLog;
 import com.whennawa.entity.StepDateReport;
 import com.whennawa.entity.enums.ReportStatus;
 import com.whennawa.entity.enums.RollingReportType;
-import com.whennawa.entity.enums.RecruitmentChannelType;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.StepDateType;
-import com.whennawa.entity.enums.UnitCategory;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.RecruitmentChannelRepository;
 import com.whennawa.repository.RecruitmentStepRepository;
-import com.whennawa.repository.RecruitmentUnitRepository;
 import com.whennawa.repository.RollingStepLogRepository;
 import com.whennawa.repository.StepDateLogRepository;
 import com.whennawa.repository.StepDateReportRepository;
@@ -47,7 +43,6 @@ public class ReportService {
     private final CompanyRepository companyRepository;
     private final RecruitmentChannelRepository channelRepository;
     private final RecruitmentStepRepository stepRepository;
-    private final RecruitmentUnitRepository unitRepository;
     private final StepDateReportRepository reportRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
     private final StepDateLogRepository logRepository;
@@ -67,8 +62,6 @@ public class ReportService {
         if (mode == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recruitment mode is required");
         }
-        UnitCategory unitName = request.getUnitName();
-        RecruitmentUnit unit = resolveUnit(company, unitName);
         RecruitmentStep step = resolveStep(request.getStepId(), company);
         String stepNameRaw = normalizeStepNameRaw(request.getStepNameRaw());
         String currentStepName = normalizeCurrentStepName(request.getCurrentStepName());
@@ -77,15 +70,12 @@ public class ReportService {
         LocalDate reportedDate = request.getReportedDate();
 
         StepDateReport duplicate = null;
-        UnitCategory finalUnitName = unit == null ? unitName : unit.getUnitName();
         if (mode == RecruitmentMode.REGULAR) {
-            validateRegularFields(request.getChannelType(), step, stepNameRaw, reportedDate);
+            validateRegularFields(step, stepNameRaw, prevReportedDate, reportedDate);
             if (step != null) {
                 duplicate = reportRepository
-                    .findFirstByCompanyNameAndUnitNameAndChannelTypeAndReportedDateAndStepStepIdAndStatusAndDeletedAtIsNull(
+                    .findFirstByCompanyNameAndReportedDateAndStepStepIdAndStatusAndDeletedAtIsNull(
                         companyName,
-                        finalUnitName,
-                        request.getChannelType(),
                         reportedDate,
                         step.getStepId(),
                         ReportStatus.PENDING
@@ -93,10 +83,8 @@ public class ReportService {
                     .orElse(null);
             } else if (stepNameRaw != null) {
                 duplicate = reportRepository
-                    .findFirstByCompanyNameAndUnitNameAndChannelTypeAndReportedDateAndStepIsNullAndStepNameRawAndStatusAndDeletedAtIsNull(
+                    .findFirstByCompanyNameAndReportedDateAndStepIsNullAndStepNameRawAndStatusAndDeletedAtIsNull(
                         companyName,
-                        finalUnitName,
-                        request.getChannelType(),
                         reportedDate,
                         stepNameRaw,
                         ReportStatus.PENDING
@@ -142,10 +130,13 @@ public class ReportService {
         report.setCompanyName(companyName);
         report.setRecruitmentMode(mode);
         report.setRollingResultType(mode == RecruitmentMode.ROLLING ? rollingResultType : null);
-        report.setUnit(mode == RecruitmentMode.REGULAR ? unit : null);
-        report.setUnitName(mode == RecruitmentMode.REGULAR ? finalUnitName : null);
-        report.setChannelType(mode == RecruitmentMode.REGULAR ? normalizeChannelType(request.getChannelType()) : null);
-        report.setPrevReportedDate(mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED ? prevReportedDate : null);
+        report.setPrevReportedDate(
+            mode == RecruitmentMode.REGULAR
+                ? prevReportedDate
+                : mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
+                    ? prevReportedDate
+                    : null
+        );
         report.setCurrentStepName(mode == RecruitmentMode.ROLLING ? currentStepName : null);
         report.setReportedDate(mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : reportedDate);
         report.setStep(mode == RecruitmentMode.REGULAR ? step : null);
@@ -157,10 +148,8 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReportStepResponse> findStepsForCompany(String companyName,
-                                                        RecruitmentChannelType channelType,
-                                                        UnitCategory unitName) {
-        if (companyName == null || companyName.isBlank() || channelType == null) {
+    public List<ReportStepResponse> findStepsForCompany(String companyName) {
+        if (companyName == null || companyName.isBlank()) {
             return List.of();
         }
 
@@ -169,53 +158,64 @@ public class ReportService {
             return List.of();
         }
 
-        RecruitmentUnit unit = resolveUnit(company, unitName);
-        if (unit != null) {
-            RecruitmentChannel channel = resolveLatestActiveChannelByType(unit.getUnitId(), channelType);
-            List<ReportStepResponse> steps = stepsForChannel(channel);
-            if (!steps.isEmpty()) {
-                return steps;
-            }
+        List<RecruitmentChannel> channels = channelRepository.findActiveByCompanyId(company.getCompanyId());
+        if (channels.isEmpty()) {
+            return List.of();
         }
-
-        List<RecruitmentUnit> units = unitRepository.findByCompanyId(company.getCompanyId());
-        List<ReportStepResponse> fallbackSteps = List.of();
-        int fallbackYear = -1;
-        for (RecruitmentUnit candidate : units) {
-            if (unit != null && candidate.getUnitId().equals(unit.getUnitId())) {
-                continue;
-            }
-            RecruitmentChannel channel = resolveLatestActiveChannelByType(candidate.getUnitId(), channelType);
-            if (channel == null) {
-                continue;
-            }
-            List<ReportStepResponse> steps = stepsForChannel(channel);
-            if (steps.isEmpty()) {
-                continue;
-            }
-            if (channel.getYear() > fallbackYear) {
-                fallbackYear = channel.getYear();
-                fallbackSteps = steps;
-            }
-        }
-        return fallbackSteps;
+        return stepsForChannel(channels.get(0));
     }
 
     @Transactional(readOnly = true)
     public List<String> findRollingStepNameSuggestions(String companyName, String query) {
-        if (companyName == null || companyName.isBlank()) {
-            return List.of();
-        }
-        Company company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName.trim()).orElse(null);
-        if (company == null) {
-            return List.of();
-        }
         String normalizedQuery = normalizeKeyword(query);
         Map<String, String> suggestions = new LinkedHashMap<>();
 
-        List<RollingStepLog> rollingLogs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
-        for (RollingStepLog log : rollingLogs) {
-            addSuggestion(suggestions, log == null ? null : log.getCurrentStepName());
+        if (companyName == null || companyName.isBlank()) {
+            for (String stepName : rollingStepLogRepository.findTopStepNames()) {
+                addSuggestion(suggestions, stepName);
+            }
+            List<StepDateReport> recentReports = reportRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+            for (StepDateReport report : recentReports) {
+                if (report == null) {
+                    continue;
+                }
+                addSuggestion(suggestions, report.getCurrentStepName());
+                addSuggestion(suggestions, report.getStepNameRaw());
+            }
+        } else {
+            Company company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName.trim()).orElse(null);
+            if (company != null) {
+                List<RollingStepLog> rollingLogs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
+                for (RollingStepLog log : rollingLogs) {
+                    addSuggestion(suggestions, log == null ? null : log.getCurrentStepName());
+                }
+                List<StepDateReport> recentReports = reportRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+                for (StepDateReport report : recentReports) {
+                    if (report == null) {
+                        continue;
+                    }
+                    String reportCompanyName = report.getCompanyName();
+                    if (reportCompanyName == null
+                        || !reportCompanyName.trim().equalsIgnoreCase(company.getCompanyName())) {
+                        continue;
+                    }
+                    addSuggestion(suggestions, report.getCurrentStepName());
+                    addSuggestion(suggestions, report.getStepNameRaw());
+                }
+            }
+            if (suggestions.isEmpty()) {
+                for (String stepName : rollingStepLogRepository.findTopStepNames()) {
+                    addSuggestion(suggestions, stepName);
+                }
+                List<StepDateReport> recentReports = reportRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+                for (StepDateReport report : recentReports) {
+                    if (report == null) {
+                        continue;
+                    }
+                    addSuggestion(suggestions, report.getCurrentStepName());
+                    addSuggestion(suggestions, report.getStepNameRaw());
+                }
+            }
         }
 
         return suggestions.values().stream()
@@ -274,7 +274,7 @@ public class ReportService {
         RollingReportType rollingResultType = resolveRollingResultType(mode, request.getRollingResultType());
         LocalDate reportedDate = request.getReportedDate();
         if (mode == RecruitmentMode.REGULAR) {
-            validateRegularFields(request.getChannelType(), step, stepNameRaw, reportedDate);
+            validateRegularFields(step, stepNameRaw, request.getPrevReportedDate(), reportedDate);
         } else {
             validateRollingFields(currentStepName, request.getPrevReportedDate(), reportedDate, rollingResultType);
         }
@@ -283,20 +283,12 @@ public class ReportService {
         report.setCompanyName(companyName);
         report.setRecruitmentMode(mode);
         report.setRollingResultType(mode == RecruitmentMode.ROLLING ? rollingResultType : null);
-        if (mode == RecruitmentMode.REGULAR && request.getUnitName() != null) {
-            UnitCategory unitName = request.getUnitName();
-            RecruitmentUnit unit = resolveUnit(company, unitName);
-            report.setUnit(unit);
-            report.setUnitName(unit == null ? unitName : unit.getUnitName());
-        } else if (mode == RecruitmentMode.ROLLING) {
-            report.setUnit(null);
-            report.setUnitName(null);
-        }
-        report.setChannelType(mode == RecruitmentMode.REGULAR ? normalizeChannelType(request.getChannelType()) : null);
         report.setPrevReportedDate(
-            mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
+            mode == RecruitmentMode.REGULAR
                 ? request.getPrevReportedDate()
-                : null
+                : mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
+                    ? request.getPrevReportedDate()
+                    : null
         );
         report.setCurrentStepName(mode == RecruitmentMode.ROLLING ? currentStepName : null);
         report.setReportedDate(
@@ -507,18 +499,12 @@ public class ReportService {
 
     private ReportAdminItem toAdminItem(StepDateReport report) {
         RecruitmentStep step = report.getStep();
-        UnitCategory unitName = report.getUnitName();
-        if (unitName == null && report.getUnit() != null) {
-            unitName = report.getUnit().getUnitName();
-        }
         return new ReportAdminItem(
             report.getReportId(),
             report.getReportCount(),
             report.getCompanyName(),
             report.getRecruitmentMode(),
             report.getRollingResultType(),
-            report.getChannelType(),
-            unitName,
             report.getPrevReportedDate(),
             report.getCurrentStepName(),
             report.getReportedDate(),
@@ -541,30 +527,9 @@ public class ReportService {
         if (report.getRecruitmentMode() == RecruitmentMode.ROLLING) {
             return null;
         }
-        RecruitmentUnit unit = resolveUnitForReport(report);
-        if (unit != null) {
-            if (report.getChannelType() == RecruitmentChannelType.ALWAYS) {
-                List<RecruitmentChannel> channels = channelRepository.findActiveByUnitIdAndType(
-                    unit.getUnitId(), report.getChannelType());
-                return channels.isEmpty() ? null : channels.get(0);
-            }
-            LocalDate reportedDate = report.getReportedDate();
-            int year = reportedDate == null ? 0 : reportedDate.getYear();
-            RecruitmentChannel channel = channelRepository.findByUnitIdAndTypeAndYear(
-                unit.getUnitId(), report.getChannelType(), year);
-            return channel != null && channel.isActive() ? channel : null;
-        }
-
-        if (report.getChannelType() == RecruitmentChannelType.ALWAYS) {
-            List<RecruitmentChannel> channels = channelRepository.findActiveByCompanyIdAndType(
-                report.getCompany().getCompanyId(), report.getChannelType());
-            return channels.isEmpty() ? null : channels.get(0);
-        }
-        LocalDate reportedDate = report.getReportedDate();
-        int year = reportedDate == null ? 0 : reportedDate.getYear();
-        RecruitmentChannel channel = channelRepository.findByCompanyIdAndTypeAndYear(
-            report.getCompany().getCompanyId(), report.getChannelType(), year);
-        return channel != null && channel.isActive() ? channel : null;
+        List<RecruitmentChannel> channels = channelRepository.findActiveByCompanyId(
+            report.getCompany().getCompanyId());
+        return channels.isEmpty() ? null : channels.get(0);
     }
 
     private RecruitmentStep resolveStep(Long stepId, Company company) {
@@ -575,9 +540,8 @@ public class ReportService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid step"));
         if (company != null
             && step.getChannel() != null
-            && step.getChannel().getUnit() != null
-            && step.getChannel().getUnit().getCompany() != null
-            && !step.getChannel().getUnit().getCompany().getCompanyId().equals(company.getCompanyId())) {
+            && step.getChannel().getCompany() != null
+            && !step.getChannel().getCompany().getCompanyId().equals(company.getCompanyId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Step does not belong to company");
         }
         return step;
@@ -621,15 +585,18 @@ public class ReportService {
         suggestions.putIfAbsent(normalizeKeyword(trimmed), trimmed);
     }
 
-    private void validateRegularFields(RecruitmentChannelType channelType,
-                                       RecruitmentStep step,
+    private void validateRegularFields(RecruitmentStep step,
                                        String stepNameRaw,
+                                       LocalDate prevReportedDate,
                                        LocalDate reportedDate) {
-        if (normalizeChannelType(channelType) == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel type is required");
-        }
         if (step == null && stepNameRaw == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Step is required");
+        }
+        if (reportedDate != null && reportedDate.isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current reported date cannot be in the future");
+        }
+        if (prevReportedDate != null && reportedDate != null && !prevReportedDate.isBefore(reportedDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current reported date must be after previous date");
         }
     }
 
@@ -649,8 +616,11 @@ public class ReportService {
         if (reportedDate == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current reported date is required");
         }
+        if (reportedDate.isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current reported date cannot be in the future");
+        }
         long diff = java.time.temporal.ChronoUnit.DAYS.between(prevReportedDate, reportedDate);
-        if (diff < 0) {
+        if (diff <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current reported date must be after previous date");
         }
         if (diff > appProperties.getReport().getRollingMaxDiffDays()) {
@@ -709,50 +679,6 @@ public class ReportService {
         return requested == null ? RollingReportType.DATE_REPORTED : requested;
     }
 
-    private RecruitmentChannelType normalizeChannelType(RecruitmentChannelType requested) {
-        if (requested == null) {
-            return RecruitmentChannelType.ALWAYS;
-        }
-        return requested == RecruitmentChannelType.ALWAYS
-            || requested == RecruitmentChannelType.FIRST_HALF
-            || requested == RecruitmentChannelType.SECOND_HALF
-            ? requested
-            : RecruitmentChannelType.ALWAYS;
-    }
-
-    private RecruitmentUnit resolveUnit(Company company, UnitCategory unitName) {
-        if (company == null || unitName == null) {
-            return null;
-        }
-        return unitRepository.findByCompanyIdAndUnitName(company.getCompanyId(), unitName).orElse(null);
-    }
-
-    private RecruitmentUnit resolveUnitForReport(StepDateReport report) {
-        if (report == null || report.getCompany() == null) {
-            return null;
-        }
-        if (report.getUnit() != null) {
-            return report.getUnit();
-        }
-        return resolveUnit(report.getCompany(), report.getUnitName());
-    }
-
-    private RecruitmentChannel resolveLatestActiveChannelAnyType(Long unitId) {
-        if (unitId == null) {
-            return null;
-        }
-        List<RecruitmentChannel> channels = channelRepository.findActiveByUnitIdOrderByYearDesc(unitId);
-        return channels.isEmpty() ? null : channels.get(0);
-    }
-
-    private RecruitmentChannel resolveLatestActiveChannelByType(Long unitId, RecruitmentChannelType channelType) {
-        if (unitId == null || channelType == null) {
-            return null;
-        }
-        List<RecruitmentChannel> channels = channelRepository.findActiveByUnitIdAndType(unitId, channelType);
-        return channels.isEmpty() ? null : channels.get(0);
-    }
-
     private RecruitmentStep resolveStepByNameForReport(StepDateReport report) {
         String raw = normalizeStepNameRaw(report.getStepNameRaw());
         if (raw == null) {
@@ -795,16 +721,6 @@ public class ReportService {
             report.setCompany(company);
             changed = true;
         }
-
-        if (report.getUnit() == null && company != null && report.getUnitName() != null) {
-            RecruitmentUnit unit = resolveUnit(company, report.getUnitName());
-            if (unit != null) {
-                report.setUnit(unit);
-                report.setUnitName(unit.getUnitName());
-                changed = true;
-            }
-        }
-
         if (report.getStep() == null && company != null) {
             RecruitmentStep matched = resolveStepByNameForReport(report);
             if (matched != null) {

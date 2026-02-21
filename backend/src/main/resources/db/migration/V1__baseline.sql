@@ -32,28 +32,16 @@ CREATE TABLE IF NOT EXISTS company (
 CREATE INDEX idx_company_name ON company (company_name);
 CREATE INDEX idx_company_is_active ON company (is_active);
 
-CREATE TABLE IF NOT EXISTS recruitment_unit (
-  unit_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  company_id BIGINT NOT NULL,
-  unit_name ENUM('GENERAL', 'DESIGN_ART', 'IT', 'TECH_ENGINEERING', 'INTEGRATED') NOT NULL,
-  CONSTRAINT fk_unit_company FOREIGN KEY (company_id) REFERENCES company(company_id)
-);
-
-CREATE UNIQUE INDEX uk_recruitment_unit_company_name ON recruitment_unit (company_id, unit_name);
-CREATE INDEX idx_recruitment_unit_company ON recruitment_unit (company_id);
-
 CREATE TABLE IF NOT EXISTS recruitment_channel (
   channel_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  unit_id BIGINT NOT NULL,
-  channel_type ENUM('FIRST_HALF', 'SECOND_HALF', 'ALWAYS') NOT NULL,
+  company_id BIGINT NOT NULL,
   year INT NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
-  CONSTRAINT fk_recruitment_channel_unit FOREIGN KEY (unit_id) REFERENCES recruitment_unit(unit_id)
+  CONSTRAINT fk_recruitment_channel_company FOREIGN KEY (company_id) REFERENCES company(company_id)
 );
 
-CREATE INDEX idx_recruitment_channel_unit ON recruitment_channel (unit_id);
-CREATE INDEX idx_recruitment_channel_type_year ON recruitment_channel (channel_type, year);
-CREATE UNIQUE INDEX uk_recruitment_channel_unit_type_year ON recruitment_channel (unit_id, channel_type, year);
+CREATE INDEX idx_recruitment_channel_company ON recruitment_channel (company_id);
+CREATE UNIQUE INDEX uk_recruitment_channel_company_year ON recruitment_channel (company_id, year);
 
 CREATE TABLE IF NOT EXISTS recruitment_step (
   step_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -88,9 +76,6 @@ CREATE TABLE IF NOT EXISTS step_date_report (
   company_name VARCHAR(100) NOT NULL,
   recruitment_mode ENUM('REGULAR', 'ROLLING') NOT NULL DEFAULT 'REGULAR',
   rolling_result_type VARCHAR(32),
-  unit_id BIGINT,
-  unit_name ENUM('GENERAL', 'DESIGN_ART', 'IT', 'TECH_ENGINEERING', 'INTEGRATED'),
-  channel_type ENUM('FIRST_HALF', 'SECOND_HALF', 'ALWAYS'),
   reported_date DATE,
   prev_reported_date DATE,
   step_id BIGINT,
@@ -102,14 +87,11 @@ CREATE TABLE IF NOT EXISTS step_date_report (
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   CONSTRAINT fk_step_date_report_company FOREIGN KEY (company_id) REFERENCES company(company_id),
-  CONSTRAINT fk_step_date_report_unit FOREIGN KEY (unit_id) REFERENCES recruitment_unit(unit_id),
   CONSTRAINT fk_step_date_report_step FOREIGN KEY (step_id) REFERENCES recruitment_step(step_id)
 );
 
 CREATE INDEX idx_step_date_report_status ON step_date_report (status);
 CREATE INDEX idx_step_date_report_company ON step_date_report (company_id);
-CREATE INDEX idx_step_date_report_unit ON step_date_report (unit_id);
-CREATE INDEX idx_step_date_report_channel_type ON step_date_report (channel_type);
 CREATE INDEX idx_step_date_report_date ON step_date_report (reported_date);
 CREATE INDEX idx_step_date_report_mode ON step_date_report (recruitment_mode);
 CREATE INDEX idx_step_date_report_rolling_result_type ON step_date_report (rolling_result_type);
@@ -143,10 +125,7 @@ SELECT
   l.log_id,
   c.company_id,
   c.company_name,
-  ru.unit_id,
-  ru.unit_name,
   rc.channel_id,
-  rc.channel_type,
   rc.year AS channel_year,
   rc.is_active AS channel_is_active,
   s.step_id,
@@ -160,8 +139,7 @@ SELECT
 FROM step_date_log l
 JOIN recruitment_step s ON s.step_id = l.step_id
 JOIN recruitment_channel rc ON rc.channel_id = s.channel_id
-JOIN recruitment_unit ru ON ru.unit_id = rc.unit_id
-JOIN company c ON c.company_id = ru.company_id;
+JOIN company c ON c.company_id = rc.company_id;
 
 CREATE TABLE IF NOT EXISTS chat_room_member (
   member_id BIGINT AUTO_INCREMENT PRIMARY KEY,

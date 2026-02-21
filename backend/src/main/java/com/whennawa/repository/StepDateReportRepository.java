@@ -4,7 +4,6 @@ import com.whennawa.entity.StepDateReport;
 import com.whennawa.entity.enums.ReportStatus;
 import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.entity.enums.RecruitmentMode;
-import com.whennawa.entity.enums.UnitCategory;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,19 +14,15 @@ public interface StepDateReportRepository extends JpaRepository<StepDateReport, 
 
     Optional<StepDateReport> findByReportIdAndDeletedAtIsNull(Long reportId);
 
-    Optional<StepDateReport> findFirstByCompanyNameAndUnitNameAndChannelTypeAndReportedDateAndStepStepIdAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndStepStepIdAndStatusAndDeletedAtIsNull(
         String companyName,
-        UnitCategory unitName,
-        com.whennawa.entity.enums.RecruitmentChannelType channelType,
         java.time.LocalDate reportedDate,
         Long stepId,
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndUnitNameAndChannelTypeAndReportedDateAndStepIsNullAndStepNameRawAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndStepIsNullAndStepNameRawAndStatusAndDeletedAtIsNull(
         String companyName,
-        UnitCategory unitName,
-        com.whennawa.entity.enums.RecruitmentChannelType channelType,
         java.time.LocalDate reportedDate,
         String stepNameRaw,
         ReportStatus status

@@ -8,12 +8,10 @@ import type {
   ReportItem,
   ReportStatus,
   ReportStep,
-  RecruitmentChannelType,
   RecruitmentMode,
   RollingReportType,
   User,
 } from "./types"
-import { normalizeUnitCategory } from "./unit-category"
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -26,8 +24,6 @@ type CompanyTimelineInput = {
   companyId: number | null
   companyName: string
   regularTimelines?: Array<{
-    unitName: string
-    channelType: "ALWAYS" | "FIRST_HALF" | "SECOND_HALF"
     year: number
     steps: Array<{
       eventType: string
@@ -38,8 +34,6 @@ type CompanyTimelineInput = {
     }>
   }>
   timelines?: Array<{
-    unitName: string
-    channelType: "ALWAYS" | "FIRST_HALF" | "SECOND_HALF"
     year: number
     steps: Array<{
       eventType: string
@@ -77,8 +71,6 @@ type ReportItemInput = {
   companyName: string
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
-  channelType: RecruitmentChannelType | null
-  unitName: string | null
   prevReportedDate: Date | string | null
   currentStepName: string | null
   reportedDate: Date | string | null
@@ -131,7 +123,6 @@ const normalizeTimeline = (timeline: CompanyTimelineInput): CompanyTimeline => (
   companyName: timeline.companyName,
   regularTimelines: (timeline.regularTimelines ?? timeline.timelines ?? []).map((unit) => ({
     ...unit,
-    unitName: normalizeUnitCategory(unit.unitName) ?? unit.unitName,
     steps: unit.steps.map((step) => ({
       ...step,
       occurredAt: toDateOrNull(step.occurredAt),
@@ -149,7 +140,6 @@ const normalizeTimeline = (timeline: CompanyTimelineInput): CompanyTimeline => (
 
 const normalizeReportItem = (item: ReportItemInput): ReportItem => ({
   ...item,
-  unitName: normalizeUnitCategory(item.unitName) ?? item.unitName,
   prevReportedDate: toDateOrNull(item.prevReportedDate),
   reportedDate: toDateOrNull(item.reportedDate),
 })
@@ -258,8 +248,6 @@ export async function fetchCompanyTimeline(companyName: string): Promise<Company
         companyName,
         regularTimelines: [
           {
-            unitName: "통합직군",
-            channelType: "ALWAYS",
             year: new Date().getFullYear(),
             steps: [
               {
@@ -365,8 +353,6 @@ export type ReportCreateRequest = {
   companyName: string
   recruitmentMode: RecruitmentMode
   rollingResultType?: RollingReportType | null
-  channelType?: RecruitmentChannelType | null
-  unitName?: string | null
   prevReportedDate?: string | null
   currentStepName?: string | null
   reportedDate?: string | null
@@ -376,8 +362,6 @@ export type ReportCreateRequest = {
 
 export async function fetchReportSteps(
   companyName: string,
-  channelType: RecruitmentChannelType,
-  unitName?: string | null,
 ): Promise<ReportStep[]> {
   if (!companyName.trim()) return []
   if (USE_MOCK) {
@@ -388,19 +372,12 @@ export async function fetchReportSteps(
       { stepId: 3, stepName: "1차면접" },
     ]
   }
-  const params = new URLSearchParams({
-    companyName,
-    channelType,
-  })
-  if (unitName) {
-    params.set("unitName", unitName)
-  }
+  const params = new URLSearchParams({ companyName })
   const data = await request<ReportStepInput[]>(`/api/reports/steps?${params.toString()}`)
   return data
 }
 
-export async function fetchRollingReportStepNames(companyName: string, query?: string): Promise<string[]> {
-  if (!companyName.trim()) return []
+export async function fetchRollingReportStepNames(companyName?: string, query?: string): Promise<string[]> {
   if (USE_MOCK) {
     await delay(120)
     const samples = ["서류 합격", "코딩 테스트", "1차 면접", "2차 면접", "최종 합격"]
@@ -408,7 +385,10 @@ export async function fetchRollingReportStepNames(companyName: string, query?: s
     if (!normalizedQuery) return samples
     return samples.filter((name) => name.toLowerCase().includes(normalizedQuery))
   }
-  const params = new URLSearchParams({ companyName })
+  const params = new URLSearchParams()
+  if (companyName?.trim()) {
+    params.set("companyName", companyName.trim())
+  }
   if (query?.trim()) {
     params.set("q", query.trim())
   }
@@ -436,8 +416,6 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         companyName: "Naver",
         recruitmentMode: "REGULAR",
         rollingResultType: null,
-        channelType: "ALWAYS",
-        unitName: "IT",
         prevReportedDate: null,
         currentStepName: null,
         reportedDate: new Date(),
@@ -453,8 +431,6 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         companyName: "Kakao",
         recruitmentMode: "ROLLING",
         rollingResultType: "DATE_REPORTED",
-        channelType: null,
-        unitName: null,
         prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
         currentStepName: "1차면접",
         reportedDate: new Date(),
@@ -489,8 +465,6 @@ export type ReportUpdateRequest = {
   companyName: string
   recruitmentMode: RecruitmentMode
   rollingResultType?: RollingReportType | null
-  channelType?: RecruitmentChannelType | null
-  unitName?: string | null
   prevReportedDate?: string | null
   currentStepName?: string | null
   reportedDate?: string | null
@@ -507,8 +481,6 @@ export async function updateAdminReport(reportId: number, payload: ReportUpdateR
       companyName: payload.companyName,
       recruitmentMode: payload.recruitmentMode,
       rollingResultType: payload.rollingResultType ?? null,
-      channelType: payload.channelType ?? null,
-      unitName: payload.unitName ?? null,
       prevReportedDate: payload.prevReportedDate ? new Date(payload.prevReportedDate) : null,
       currentStepName: payload.currentStepName ?? null,
       reportedDate: payload.reportedDate ? new Date(payload.reportedDate) : null,
@@ -535,8 +507,6 @@ export async function processAdminReport(reportId: number, stepId?: number | nul
       companyName: "Processed",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      channelType: "ALWAYS",
-      unitName: "IT",
       prevReportedDate: null,
       currentStepName: null,
       reportedDate: new Date(),
@@ -564,8 +534,6 @@ export async function assignAdminReport(reportId: number): Promise<ReportItem> {
       companyName: "Assigned",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      channelType: "ALWAYS",
-      unitName: "IT",
       prevReportedDate: null,
       currentStepName: null,
       reportedDate: new Date(),
@@ -602,8 +570,6 @@ export async function discardAdminReport(reportId: number): Promise<ReportItem> 
       companyName: "Discarded",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      channelType: "ALWAYS",
-      unitName: "IT",
       prevReportedDate: null,
       currentStepName: null,
       reportedDate: new Date(),

@@ -10,22 +10,17 @@ import com.whennawa.dto.company.RollingStepStatsResponse;
 import com.whennawa.entity.Company;
 import com.whennawa.entity.RecruitmentChannel;
 import com.whennawa.entity.RecruitmentStep;
-import com.whennawa.entity.RecruitmentUnit;
 import com.whennawa.entity.RollingStepLog;
 import com.whennawa.entity.enums.RollingReportType;
-import com.whennawa.entity.enums.RecruitmentChannelType;
-import com.whennawa.entity.enums.UnitCategory;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.RecruitmentChannelRepository;
 import com.whennawa.repository.RecruitmentStepRepository;
-import com.whennawa.repository.RecruitmentUnitRepository;
 import com.whennawa.repository.RollingStepLogRepository;
 import com.whennawa.repository.StepDateLogRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
@@ -35,7 +30,6 @@ public class CompanySearchService {
     private final CompanyRepository companyRepository;
     private final RecruitmentChannelRepository channelRepository;
     private final RecruitmentStepRepository stepRepository;
-    private final RecruitmentUnitRepository unitRepository;
     private final StepDateLogRepository stepDateLogRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
     private final com.whennawa.config.AppProperties appProperties;
@@ -43,14 +37,12 @@ public class CompanySearchService {
     public CompanySearchService(CompanyRepository companyRepository,
                                 RecruitmentChannelRepository channelRepository,
                                 RecruitmentStepRepository stepRepository,
-                                RecruitmentUnitRepository unitRepository,
                                 StepDateLogRepository stepDateLogRepository,
                                 RollingStepLogRepository rollingStepLogRepository,
                                 com.whennawa.config.AppProperties appProperties) {
         this.companyRepository = companyRepository;
         this.channelRepository = channelRepository;
         this.stepRepository = stepRepository;
-        this.unitRepository = unitRepository;
         this.stepDateLogRepository = stepDateLogRepository;
         this.rollingStepLogRepository = rollingStepLogRepository;
         this.appProperties = appProperties;
@@ -77,34 +69,24 @@ public class CompanySearchService {
         }
         List<RollingStepStatsResponse> rollingSteps = buildRollingStats(company.getCompanyName());
 
-        List<RecruitmentUnit> units = unitRepository.findByCompanyId(company.getCompanyId());
-        if (units.isEmpty()) {
+        List<RecruitmentChannel> channels = channelRepository.findByCompanyId(company.getCompanyId());
+        if (channels.isEmpty()) {
             return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), List.of(), rollingSteps);
         }
 
         List<CompanyUnitTimelineResponse> timelines = new ArrayList<>();
-        for (RecruitmentUnit unit : units) {
-            RecruitmentChannel channel = pickRepresentativeChannel(unit);
-            if (channel == null) {
-                continue;
-            }
-            if (channel.getChannelType() == RecruitmentChannelType.ALWAYS) {
-                continue;
-            }
+        for (RecruitmentChannel channel : channels) {
             List<RecruitmentStep> steps = stepRepository.findByChannelId(channel.getChannelId());
             if (steps.isEmpty()) {
                 continue;
             }
             List<CompanyTimelineStep> timeline = buildTimeline(steps, List.of(channel));
             timelines.add(new CompanyUnitTimelineResponse(
-                unit.getUnitName(),
-                channel.getChannelType(),
                 channel.getYear(),
                 timeline
             ));
         }
 
-        timelines = excludeIntegratedWhenSpecificExists(timelines);
         return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), timelines, rollingSteps);
     }
 
@@ -130,8 +112,7 @@ public class CompanySearchService {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
 
-        List<Long> seasonalDiffs = new ArrayList<>();
-        List<Long> alwaysDiffs = new ArrayList<>();
+        List<Long> allDiffs = new ArrayList<>();
         for (RecruitmentChannel channel : channels) {
             List<RecruitmentStep> steps = stepRepository.findByChannelId(channel.getChannelId());
             if (steps.size() < 2) {
@@ -154,23 +135,18 @@ public class CompanySearchService {
                 }
                 long diff = ChronoUnit.DAYS.between(prevDate.toLocalDate(), currDate.toLocalDate());
                 if (diff >= 0) {
-                    if (channel.getChannelType() == RecruitmentChannelType.ALWAYS) {
-                        alwaysDiffs.add(diff);
-                    } else {
-                        seasonalDiffs.add(diff);
-                    }
+                    allDiffs.add(diff);
                 }
             }
         }
 
-        List<Long> targetDiffs = pickLeadTimeDiffs(seasonalDiffs, alwaysDiffs);
-        if (targetDiffs.isEmpty()) {
+        if (allDiffs.isEmpty()) {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
-        Collections.sort(targetDiffs);
-        Long median = targetDiffs.get(targetDiffs.size() / 2);
-        Long min = targetDiffs.get(0);
-        Long max = targetDiffs.get(targetDiffs.size() - 1);
+        allDiffs.sort(Long::compareTo);
+        Long median = allDiffs.get(allDiffs.size() / 2);
+        Long min = allDiffs.get(0);
+        Long max = allDiffs.get(allDiffs.size() - 1);
         return new KeywordLeadTimeResponse(keyword, median, min, max);
     }
 
@@ -207,19 +183,6 @@ public class CompanySearchService {
             expectedStart,
             expectedEnd
         );
-    }
-
-    private List<Long> pickLeadTimeDiffs(List<Long> seasonalDiffs,
-                                         List<Long> alwaysDiffs) {
-        if (seasonalDiffs.isEmpty()) {
-            return new ArrayList<>(alwaysDiffs);
-        }
-        if (alwaysDiffs.isEmpty()) {
-            return new ArrayList<>(seasonalDiffs);
-        }
-        return seasonalDiffs.size() >= alwaysDiffs.size()
-            ? new ArrayList<>(seasonalDiffs)
-            : new ArrayList<>(alwaysDiffs);
     }
 
     private List<CompanyTimelineStep> buildTimeline(List<RecruitmentStep> steps,
@@ -320,75 +283,11 @@ public class CompanySearchService {
 
     private record LogCandidate(LocalDateTime date, int score, boolean official) {}
 
-    private List<CompanyUnitTimelineResponse> excludeIntegratedWhenSpecificExists(
-        List<CompanyUnitTimelineResponse> timelines
-    ) {
-        if (timelines == null || timelines.isEmpty()) {
-            return List.of();
-        }
-
-        java.util.Set<String> keysWithSpecificCategory = new java.util.HashSet<>();
-        for (CompanyUnitTimelineResponse timeline : timelines) {
-            UnitCategory category = timeline.getUnitName();
-            if (category != null && category != UnitCategory.INTEGRATED) {
-                keysWithSpecificCategory.add(groupKey(timeline.getChannelType(), timeline.getYear()));
-            }
-        }
-
-        return timelines.stream()
-            .filter(timeline -> {
-                UnitCategory category = timeline.getUnitName();
-                if (category != UnitCategory.INTEGRATED) {
-                    return true;
-                }
-                return !keysWithSpecificCategory.contains(groupKey(timeline.getChannelType(), timeline.getYear()));
-            })
-            .toList();
-    }
-
-    private String groupKey(RecruitmentChannelType channelType, int year) {
-        return channelType.name() + ":" + year;
-    }
-
     private String normalizeKeyword(String value) {
         if (value == null) {
             return "";
         }
         return value.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
-    }
-
-    private RecruitmentChannel pickRepresentativeChannel(RecruitmentUnit unit) {
-        List<RecruitmentChannel> channels = channelRepository.findActiveByUnitId(unit.getUnitId());
-        if (channels.isEmpty()) {
-            return null;
-        }
-        RecruitmentChannel best = null;
-        long bestCount = -1;
-        int bestYear = -1;
-        Long bestId = null;
-        for (RecruitmentChannel channel : channels) {
-            long count = stepRepository.countByChannelChannelId(channel.getChannelId());
-            if (count == 0) {
-                continue;
-            }
-            int year = channel.getYear();
-            boolean replace = false;
-            if (count > bestCount) {
-                replace = true;
-            } else if (count == bestCount && year > bestYear) {
-                replace = true;
-            } else if (count == bestCount && year == bestYear && bestId != null
-                && channel.getChannelId() > bestId) {
-                replace = true;
-            }
-            if (replace || best == null) {
-                best = channel;
-                bestCount = count;
-                bestYear = year;
-                bestId = channel.getChannelId();
-            }
-        }
-        return best;
     }
 
     private String buildStepLabel(RecruitmentStep step, List<RecruitmentChannel> channels) {

@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react"
 import {
   fetchAdminReports,
-  assignAdminReport,
-  assignAllPendingAdminReports,
   processAdminReport,
   discardAdminReport,
   updateAdminReport,
@@ -24,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { normalizeUnitCategory } from "@/lib/unit-category"
 
 type EditFormState = {
   companyName: string
@@ -44,8 +41,6 @@ export default function AdminReportPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<EditFormState | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [assigningReportId, setAssigningReportId] = useState<number | null>(null)
-  const [isAssigningAll, setIsAssigningAll] = useState(false)
 
   const loadReports = async () => {
     setIsLoading(true)
@@ -78,20 +73,6 @@ export default function AdminReportPage() {
     }
   }
 
-  const handleAssign = async (reportId: number) => {
-    setMessage(null)
-    setAssigningReportId(reportId)
-    try {
-      await assignAdminReport(reportId)
-      await loadReports()
-    } catch (error) {
-      console.error("Failed to assign report values", error)
-      setMessage("값할당에 실패했습니다.")
-    } finally {
-      setAssigningReportId(null)
-    }
-  }
-
   const handleDiscard = async (reportId: number) => {
     setMessage(null)
     try {
@@ -100,21 +81,6 @@ export default function AdminReportPage() {
     } catch (error) {
       console.error("Failed to discard report", error)
       setMessage("폐기에 실패했습니다.")
-    }
-  }
-
-  const handleAssignAllPending = async () => {
-    setMessage(null)
-    setIsAssigningAll(true)
-    try {
-      const result = await assignAllPendingAdminReports()
-      setMessage(`PENDING 전체 값할당 완료: ${result.updatedCount}건 반영`)
-      await loadReports()
-    } catch (error) {
-      console.error("Failed to assign pending reports", error)
-      setMessage("전체 값할당에 실패했습니다.")
-    } finally {
-      setIsAssigningAll(false)
     }
   }
 
@@ -171,8 +137,6 @@ export default function AdminReportPage() {
           : editForm.noResponse
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
-        channelType: isRegular ? "ALWAYS" : undefined,
-        unitName: undefined,
         prevReportedDate: editForm.noResponse ? undefined : editForm.prevReportedDate,
         currentStepName: isRegular ? undefined : currentStepName,
         reportedDate: editForm.noResponse ? undefined : editForm.reportedDate,
@@ -194,18 +158,6 @@ export default function AdminReportPage() {
         <p className="text-sm text-muted-foreground mt-1">
           보류 상태(회색)는 해당 월/채용 채널 기준으로 비활성화된 리포트입니다.
         </p>
-      </div>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={handleAssignAllPending}
-          disabled={isAssigningAll}
-          className="transition-all hover:-translate-y-0.5 active:translate-y-0"
-        >
-          {isAssigningAll ? "전체 값할당 중..." : "PENDING 전체 값할당"}
-        </Button>
       </div>
 
       {message && <p className="mb-4 text-sm text-muted-foreground">{message}</p>}
@@ -233,15 +185,11 @@ export default function AdminReportPage() {
                     <h3 className="text-lg font-semibold">{report.companyName}</h3>
                     <p className="text-sm text-muted-foreground">
                       {report.recruitmentMode === "REGULAR"
-                        ? `${report.channelType ?? "-"} · ${toDateInput(report.reportedDate)}`
+                        ? `${toDateInput(report.reportedDate)}`
                         : `수시 · ${report.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : toDateInput(report.reportedDate)}`}
                     </p>
                     <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}회</p>
-                    {report.recruitmentMode === "REGULAR" ? (
-                      <p className="text-sm text-muted-foreground">
-                        Unit: {normalizeUnitCategory(report.unitName) ?? report.unitName ?? "-"}
-                      </p>
-                    ) : (
+                    {report.recruitmentMode !== "REGULAR" && (
                       <p className="text-sm text-muted-foreground">
                         유형: {report.rollingResultType === "NO_RESPONSE_REPORTED" ? "결과 미수신" : "날짜 제보"} ·
                         이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} · 현재 전형: {report.currentStepName ?? "-"}
@@ -263,16 +211,6 @@ export default function AdminReportPage() {
 
                 {!isEditing && (
                   <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => handleAssign(report.reportId)}
-                      disabled={report.status !== "PENDING" || assigningReportId === report.reportId}
-                      className="transition-all hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                      {assigningReportId === report.reportId ? "값할당 중..." : "값할당"}
-                    </Button>
-
                     <Button
                       type="button"
                       onClick={() => handleProcess(report)}

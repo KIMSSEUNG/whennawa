@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 public interface RecruitmentStepRepository extends JpaRepository<RecruitmentStep, Long> {
     @Query("""
         select s from RecruitmentStep s
-        where s.channel.unit.company.companyId = :companyId
+        where s.channel.company.companyId = :companyId
         order by s.stepOrder asc, s.stepId asc
         """)
     List<RecruitmentStep> findTimelineByCompanyId(@Param("companyId") Long companyId);

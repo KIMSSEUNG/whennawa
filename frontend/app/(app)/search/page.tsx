@@ -18,7 +18,6 @@ import type {
   CompanySearchItem,
   CompanyTimeline,
   KeywordLeadTime,
-  RecruitmentChannelType,
   RecruitmentMode,
 } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -76,7 +75,6 @@ export default function SearchPage() {
   const [reportCompany, setReportCompany] = useState("")
   const [reportSuggestions, setReportSuggestions] = useState<CompanySearchItem[]>([])
   const [reportMode, setReportMode] = useState<RecruitmentMode>("REGULAR")
-  const [reportChannelType, setReportChannelType] = useState<RecruitmentChannelType>("ALWAYS")
   const [reportPrevDate, setReportPrevDate] = useState(() => getKoreaToday())
   const [reportCurrentStepName, setReportCurrentStepName] = useState("")
   const [reportDate, setReportDate] = useState(() => getKoreaToday())
@@ -95,6 +93,18 @@ export default function SearchPage() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const normalizedQuery = useMemo(() => query.trim(), [query])
   const normalizedReportCompany = useMemo(() => reportCompany.trim(), [reportCompany])
+  const prevStepSuggestionOptions = useMemo(() => {
+    const currentStep = reportCurrentStepName.trim()
+    const merged = [...rollingPrevStepSuggestions, ...rollingStepSuggestions]
+    const unique = Array.from(new Set(merged))
+    return unique.filter((name) => name && name.trim() && name.trim() !== currentStep)
+  }, [rollingPrevStepSuggestions, rollingStepSuggestions, reportCurrentStepName])
+  const currentStepSuggestionOptions = useMemo(() => {
+    const prevStep = reportPrevStepName.trim()
+    const merged = [...rollingStepSuggestions, ...rollingPrevStepSuggestions]
+    const unique = Array.from(new Set(merged))
+    return unique.filter((name) => name && name.trim() && name.trim() !== prevStep)
+  }, [rollingStepSuggestions, rollingPrevStepSuggestions, reportPrevStepName])
   const prevReportCompanyRef = useRef<string>("")
   const restoredFromUrlRef = useRef(false)
 
@@ -115,10 +125,6 @@ export default function SearchPage() {
   }
 
   useEffect(() => {
-    setReportChannelType("ALWAYS")
-  }, [reportChannelType])
-
-  useEffect(() => {
     if (reportMode === "REGULAR") {
       setReportRollingNoResponse(false)
       setReportPrevDate(getKoreaToday())
@@ -127,7 +133,6 @@ export default function SearchPage() {
       setShowRollingStepSuggestions(false)
       return
     }
-    setReportChannelType("ALWAYS")
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
     setReportPrevStepName("")
@@ -141,7 +146,6 @@ export default function SearchPage() {
   useEffect(() => {
     if (prevReportCompanyRef.current === normalizedReportCompany) return
     prevReportCompanyRef.current = normalizedReportCompany
-    setReportChannelType("ALWAYS")
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
     setReportPrevStepName("")
@@ -299,7 +303,6 @@ export default function SearchPage() {
       setIsReportCompanyLocked(false)
     }
 
-    setReportChannelType("ALWAYS")
     setReportCurrentStepName("")
     setReportPrevStepName("")
     setReportRollingNoResponse(false)
@@ -359,6 +362,17 @@ export default function SearchPage() {
       "0",
     )}`
   }
+  const todayInput = toDateInput(getKoreaToday())
+  const prevDateMaxInput = (() => {
+    const max = new Date(reportDate)
+    max.setDate(max.getDate() - 1)
+    return toDateInput(max)
+  })()
+  const currentDateMinInput = (() => {
+    const min = new Date(reportPrevDate)
+    min.setDate(min.getDate() + 1)
+    return toDateInput(min)
+  })()
 
   const reportModalTitle = "오늘 결과발표 제보하기"
   const reportModalDescription = "현재 전형명을 필수로 입력해 주세요. 결과 미수신일 경우 날짜 없이 제보할 수 있어요."
@@ -422,8 +436,6 @@ export default function SearchPage() {
           : reportRollingNoResponse
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
-        channelType: isRegular ? ("ALWAYS" as RecruitmentChannelType) : undefined,
-        unitName: undefined,
         prevReportedDate: reportRollingNoResponse ? undefined : toDateInput(reportPrevDate),
         currentStepName: isRegular
           ? reportRollingNoResponse
@@ -498,14 +510,6 @@ export default function SearchPage() {
   }, [normalizedReportCompany, showReportSuggestions])
 
   useEffect(() => {
-    if (!normalizedReportCompany) {
-      setRollingStepSuggestions([])
-      setShowRollingStepSuggestions(false)
-      setRollingPrevStepSuggestions([])
-      setShowRollingPrevStepSuggestions(false)
-      return
-    }
-
     let cancelled = false
     const handle = setTimeout(async () => {
       const data = await fetchRollingReportStepNames(normalizedReportCompany, reportCurrentStepName)
@@ -520,7 +524,7 @@ export default function SearchPage() {
   }, [reportMode, normalizedReportCompany, reportCurrentStepName])
 
   useEffect(() => {
-    if (!normalizedReportCompany || reportRollingNoResponse) {
+    if (reportRollingNoResponse) {
       setRollingPrevStepSuggestions([])
       setShowRollingPrevStepSuggestions(false)
       return
@@ -643,6 +647,7 @@ export default function SearchPage() {
                   value={toDateInput(reportPrevDate)}
                   onChange={(e) => setReportPrevDate(new Date(`${e.target.value}T00:00:00+09:00`))}
                   className="h-11 max-w-[220px]"
+                  max={prevDateMaxInput}
                   required
                 />
               </div>
@@ -653,6 +658,8 @@ export default function SearchPage() {
                   value={toDateInput(reportDate)}
                   onChange={(e) => setReportDate(new Date(`${e.target.value}T00:00:00+09:00`))}
                   className="h-11 max-w-[220px]"
+                  min={currentDateMinInput}
+                  max={todayInput}
                   required
                 />
               </div>
@@ -674,11 +681,11 @@ export default function SearchPage() {
                       className="h-11"
                       required
                     />
-                    {showRollingPrevStepSuggestions && rollingPrevStepSuggestions.length > 0 && (
+                    {showRollingPrevStepSuggestions && prevStepSuggestionOptions.length > 0 && (
                       <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
                         <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">전형 연관 검색어</p>
                         <div className="max-h-56 overflow-auto">
-                          {rollingPrevStepSuggestions.map((stepName) => (
+                          {prevStepSuggestionOptions.map((stepName) => (
                             <button
                               key={`rolling-prev-step-${stepName}`}
                               type="button"
@@ -713,11 +720,11 @@ export default function SearchPage() {
                     className="h-11"
                     required
                   />
-                  {showRollingStepSuggestions && rollingStepSuggestions.length > 0 && (
+                  {showRollingStepSuggestions && currentStepSuggestionOptions.length > 0 && (
                     <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
                       <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">전형 연관 검색어</p>
                       <div className="max-h-56 overflow-auto">
-                        {rollingStepSuggestions.map((stepName) => (
+                        {currentStepSuggestionOptions.map((stepName) => (
                           <button
                             key={`rolling-step-${stepName}`}
                             type="button"

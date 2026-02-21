@@ -10,8 +10,6 @@ type TimelineStep = {
 }
 
 type TimelineUnit = {
-  unitName: string
-  channelType: string
   year: number
   steps: TimelineStep[]
 }

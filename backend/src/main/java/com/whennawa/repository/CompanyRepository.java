@@ -21,8 +21,7 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
         select c.companyName as companyName,
                max(l.targetDate) as lastResultAt
         from Company c
-        left join RecruitmentUnit u on u.company = c
-        left join RecruitmentChannel ch on ch.unit = u
+        left join RecruitmentChannel ch on ch.company = c
         left join RecruitmentStep s on s.channel = ch
         left join StepDateLog l on l.step = s
         where c.isActive = true

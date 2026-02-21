@@ -1,10 +1,7 @@
 package com.whennawa.entity;
 
-import com.whennawa.entity.enums.RecruitmentChannelType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,12 +20,8 @@ public class RecruitmentChannel {
     private Long channelId;
 
     @ManyToOne
-    @JoinColumn(name = "unit_id", nullable = false)
-    private RecruitmentUnit unit;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "channel_type", length = 16, nullable = false)
-    private RecruitmentChannelType channelType;
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @Column(name = "year", nullable = false)
     private int year;

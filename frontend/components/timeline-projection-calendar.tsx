@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import type { CompanyTimeline } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { normalizeUnitCategory } from "@/lib/unit-category"
 
 type Props = {
   timeline: CompanyTimeline | null
@@ -95,15 +94,15 @@ export function TimelineProjectionCalendar({ timeline }: Props) {
 
       <div className="grid gap-2 sm:grid-cols-1">
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          직무
+          모집 구분
           <select
             value={selectedUnitIndex}
             onChange={(e) => setSelectedUnitIndex(e.target.value)}
             className="h-10 rounded-lg border border-border/60 bg-card px-3 text-sm text-foreground"
           >
             {units.map((unit, idx) => (
-              <option key={`${unit.unitName}-${unit.channelType}-${unit.year}-${idx}`} value={String(idx)}>
-                {normalizeUnitCategory(unit.unitName) ?? unit.unitName}
+              <option key={`${unit.year}-${idx}`} value={String(idx)}>
+                {unit.year}
               </option>
             ))}
           </select>

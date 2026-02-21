@@ -3,8 +3,6 @@ package com.whennawa.controller;
 import com.whennawa.dto.report.ReportCreateRequest;
 import com.whennawa.dto.report.ReportCreateResponse;
 import com.whennawa.dto.report.ReportStepResponse;
-import com.whennawa.entity.enums.RecruitmentChannelType;
-import com.whennawa.entity.enums.UnitCategory;
 import com.whennawa.service.ReportService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -35,21 +32,12 @@ public class ReportController {
     }
 
     @GetMapping("/steps")
-    public List<ReportStepResponse> steps(@RequestParam("companyName") String companyName,
-                                          @RequestParam("channelType") RecruitmentChannelType channelType,
-                                          @RequestParam(value = "unitName", required = false) String unitName) {
-        UnitCategory category = null;
-        if (unitName != null && !unitName.isBlank()) {
-            category = UnitCategory.fromUnitName(unitName);
-            if (category == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid unit category");
-            }
-        }
-        return reportService.findStepsForCompany(companyName, channelType, category);
+    public List<ReportStepResponse> steps(@RequestParam("companyName") String companyName) {
+        return reportService.findStepsForCompany(companyName);
     }
 
     @GetMapping("/rolling-steps")
-    public List<String> rollingSteps(@RequestParam("companyName") String companyName,
+    public List<String> rollingSteps(@RequestParam(value = "companyName", required = false) String companyName,
                                      @RequestParam(value = "q", required = false) String query) {
         return reportService.findRollingStepNameSuggestions(companyName, query);
     }
