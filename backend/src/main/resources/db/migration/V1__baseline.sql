@@ -181,6 +181,39 @@ CREATE TABLE IF NOT EXISTS board_comment_like (
 CREATE INDEX idx_board_comment_like_comment ON board_comment_like (comment_id);
 CREATE INDEX idx_board_comment_like_user ON board_comment_like (user_id);
 
+CREATE TABLE IF NOT EXISTS company_notification_subscription (
+  subscription_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  company_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT fk_company_notification_subscription_company FOREIGN KEY (company_id) REFERENCES company(company_id),
+  CONSTRAINT fk_company_notification_subscription_user FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT uk_company_notification_subscription_user_company UNIQUE (user_id, company_id)
+);
+
+CREATE INDEX idx_company_notification_subscription_user ON company_notification_subscription (user_id);
+CREATE INDEX idx_company_notification_subscription_company ON company_notification_subscription (company_id);
+
+CREATE TABLE IF NOT EXISTS company_notification (
+  notification_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  company_id BIGINT NOT NULL,
+  event_date DATE NOT NULL,
+  first_reporter_nickname VARCHAR(64) NOT NULL,
+  reporter_message VARCHAR(200) NULL,
+  reporter_count INT NOT NULL DEFAULT 1,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT fk_company_notification_user FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT fk_company_notification_company FOREIGN KEY (company_id) REFERENCES company(company_id),
+  CONSTRAINT uk_company_notification_user_company_event_date UNIQUE (user_id, company_id, event_date)
+);
+
+CREATE INDEX idx_company_notification_user_updated ON company_notification (user_id, updated_at);
+CREATE INDEX idx_company_notification_company_event ON company_notification (company_id, event_date);
+
 INSERT IGNORE INTO users (
   public_id,
   email,

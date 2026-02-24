@@ -9,14 +9,16 @@ import { getUser } from "@/lib/api"
 type Role = "USER" | "ADMIN" | null
 
 const userTabs = [
-  { href: "/search", label: "Search", icon: "S" },
-  { href: "/board", label: "Board", icon: "B" },
-  { href: "/profile", label: "Profile", icon: "P" },
+  { href: "/search", label: "발표일 검색", icon: "검" },
+  { href: "/board", label: "회사 게시판", icon: "판" },
+  { href: "/career-board", label: "취업고민", icon: "고" },
+  { href: "/notifications", label: "알림", icon: "알" },
+  { href: "/profile", label: "프로필", icon: "프" },
 ]
 
 const adminTabs = [
-  { href: "/admin", label: "Timeline", icon: "T" },
-  { href: "/profile", label: "Profile", icon: "P" },
+  { href: "/admin", label: "관리", icon: "관" },
+  { href: "/profile", label: "프로필", icon: "프" },
 ]
 
 export function BottomTabBar() {

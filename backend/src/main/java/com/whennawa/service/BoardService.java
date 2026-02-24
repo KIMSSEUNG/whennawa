@@ -24,8 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -39,7 +37,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class BoardService {
-    private static final long SEARCH_COOLDOWN_MS = 3000L;
     private static final int DEFAULT_POST_PAGE_SIZE = 20;
     private static final int MAX_POST_PAGE_SIZE = 50;
     private static final int DEFAULT_COMMENT_PAGE_SIZE = 20;
@@ -51,8 +48,6 @@ public class BoardService {
     private final BoardCommentLikeRepository boardCommentLikeRepository;
     private final UserRepository userRepository;
     private final ProfanityMasker profanityMasker;
-
-    private final ConcurrentMap<String, Long> lastBoardSearchAtBySession = new ConcurrentHashMap<>();
 
     @Transactional(readOnly = true)
     public BoardPageResponse<BoardPostResponse> listPosts(String companyName, Integer page, Integer size) {
@@ -101,9 +96,7 @@ public class BoardService {
                                                             String query,
                                                             String field,
                                                             Integer page,
-                                                            Integer size,
-                                                            String sessionKey) {
-        enforceSearchCooldown(sessionKey);
+                                                            Integer size) {
         Company company = resolveCompany(companyName);
 
         String normalizedQuery = normalizeText(query, "Query is required", 100);
@@ -402,17 +395,6 @@ public class BoardService {
         if (comment.getUser() == null || !userId.equals(comment.getUser().getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author or admin can modify comment");
         }
-    }
-
-    private void enforceSearchCooldown(String sessionKeyRaw) {
-        String sessionKey = sessionKeyRaw == null || sessionKeyRaw.isBlank() ? "anon" : sessionKeyRaw.trim();
-        long now = System.currentTimeMillis();
-        Long last = lastBoardSearchAtBySession.put(sessionKey, now);
-        if (last != null && now - last < SEARCH_COOLDOWN_MS) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Board search cooldown: wait 3 seconds");
-        }
-        long staleThreshold = SEARCH_COOLDOWN_MS * 20L;
-        lastBoardSearchAtBySession.entrySet().removeIf(entry -> now - entry.getValue() > staleThreshold);
     }
 
     private Set<Long> resolveLikedCommentIds(Long userId, Collection<Long> commentIds) {

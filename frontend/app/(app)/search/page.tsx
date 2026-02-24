@@ -83,7 +83,10 @@ export default function SearchPage() {
   const [reportPrevDate, setReportPrevDate] = useState(() => getKoreaToday())
   const [reportPrevStepName, setReportPrevStepName] = useState("")
   const [reportCurrentStepName, setReportCurrentStepName] = useState("")
+  const [reportNotificationMessage, setReportNotificationMessage] = useState("")
   const [reportDate, setReportDate] = useState(() => getKoreaToday())
+  const [reportTodayFixed, setReportTodayFixed] = useState(false)
+  const [reportNotifySubscribers, setReportNotifySubscribers] = useState(false)
   const [reportRollingNoResponse, setReportRollingNoResponse] = useState(false)
   const [rollingPrevStepSuggestions, setRollingPrevStepSuggestions] = useState<string[]>([])
   const [rollingCurrentStepSuggestions, setRollingCurrentStepSuggestions] = useState<string[]>([])
@@ -138,6 +141,8 @@ export default function SearchPage() {
       setReportPrevDate(getKoreaToday())
       setReportPrevStepName("")
       setReportCurrentStepName("")
+      setReportNotificationMessage("")
+      setReportDate(getKoreaToday())
       setRollingPrevStepSuggestions([])
       setRollingCurrentStepSuggestions([])
       setShowPrevStepSuggestions(false)
@@ -147,6 +152,8 @@ export default function SearchPage() {
     setReportPrevDate(getKoreaToday())
     setReportPrevStepName("")
     setReportCurrentStepName("")
+    setReportNotificationMessage("")
+    setReportDate(getKoreaToday())
     setReportRollingNoResponse(false)
     setRollingPrevStepSuggestions([])
     setRollingCurrentStepSuggestions([])
@@ -160,12 +167,13 @@ export default function SearchPage() {
     setReportPrevDate(getKoreaToday())
     setReportPrevStepName("")
     setReportCurrentStepName("")
+    setReportNotificationMessage("")
+    setReportDate(getKoreaToday())
     setReportRollingNoResponse(false)
     setRollingPrevStepSuggestions([])
     setRollingCurrentStepSuggestions([])
     setShowPrevStepSuggestions(false)
     setShowCurrentStepSuggestions(false)
-    setReportDate(getKoreaToday())
   }, [normalizedReportCompany])
 
   const exactMatch = useMemo(() => {
@@ -330,6 +338,8 @@ export default function SearchPage() {
     companyName?: string,
     withToday?: boolean,
     preferredMode?: RecruitmentMode,
+    todayFixed?: boolean,
+    notifySubscribers?: boolean,
   ) => {
     if (companyName) {
       setReportCompany(companyName)
@@ -344,11 +354,20 @@ export default function SearchPage() {
 
     setReportCurrentStepName("")
     setReportPrevStepName("")
+    setReportNotificationMessage("")
+    setReportTodayFixed(Boolean(todayFixed))
+    setReportNotifySubscribers(Boolean(notifySubscribers))
     setReportRollingNoResponse(false)
     if (preferredMode) {
       setReportMode(preferredMode)
     }
-    if (withToday) setReportDate(getKoreaToday())
+    if (notifySubscribers) {
+      setReportMode("REGULAR")
+    }
+    if (withToday) {
+      setReportPrevDate(getKoreaToday())
+      setReportDate(getKoreaToday())
+    }
     setReportMessage(null)
     setIsReportOpen(true)
   }
@@ -417,7 +436,7 @@ export default function SearchPage() {
   }
   const todayInput = toDateInput(getKoreaToday())
   const prevDateMaxInput = (() => {
-    const max = new Date(reportDate)
+    const max = reportTodayFixed ? getKoreaToday() : new Date(reportDate)
     max.setDate(max.getDate() - 1)
     return toDateInput(max)
   })()
@@ -427,8 +446,10 @@ export default function SearchPage() {
     return toDateInput(min)
   })()
 
-  const reportModalTitle = "오늘 결과발표 제보하기"
-  const reportModalDescription = "이전 전형/현재 전형과 발표일을 함께 입력해 주세요. 결과 미수신은 현재 전형만 입력하면 돼요."
+  const reportModalTitle = reportTodayFixed ? "오늘 결과 발표가 났어요" : "발표날짜 제보"
+  const reportModalDescription = reportTodayFixed
+    ? "오늘 결과 발표 제보 모드입니다. 현재 전형 발표일은 오늘로 고정됩니다."
+    : "이전 전형/현재 전형과 발표일을 함께 입력해 주세요. 결과 미수신은 현재 전형만 입력하면 돼요."
 
   const handleReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -450,11 +471,12 @@ export default function SearchPage() {
     }
     if (!reportRollingNoResponse) {
       const today = getKoreaToday()
-      if (reportDate > today) {
+      const currentDate = reportTodayFixed ? today : reportDate
+      if (currentDate > today) {
         setReportMessage("현재 전형 발표일은 오늘까지 입력할 수 있어요.")
         return
       }
-      if (reportPrevDate >= reportDate) {
+      if (reportPrevDate >= currentDate) {
         setReportMessage("이전 전형 발표일은 현재 전형 발표일보다 이전 날짜여야 해요.")
         return
       }
@@ -465,15 +487,11 @@ export default function SearchPage() {
       return
     }
 
-    if (isRegular && !reportRollingNoResponse && !reportDate) {
-      setReportMessage("현재 전형 발표일을 입력해 주세요.")
-      return
-    }
-
     setIsReportSubmitting(true)
     setReportMessage(null)
 
     try {
+      const currentDate = reportTodayFixed ? getKoreaToday() : reportDate
       await createReport({
         companyName,
         recruitmentMode: reportMode,
@@ -489,12 +507,15 @@ export default function SearchPage() {
         currentStepName: currentStepName,
         reportedDate: reportRollingNoResponse
           ? undefined
-          : toDateInput(reportDate),
+          : toDateInput(currentDate),
+        notificationMessage: reportNotifySubscribers ? (reportNotificationMessage.trim() || undefined) : undefined,
+        todayAnnouncement: reportNotifySubscribers,
       })
 
       setReportMessage("리포트가 접수되었습니다. 감사합니다!")
       setReportPrevStepName("")
       setReportCurrentStepName("")
+      setReportNotificationMessage("")
       setIsReportOpen(false)
     } catch (error) {
       console.error("Failed to create report", error)
@@ -585,7 +606,7 @@ export default function SearchPage() {
     <div className="container mx-auto max-w-[1400px] px-4 py-6">
       <Button
         type="button"
-        onClick={() => openReportModal()}
+        onClick={() => openReportModal(undefined, true, undefined, false, false)}
         className="fixed bottom-24 right-6 z-40 h-14 rounded-full border border-primary/30 bg-primary px-7 text-base font-semibold text-primary-foreground shadow-xl shadow-primary/30 transition-all hover:-translate-y-0.5 hover:bg-primary/90 md:bottom-8"
       >
         발표날짜 제보
@@ -639,7 +660,7 @@ export default function SearchPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">제보 유형</label>
-                <Select value={reportMode} onValueChange={(v) => setReportMode(v as RecruitmentMode)}>
+                <Select value={reportMode} onValueChange={(v) => setReportMode(v as RecruitmentMode)} disabled={reportNotifySubscribers}>
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="유형 선택" />
                   </SelectTrigger>
@@ -655,13 +676,15 @@ export default function SearchPage() {
               <div className="md:col-span-2 flex items-center">
                 <button
                   type="button"
-                  onClick={() => setReportRollingNoResponse((prev) => !prev)}
+                  onClick={() => setReportRollingNoResponse((prev) => (reportNotifySubscribers ? false : !prev))}
                   className={cn(
                     "rounded-full border px-3 py-1.5 text-xs transition-colors",
                     reportRollingNoResponse
                       ? "border-primary/50 bg-primary/10 text-primary"
                       : "border-border/60 text-muted-foreground hover:bg-muted/40",
+                    reportNotifySubscribers ? "cursor-not-allowed opacity-50" : "",
                   )}
+                  disabled={reportNotifySubscribers}
                 >
                   결과발표 메일을 받지 못했습니다
                 </button>
@@ -715,7 +738,7 @@ export default function SearchPage() {
                     onChange={(e) => setReportCurrentStepName(e.target.value)}
                     onFocus={() => setShowCurrentStepSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowCurrentStepSuggestions(false), 120)}
-                    placeholder="예: 1차 면접 합격"
+                    placeholder="예: 1차 면접 발표"
                     className="h-11"
                     required
                   />
@@ -757,21 +780,39 @@ export default function SearchPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">현재 전형 발표일</label>
+                <label className="text-sm font-medium text-foreground">
+                  현재 전형 발표일{reportTodayFixed ? " (오늘 고정)" : ""}
+                </label>
                 <Input
                   type="date"
-                  value={toDateInput(reportDate)}
+                  value={reportTodayFixed ? todayInput : toDateInput(reportDate)}
                   onChange={(e) => setReportDate(new Date(`${e.target.value}T00:00:00+09:00`))}
                   className="h-11 max-w-[220px]"
                   min={currentDateMinInput}
                   max={todayInput}
+                  readOnly={reportTodayFixed}
+                  disabled={reportTodayFixed}
                   required
                 />
               </div>
               </>
               )}
+              {reportNotifySubscribers && (
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-medium text-foreground">알림 메시지 (선택)</label>
+                <Input
+                  value={reportNotificationMessage}
+                  onChange={(e) => setReportNotificationMessage(e.target.value.slice(0, 120))}
+                  placeholder="첫 제보자인 경우 구독자에게 전달할 한 줄 메시지"
+                  className="h-11"
+                />
+                <p className="text-xs text-muted-foreground">
+                  첫 제보자의 메시지만 알림에 반영돼요. ({reportNotificationMessage.length}/120)
+                </p>
+              </div>
+              )}
               <p className="md:col-span-2 text-xs text-muted-foreground">
-                ( 필기 결과 발표 -&gt; 1차 면접 결과 발표 ) 와 같이 결과 발표 기준으로 제보 부탁드려요
+                ( 필기 - 필기 발표&gt; 1차 면접 결과 발표 ) 와 같이 결과 발표 기준으로 제보 부탁드려요
               </p>
             </div>
 
@@ -1007,7 +1048,15 @@ export default function SearchPage() {
               isCalendarVisible={isCalendarVisible}
               isTimelineLoading={isTimelineLoading}
               isLeadTimeLoading={isLeadTimeLoading}
-              onQuickReport={(companyName, mode) => openReportModal(companyName, true, mode)}
+              onQuickReport={(companyName, mode, options) =>
+                openReportModal(
+                  companyName,
+                  true,
+                  mode,
+                  Boolean(options?.todayAnnouncement),
+                  Boolean(options?.todayAnnouncement),
+                )
+              }
               className="h-full"
             />
             </div>
@@ -1029,7 +1078,15 @@ export default function SearchPage() {
         isCalendarVisible={isCalendarVisible}
         isTimelineLoading={isTimelineLoading}
         isLeadTimeLoading={isLeadTimeLoading}
-        onQuickReport={(companyName, mode) => openReportModal(companyName, true, mode)}
+        onQuickReport={(companyName, mode, options) =>
+          openReportModal(
+            companyName,
+            true,
+            mode,
+            Boolean(options?.todayAnnouncement),
+            Boolean(options?.todayAnnouncement),
+          )
+        }
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />

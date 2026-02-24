@@ -43,11 +43,12 @@ public class ReportService {
     private final RecruitmentStepRepository stepRepository;
     private final StepDateReportRepository reportRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
+    private final NotificationService notificationService;
     private final AppProperties appProperties;
     private final ConcurrentMap<String, Long> lastReportAtByIp = new ConcurrentHashMap<>();
 
     @Transactional
-    public ReportCreateResponse createReport(ReportCreateRequest request, String clientIp) {
+    public ReportCreateResponse createReport(ReportCreateRequest request, String clientIp, Long reporterUserId) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing request");
         }
@@ -126,6 +127,9 @@ public class ReportService {
                 }
             }
             reportRepository.save(duplicate);
+            if (mode == RecruitmentMode.REGULAR && Boolean.TRUE.equals(request.getTodayAnnouncement())) {
+                notificationService.onRegularTodayReport(company, reportedDate, reporterUserId, request.getNotificationMessage());
+            }
             return new ReportCreateResponse(duplicate.getReportId());
         }
 
@@ -151,6 +155,9 @@ public class ReportService {
         report.setStatus(ReportStatus.PENDING);
 
         StepDateReport saved = reportRepository.save(report);
+        if (mode == RecruitmentMode.REGULAR && Boolean.TRUE.equals(request.getTodayAnnouncement())) {
+            notificationService.onRegularTodayReport(company, reportedDate, reporterUserId, request.getNotificationMessage());
+        }
         return new ReportCreateResponse(saved.getReportId());
     }
 

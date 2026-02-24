@@ -22,4 +22,6 @@ public class ReportCreateRequest {
     private LocalDate prevReportedDate;
     private String prevStepName;
     private String currentStepName;
+    private String notificationMessage;
+    private Boolean todayAnnouncement;
 }

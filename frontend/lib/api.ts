@@ -7,6 +7,7 @@ import type {
   CompanySearchItem,
   CompanyTimeline,
   KeywordLeadTime,
+  NotificationSubscription,
   PagedResult,
   RollingPrediction,
   ReportItem,
@@ -14,6 +15,7 @@ import type {
   ReportStep,
   RecruitmentMode,
   RollingReportType,
+  UserNotification,
   User,
 } from "./types"
 
@@ -133,6 +135,27 @@ type BoardPageInput<T> = {
   hasNext: boolean
 }
 
+type NotificationSubscriptionInput = {
+  subscriptionId: number
+  companyId: number | null
+  companyName: string
+  createdAt: Date | string
+}
+
+type UserNotificationInput = {
+  notificationId: number
+  companyId: number | null
+  companyName: string
+  eventDate: Date | string | null
+  firstReporterNickname: string
+  reporterMessage: string | null
+  reporterCount: number
+  summaryText: string
+  read: boolean
+  createdAt: Date | string
+  updatedAt: Date | string
+}
+
 type RollingPredictionInput = {
   stepName: string
   previousStepDate: Date | string
@@ -147,14 +170,14 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "false"
 const ROLLING_STEP_CURRENT_SAMPLES_TXT_PATH = "/data/rolling-step-samples.txt"
 const ROLLING_STEP_PREV_SAMPLES_TXT_PATH = "/data/rolling-step-prev-samples.txt"
 const ROLLING_STEP_PAIRS_TXT_PATH = "/data/rolling-step-pairs.txt"
-const DEFAULT_ROLLING_STEP_CURRENT_SAMPLES = ["서류 합격", "코딩 테스트 합격", "1차 면접 합격", "2차 면접 합격", "최종 합격"]
+const DEFAULT_ROLLING_STEP_CURRENT_SAMPLES = ["서류 발표", "코딩 테스트 발표", "1차 면접 발표", "2차 면접 발표", "최종 발표"]
 const DEFAULT_ROLLING_STEP_PREV_SAMPLES = ["서류", "코딩 테스트", "1차 면접", "2차 면접", "최종 면접"]
 const DEFAULT_ROLLING_STEP_PAIRS: Array<{ prev: string; current: string }> = [
-  { prev: "서류", current: "서류 합격" },
-  { prev: "코딩 테스트", current: "코딩 테스트 합격" },
-  { prev: "1차 면접", current: "1차 면접 합격" },
-  { prev: "2차 면접", current: "2차 면접 합격" },
-  { prev: "최종 면접", current: "최종 합격" },
+  { prev: "서류", current: "서류 발표" },
+  { prev: "코딩 테스트", current: "코딩 테스트 발표" },
+  { prev: "1차 면접", current: "1차 면접 발표" },
+  { prev: "2차 면접", current: "2차 면접 발표" },
+  { prev: "최종 면접", current: "최종 발표" },
 ]
 type UserInfoResponse = {
   userId: number
@@ -224,6 +247,18 @@ const normalizeRollingPrediction = (item: RollingPredictionInput): RollingPredic
   expectedDate: toDateOrNull(item.expectedDate),
   expectedStartDate: toDateOrNull(item.expectedStartDate),
   expectedEndDate: toDateOrNull(item.expectedEndDate),
+})
+
+const normalizeNotificationSubscription = (item: NotificationSubscriptionInput): NotificationSubscription => ({
+  ...item,
+  createdAt: toDate(item.createdAt),
+})
+
+const normalizeUserNotification = (item: UserNotificationInput): UserNotification => ({
+  ...item,
+  eventDate: toDateOrNull(item.eventDate),
+  createdAt: toDate(item.createdAt),
+  updatedAt: toDate(item.updatedAt),
 })
 
 function parseStepSamples(text: string): string[] {
@@ -661,6 +696,8 @@ export type ReportCreateRequest = {
   prevStepName?: string | null
   currentStepName?: string | null
   reportedDate?: string | null
+  notificationMessage?: string | null
+  todayAnnouncement?: boolean
 }
 
 export async function fetchReportSteps(
@@ -725,6 +762,61 @@ export async function createReport(payload: ReportCreateRequest): Promise<{ repo
   return await request<{ reportId: number }>("/api/reports", {
     method: "POST",
     body: JSON.stringify(payload),
+  })
+}
+
+export async function fetchNotificationSubscriptions(
+  page = 0,
+  size = 20,
+): Promise<PagedResult<NotificationSubscription>> {
+  if (USE_MOCK) {
+    await delay(120)
+    return { items: [], page, size, hasNext: false }
+  }
+  const params = new URLSearchParams({ page: String(page), size: String(size) })
+  const data = await request<BoardPageInput<NotificationSubscriptionInput>>(
+    `/api/notifications/subscriptions?${params.toString()}`,
+  )
+  return {
+    items: (data.items ?? []).map(normalizeNotificationSubscription),
+    page: data.page ?? page,
+    size: data.size ?? size,
+    hasNext: Boolean(data.hasNext),
+  }
+}
+
+export async function createNotificationSubscription(companyName: string): Promise<NotificationSubscription> {
+  const data = await request<NotificationSubscriptionInput>("/api/notifications/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({ companyName }),
+  })
+  return normalizeNotificationSubscription(data)
+}
+
+export async function deleteNotificationSubscription(subscriptionId: number): Promise<void> {
+  await request<void>(`/api/notifications/subscriptions/${subscriptionId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function fetchNotifications(page = 0, size = 20): Promise<PagedResult<UserNotification>> {
+  if (USE_MOCK) {
+    await delay(120)
+    return { items: [], page, size, hasNext: false }
+  }
+  const params = new URLSearchParams({ page: String(page), size: String(size) })
+  const data = await request<BoardPageInput<UserNotificationInput>>(`/api/notifications?${params.toString()}`)
+  return {
+    items: (data.items ?? []).map(normalizeUserNotification),
+    page: data.page ?? page,
+    size: data.size ?? size,
+    hasNext: Boolean(data.hasNext),
+  }
+}
+
+export async function deleteNotification(notificationId: number): Promise<void> {
+  await request<void>(`/api/notifications/${notificationId}`, {
+    method: "DELETE",
   })
 }
 

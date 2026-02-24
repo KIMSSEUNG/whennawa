@@ -18,7 +18,11 @@ interface CompanyDetailSheetProps {
   isCalendarVisible: boolean
   isTimelineLoading: boolean
   isLeadTimeLoading: boolean
-  onQuickReport: (companyName: string, mode: "REGULAR" | "ROLLING") => void
+  onQuickReport: (
+    companyName: string,
+    mode: "REGULAR" | "ROLLING",
+    options?: { todayAnnouncement?: boolean },
+  ) => void
   open: boolean
   onOpenChange: (open: boolean) => void
 }

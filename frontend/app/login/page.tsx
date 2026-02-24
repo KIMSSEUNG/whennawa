@@ -27,14 +27,45 @@ function LoginPageContent() {
   const showConsentDenied = searchParams.get("reason") === "consent_denied"
   const showOauthFailed = searchParams.get("reason") === "oauth_failed"
   const next = searchParams.get("next") ?? "/"
+  const isBackBlockedPath = (path: string) => {
+    const blockedPrefixes = ["/notifications", "/profile"]
+    if (blockedPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}?`))) {
+      return true
+    }
+    if (path === "/career-board/write" || path.startsWith("/career-board/write?")) return true
+    if (path.includes("/write")) return true
+    return false
+  }
+  const normalizeSafePath = (value: string | null | undefined) => {
+    if (!value) return null
+    const trimmed = value.trim()
+    if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null
+    if (trimmed === "/login" || trimmed.startsWith("/login?")) return null
+    if ((showAuthRequired || showSessionExpired) && isBackBlockedPath(trimmed)) return null
+    return trimmed
+  }
   const handleGoBack = () => {
-    if (next && next !== "/") {
-      router.push(next)
+    const safeNext = normalizeSafePath(next)
+    if (safeNext && safeNext !== "/") {
+      router.push(safeNext)
       return
     }
     if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back()
-      return
+      const referrerPath = (() => {
+        try {
+          if (!document.referrer) return null
+          const parsed = new URL(document.referrer)
+          if (parsed.origin !== window.location.origin) return null
+          return `${parsed.pathname}${parsed.search}`
+        } catch {
+          return null
+        }
+      })()
+      const safeReferrerPath = normalizeSafePath(referrerPath)
+      if (safeReferrerPath) {
+        router.push(safeReferrerPath)
+        return
+      }
     }
     router.push("/search")
   }

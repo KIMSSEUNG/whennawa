@@ -9,7 +9,6 @@ import com.whennawa.dto.board.BoardPostResponse;
 import com.whennawa.dto.board.BoardPostUpdateRequest;
 import com.whennawa.security.UserPrincipal;
 import com.whennawa.service.BoardService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -50,10 +49,8 @@ public class BoardController {
                                                             @RequestParam("q") String query,
                                                             @RequestParam(value = "field", defaultValue = "title") String field,
                                                             @RequestParam(value = "page", defaultValue = "0") Integer page,
-                                                            @RequestParam(value = "size", defaultValue = "20") Integer size,
-                                                            HttpServletRequest request) {
-        String sessionKey = request == null ? "anon" : request.getSession(true).getId();
-        return boardService.searchPosts(companyName, query, field, page, size, sessionKey);
+                                                            @RequestParam(value = "size", defaultValue = "20") Integer size) {
+        return boardService.searchPosts(companyName, query, field, page, size);
     }
 
     @PostMapping("/{companyName}/posts")

@@ -1,7 +1,9 @@
 package com.whennawa.service;
 
 import com.whennawa.dto.company.CompanySearchResponse;
+import com.whennawa.dto.company.CompanyTimelineStep;
 import com.whennawa.dto.company.CompanyTimelineResponse;
+import com.whennawa.dto.company.CompanyUnitTimelineResponse;
 import com.whennawa.dto.company.CompanyCreateResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
 import com.whennawa.dto.company.RollingPredictionResponse;
@@ -12,11 +14,14 @@ import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.RollingStepLogRepository;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 import com.whennawa.util.CompanyNameNormalizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -109,8 +114,9 @@ public class CompanySearchService {
         if (company == null) {
             return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
         }
+        List<CompanyUnitTimelineResponse> regularTimelines = buildRegularTimelines(company.getCompanyName());
         List<RollingStepStatsResponse> rollingSteps = buildRollingStats(company.getCompanyName());
-        return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), List.of(), rollingSteps);
+        return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), regularTimelines, rollingSteps);
     }
 
     public KeywordLeadTimeResponse getKeywordLeadTime(String companyName, String keyword) {
@@ -293,6 +299,59 @@ public class CompanySearchService {
             return Long.compare(b.getNoResponseCount(), a.getNoResponseCount());
         });
         return result;
+    }
+
+    private List<CompanyUnitTimelineResponse> buildRegularTimelines(String companyName) {
+        if (companyName == null || companyName.isBlank()) {
+            return List.of();
+        }
+        Company company = resolveActiveCompany(companyName.trim());
+        if (company == null) {
+            return List.of();
+        }
+        List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
+        if (logs.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Integer, List<CompanyTimelineStep>> byYear = new TreeMap<>(Comparator.reverseOrder());
+        for (RollingStepLog log : logs) {
+            if (log == null) {
+                continue;
+            }
+            String label = log.getCurrentStepName();
+            if (label == null || label.isBlank()) {
+                continue;
+            }
+            if (log.getRollingResultType() == RollingReportType.NO_RESPONSE_REPORTED) {
+                continue;
+            }
+            LocalDate reportedDate = log.getReportedDate();
+            if (reportedDate == null) {
+                continue;
+            }
+            LocalDateTime occurredAt = reportedDate.atStartOfDay();
+            Long diffDays = null;
+            if (log.getPrevReportedDate() != null) {
+                long diff = ChronoUnit.DAYS.between(log.getPrevReportedDate(), reportedDate);
+                diffDays = diff >= 0 ? diff : null;
+            }
+            CompanyTimelineStep step = new CompanyTimelineStep("REPORTED", label.trim(), occurredAt, diffDays);
+            byYear.computeIfAbsent(reportedDate.getYear(), key -> new ArrayList<>()).add(step);
+        }
+
+        if (byYear.isEmpty()) {
+            return List.of();
+        }
+
+        List<CompanyUnitTimelineResponse> units = new ArrayList<>();
+        for (Map.Entry<Integer, List<CompanyTimelineStep>> entry : byYear.entrySet()) {
+            List<CompanyTimelineStep> steps = entry.getValue().stream()
+                .sorted(Comparator.comparing(CompanyTimelineStep::getOccurredAt).reversed())
+                .toList();
+            units.add(new CompanyUnitTimelineResponse(entry.getKey(), steps));
+        }
+        return units;
     }
 
     public Company resolveActiveCompany(String companyName) {

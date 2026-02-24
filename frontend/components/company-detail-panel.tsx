@@ -19,7 +19,11 @@ interface CompanyDetailPanelProps {
   isCalendarVisible: boolean
   isTimelineLoading: boolean
   isLeadTimeLoading: boolean
-  onQuickReport: (companyName: string, mode: "REGULAR" | "ROLLING") => void
+  onQuickReport: (
+    companyName: string,
+    mode: "REGULAR" | "ROLLING",
+    options?: { todayAnnouncement?: boolean },
+  ) => void
   className?: string
 }
 
@@ -45,17 +49,17 @@ function getLeadTimeMessages(keyword: string, leadTime: KeywordLeadTime) {
   const messages: string[] = []
 
   if (leadTime.medianDays != null) {
-    messages.push(`${target} 결과는 이전 합격일(지원서 접수/마감) 기준 보통 ${leadTime.medianDays}일 후 발표됐어요.`)
+    messages.push(`${target} 결과는 이전 발표일(지원서 접수/마감) 기준 보통 ${leadTime.medianDays}일 후 발표됐어요.`)
   }
 
   if (leadTime.minDays != null && leadTime.maxDays != null) {
     if (leadTime.minDays !== leadTime.maxDays) {
-      messages.push(`가장 빨랐던 사례는 이전 합격일(지원서 접수/마감) 기준 ${leadTime.minDays}일, 가장 늦었던 사례는 ${leadTime.maxDays}일이었어요.`)
+      messages.push(`가장 빨랐던 사례는 이전 발표일(지원서 접수/마감) 기준 ${leadTime.minDays}일, 가장 늦었던 사례는 ${leadTime.maxDays}일이었어요.`)
     }
   } else if (leadTime.minDays != null) {
-    messages.push(`가장 빨랐던 사례는 이전 합격일(지원서 접수/마감) 기준 ${leadTime.minDays}일이었어요.`)
+    messages.push(`가장 빨랐던 사례는 이전 발표일(지원서 접수/마감) 기준 ${leadTime.minDays}일이었어요.`)
   } else if (leadTime.maxDays != null) {
-    messages.push(`가장 늦었던 사례는 이전 합격일(지원서 접수/마감) 기준 ${leadTime.maxDays}일이었어요.`)
+    messages.push(`가장 늦었던 사례는 이전 발표일(지원서 접수/마감) 기준 ${leadTime.maxDays}일이었어요.`)
   }
 
   return messages
@@ -479,10 +483,10 @@ export function CompanyDetailPanel({
             <div className="flex">
               <button
                 type="button"
-                onClick={() => onQuickReport(company.companyName, "REGULAR")}
+                onClick={() => onQuickReport(company.companyName, "REGULAR", { todayAnnouncement: true })}
                 className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
               >
-                오늘 결과 발표 제보하기
+                오늘 결과 발표가 났어요
               </button>
             </div>
           </>
@@ -503,7 +507,7 @@ export function CompanyDetailPanel({
                 onClick={() => onQuickReport(company.companyName, "ROLLING")}
                 className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
               >
-                오늘 결과 발표 제보하기
+                수시 제보하기
               </button>
             </div>
           </>
@@ -512,6 +516,23 @@ export function CompanyDetailPanel({
         {!hasRegular && !hasRolling && (
           <section className="rounded-2xl border border-border/60 bg-card p-4">
             <p className="text-sm font-medium text-foreground/85">공채/수시 데이터가 아직 없습니다.</p>
+            <p className="mt-1 text-xs text-muted-foreground">첫 제보를 남겨 데이터 생성을 시작할 수 있어요.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onQuickReport(company.companyName, "REGULAR", { todayAnnouncement: false })}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-primary/35 bg-primary/15 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/22"
+              >
+                공채 제보하기
+              </button>
+              <button
+                type="button"
+                onClick={() => onQuickReport(company.companyName, "ROLLING", { todayAnnouncement: false })}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-primary/35 bg-primary/15 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/22"
+              >
+                수시 제보하기
+              </button>
+            </div>
           </section>
         )}
       </div>

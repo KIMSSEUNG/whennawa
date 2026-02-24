@@ -47,13 +47,11 @@ public class AppProperties {
 
     @Getter @Setter
     public static class Scheduler {
-        private String reportCleanupCron = "0 0 12 * * *";
-        private String refreshTokenCleanupCron = "0 0 12 * * *";
-        private String chatCleanupCron = "0 0 3 * * *";
-        private String boardPostCleanupCron = "0 0 0 * * *";
+        private String cleanupCron = "0 0 3 * * *";
         private long chatRetentionDays = 5;
         private long boardPostRetentionDays = 14;
         private long refreshRevokedRetentionDays = 1;
+        private long notificationRetentionDays = 30;
     }
 }
 

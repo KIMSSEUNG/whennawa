@@ -1,6 +1,6 @@
-서류
-NCS
-필기
+서류 지원
+NCS 시험
+필기 시험
 인적성 검사
 적성 검사
 인성 검사
@@ -8,15 +8,15 @@ NCS
 AI 역량 검사
 코딩 테스트
 과제
-GSAT
-SKCT
-HMAT
+GSAT 시험
+SKCT 시험
+HMAT 시험
 LG Way Fit Test
-L-TAB
-CJ CAT
-G-AT
-PAT
-HATCH
+L-TAB 시험
+CJ CAT 시험
+G-AT 시험
+PAT 시험
+HATCH 시험
 1차 면접
 2차 면접
 3차 면접

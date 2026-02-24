@@ -124,3 +124,24 @@ export interface PagedResult<T> {
   size: number
   hasNext: boolean
 }
+
+export interface NotificationSubscription {
+  subscriptionId: number
+  companyId: number | null
+  companyName: string
+  createdAt: Date
+}
+
+export interface UserNotification {
+  notificationId: number
+  companyId: number | null
+  companyName: string
+  eventDate: Date | null
+  firstReporterNickname: string
+  reporterMessage: string | null
+  reporterCount: number
+  summaryText: string
+  read: boolean
+  createdAt: Date
+  updatedAt: Date
+}
