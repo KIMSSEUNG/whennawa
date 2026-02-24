@@ -16,7 +16,7 @@ export function TopNavBar() {
   return (
     <header className="sticky top-0 z-50 hidden border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:block">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/search" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <Image src="/logo.png" alt="언제나와 로고" width={32} height={32} className="rounded-lg" priority />
           <span className="text-xl font-semibold">언제나와</span>
         </Link>

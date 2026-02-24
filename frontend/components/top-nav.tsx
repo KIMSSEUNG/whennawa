@@ -90,7 +90,7 @@ export function TopNav() {
   return (
     <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm px-6">
       <div className="flex items-center gap-8">
-        <Link href="/search" className="flex items-center gap-2 text-lg font-bold text-foreground">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
           <Image src="/logo.png" alt="언제나와 로고" width={28} height={28} className="rounded-md" priority />
           <span>언제나와</span>
         </Link>
