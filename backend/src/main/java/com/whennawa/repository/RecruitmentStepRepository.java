@@ -10,14 +10,14 @@ public interface RecruitmentStepRepository extends JpaRepository<RecruitmentStep
     @Query("""
         select s from RecruitmentStep s
         where s.channel.company.companyId = :companyId
-        order by s.stepOrder asc, s.stepId asc
+        order by s.stepId asc
         """)
     List<RecruitmentStep> findTimelineByCompanyId(@Param("companyId") Long companyId);
 
     @Query("""
         select s from RecruitmentStep s
         where s.channel.channelId = :channelId
-        order by s.stepOrder asc, s.stepId asc
+        order by s.stepId asc
         """)
     List<RecruitmentStep> findByChannelId(@Param("channelId") Long channelId);
 

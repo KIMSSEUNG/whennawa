@@ -14,34 +14,30 @@ public interface StepDateReportRepository extends JpaRepository<StepDateReport, 
 
     Optional<StepDateReport> findByReportIdAndDeletedAtIsNull(Long reportId);
 
-    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndStepStepIdAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndPrevStepNameAndCurrentStepNameAndStatusAndDeletedAtIsNull(
         String companyName,
         java.time.LocalDate reportedDate,
-        Long stepId,
-        ReportStatus status
-    );
-
-    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndStepIsNullAndCurrentStepNameAndStatusAndDeletedAtIsNull(
-        String companyName,
-        java.time.LocalDate reportedDate,
+        String prevStepName,
         String currentStepName,
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
         String companyName,
         RecruitmentMode recruitmentMode,
         RollingReportType rollingResultType,
+        String prevStepName,
         String currentStepName,
         java.time.LocalDate prevReportedDate,
         java.time.LocalDate reportedDate,
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndCurrentStepNameAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndStatusAndDeletedAtIsNull(
         String companyName,
         RecruitmentMode recruitmentMode,
         RollingReportType rollingResultType,
+        String prevStepName,
         String currentStepName,
         ReportStatus status
     );

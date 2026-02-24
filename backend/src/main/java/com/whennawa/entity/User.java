@@ -35,6 +35,9 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true, length = 320)
     private String email;
 
+    @Column(nullable = false, unique = true, length = 64)
+    private String nickname;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @JdbcTypeCode(SqlTypes.VARCHAR)

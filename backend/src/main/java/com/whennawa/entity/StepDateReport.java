@@ -55,10 +55,6 @@ public class StepDateReport extends BaseEntity {
     @Column(name = "reported_date")
     private LocalDate reportedDate;
 
-    @ManyToOne
-    @JoinColumn(name = "step_id")
-    private RecruitmentStep step;
-
     @Column(name = "report_count", nullable = false)
     private Integer reportCount = 1;
 

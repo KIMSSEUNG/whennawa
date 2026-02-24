@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { getUser, logout, withdraw } from "@/lib/api"
 import type { User } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,10 @@ export default function ProfilePage() {
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const qs = searchParams?.toString()
+  const loginPath = `/login?next=${encodeURIComponent(`${pathname ?? "/"}${qs ? `?${qs}` : ""}`)}`
 
   useEffect(() => {
     let mounted = true
@@ -34,7 +38,7 @@ export default function ProfilePage() {
       const data = await getUser()
       if (!mounted) return
       if (!data || data.role !== "USER") {
-        router.push("/login")
+        router.push(loginPath)
         return
       }
       setUser(data)
@@ -53,18 +57,18 @@ export default function ProfilePage() {
       window.removeEventListener("session_update", handleSessionUpdate)
       window.removeEventListener("storage", handleSessionUpdate)
     }
-  }, [])
+  }, [loginPath, router])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
     await logout()
-    router.push("/login")
+    router.push(loginPath)
   }
 
   const handleWithdraw = async () => {
     setIsWithdrawing(true)
     await withdraw()
-    router.push("/login")
+    router.push(loginPath)
   }
 
   return (

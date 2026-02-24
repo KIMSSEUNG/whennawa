@@ -22,6 +22,4 @@ public class ReportCreateRequest {
     private LocalDate prevReportedDate;
     private String prevStepName;
     private String currentStepName;
-
-    private Long stepId;
 }

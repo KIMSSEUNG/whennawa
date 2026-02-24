@@ -11,7 +11,6 @@ import com.whennawa.repository.ChatMessageRepository;
 import com.whennawa.repository.ChatRoomMemberRepository;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.UserRepository;
-import com.whennawa.util.NicknameGenerator;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +30,6 @@ public class ChatService {
     private final UserRepository userRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final NicknameGenerator nicknameGenerator;
     private final ProfanityMasker profanityMasker;
     private final ConcurrentMap<Long, Long> lastChatAtByUserId = new ConcurrentHashMap<>();
 
@@ -85,17 +83,32 @@ public class ChatService {
     }
 
     private ChatRoomMember findOrCreateMember(Company company, User user) {
+        String effectiveNickname = resolveNickname(user);
         return chatRoomMemberRepository.findByCompanyCompanyIdAndUserId(company.getCompanyId(), user.getId())
+            .map(existing -> {
+                if (!effectiveNickname.equals(existing.getNickname())) {
+                    if (chatRoomMemberRepository.existsByCompanyCompanyIdAndNickname(company.getCompanyId(), effectiveNickname)) {
+                        return existing;
+                    }
+                    existing.setNickname(effectiveNickname);
+                    return chatRoomMemberRepository.save(existing);
+                }
+                return existing;
+            })
             .orElseGet(() -> {
                 ChatRoomMember created = new ChatRoomMember();
                 created.setCompany(company);
                 created.setUser(user);
-                String nickname = nicknameGenerator.generateUnique(
-                    candidate -> chatRoomMemberRepository.existsByCompanyCompanyIdAndNickname(company.getCompanyId(), candidate)
-                );
-                created.setNickname(nickname);
+                created.setNickname(effectiveNickname);
                 return chatRoomMemberRepository.save(created);
             });
+    }
+
+    private String resolveNickname(User user) {
+        if (user.getNickname() != null && !user.getNickname().isBlank()) {
+            return user.getNickname();
+        }
+        return "user#" + String.format("%05d", Math.floorMod(user.getId() == null ? 0L : user.getId(), 100_000));
     }
 
     private String normalizeMessage(String raw) {

@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   public_id BINARY(16) NOT NULL UNIQUE,
   email VARCHAR(320) NOT NULL UNIQUE,
+  nickname VARCHAR(64) NOT NULL UNIQUE,
   role VARCHAR(20) NOT NULL DEFAULT 'USER',
   deleted_at DATETIME,
   created_at DATETIME NOT NULL,
@@ -61,6 +62,7 @@ CREATE TABLE IF NOT EXISTS step_date_report (
   rolling_result_type VARCHAR(32),
   reported_date DATE,
   prev_reported_date DATE,
+  prev_step_name VARCHAR(100),
   current_step_name VARCHAR(100),
   report_count INT NOT NULL DEFAULT 1,
   status ENUM('PENDING', 'PROCESSED', 'DISCARDED') NOT NULL DEFAULT 'PENDING',
@@ -76,6 +78,7 @@ CREATE INDEX idx_step_date_report_date ON step_date_report (reported_date);
 CREATE INDEX idx_step_date_report_mode ON step_date_report (recruitment_mode);
 CREATE INDEX idx_step_date_report_rolling_result_type ON step_date_report (rolling_result_type);
 CREATE INDEX idx_step_date_report_prev_date ON step_date_report (prev_reported_date);
+CREATE INDEX idx_step_date_report_prev_step_name ON step_date_report (prev_step_name);
 CREATE INDEX idx_step_date_report_current_step_name ON step_date_report (current_step_name);
 
 CREATE TABLE IF NOT EXISTS rolling_step_log (
@@ -146,30 +149,68 @@ CREATE TABLE IF NOT EXISTS board_post (
 CREATE INDEX idx_board_post_company_created_at ON board_post (company_id, created_at);
 CREATE INDEX idx_board_post_user ON board_post (user_id);
 
+CREATE TABLE IF NOT EXISTS board_comment (
+  comment_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  post_id BIGINT NOT NULL,
+  parent_comment_id BIGINT NULL,
+  user_id BIGINT NOT NULL,
+  content VARCHAR(3000) NOT NULL,
+  like_count INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT fk_board_comment_post FOREIGN KEY (post_id) REFERENCES board_post(post_id),
+  CONSTRAINT fk_board_comment_parent FOREIGN KEY (parent_comment_id) REFERENCES board_comment(comment_id),
+  CONSTRAINT fk_board_comment_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_board_comment_post_created_at ON board_comment (post_id, created_at);
+CREATE INDEX idx_board_comment_parent ON board_comment (parent_comment_id);
+CREATE INDEX idx_board_comment_user ON board_comment (user_id);
+
+CREATE TABLE IF NOT EXISTS board_comment_like (
+  like_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  comment_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT fk_board_comment_like_comment FOREIGN KEY (comment_id) REFERENCES board_comment(comment_id),
+  CONSTRAINT fk_board_comment_like_user FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT uk_board_comment_like_comment_user UNIQUE (comment_id, user_id)
+);
+
+CREATE INDEX idx_board_comment_like_comment ON board_comment_like (comment_id);
+CREATE INDEX idx_board_comment_like_user ON board_comment_like (user_id);
+
 INSERT IGNORE INTO users (
   public_id,
   email,
+  nickname,
   role,
   created_at,
   updated_at
 ) VALUES (
   UNHEX(REPLACE(UUID(), '-', '')),
   'whennawa@gmail.com',
+  'admin#00001',
   'ADMIN',
   NOW(),
   NOW()
 );
 
+/*
 INSERT IGNORE INTO users (
   public_id,
   email,
+  nickname,
   role,
   created_at,
   updated_at
 ) VALUES (
   UNHEX(REPLACE(UUID(), '-', '')),
   'tmdghdhkdw@gmail.com',
+  'member#00001',
   'USER',
   NOW(),
   NOW()
 );
+*/

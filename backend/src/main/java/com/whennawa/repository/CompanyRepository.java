@@ -19,11 +19,9 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
     @Query("""
         select c.companyName as companyName,
-               max(l.targetDate) as lastResultAt
+               max(r.updatedAt) as lastResultAt
         from Company c
-        left join RecruitmentChannel ch on ch.company = c
-        left join RecruitmentStep s on s.channel = ch
-        left join StepDateLog l on l.step = s
+        left join RollingStepLog r on lower(r.companyName) = lower(c.companyName)
         where c.isActive = true
           and lower(c.companyName) like lower(concat('%', :query, '%'))
         group by c.companyName

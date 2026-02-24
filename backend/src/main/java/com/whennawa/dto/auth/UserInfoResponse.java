@@ -3,14 +3,16 @@ package com.whennawa.dto.auth;
 public class UserInfoResponse {
     private Long userId;
     private String email;
+    private String nickname;
     private String role;
 
     public UserInfoResponse() {
     }
 
-    public UserInfoResponse(Long userId, String email, String role) {
+    public UserInfoResponse(Long userId, String email, String nickname, String role) {
         this.userId = userId;
         this.email = email;
+        this.nickname = nickname;
         this.role = role;
     }
 
@@ -36,6 +38,14 @@ public class UserInfoResponse {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
     }
 }
 

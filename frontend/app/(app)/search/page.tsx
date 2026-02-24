@@ -4,12 +4,14 @@ import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   searchCompanies,
   fetchCompanyTimeline,
   fetchCompanyLeadTime,
-  fetchRollingReportStepNames,
+  fetchRollingReportCurrentStepNames,
+  fetchRollingReportPrevStepNames,
+  resolveRollingStepPair,
   createReport,
   createCompany,
   getUser,
@@ -51,6 +53,7 @@ function getKoreaToday() {
 
 export default function SearchPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [query, setQuery] = useState("")
   const [searchedQuery, setSearchedQuery] = useState("")
@@ -78,11 +81,14 @@ export default function SearchPage() {
   const [reportSuggestions, setReportSuggestions] = useState<CompanySearchItem[]>([])
   const [reportMode, setReportMode] = useState<RecruitmentMode>("REGULAR")
   const [reportPrevDate, setReportPrevDate] = useState(() => getKoreaToday())
+  const [reportPrevStepName, setReportPrevStepName] = useState("")
   const [reportCurrentStepName, setReportCurrentStepName] = useState("")
   const [reportDate, setReportDate] = useState(() => getKoreaToday())
   const [reportRollingNoResponse, setReportRollingNoResponse] = useState(false)
-  const [rollingStepSuggestions, setRollingStepSuggestions] = useState<string[]>([])
-  const [showRollingStepSuggestions, setShowRollingStepSuggestions] = useState(false)
+  const [rollingPrevStepSuggestions, setRollingPrevStepSuggestions] = useState<string[]>([])
+  const [rollingCurrentStepSuggestions, setRollingCurrentStepSuggestions] = useState<string[]>([])
+  const [showPrevStepSuggestions, setShowPrevStepSuggestions] = useState(false)
+  const [showCurrentStepSuggestions, setShowCurrentStepSuggestions] = useState(false)
   const [isReportSubmitting, setIsReportSubmitting] = useState(false)
   const [reportMessage, setReportMessage] = useState<string | null>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
@@ -96,11 +102,16 @@ export default function SearchPage() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const normalizedQuery = useMemo(() => query.trim(), [query])
   const normalizedReportCompany = useMemo(() => reportCompany.trim(), [reportCompany])
-  const currentStepSuggestionOptions = useMemo(() => {
-    const merged = [...rollingStepSuggestions]
+  const prevStepSuggestionOptions = useMemo(() => {
+    const merged = [...rollingPrevStepSuggestions]
     const unique = Array.from(new Set(merged))
     return unique.filter((name) => name && name.trim())
-  }, [rollingStepSuggestions])
+  }, [rollingPrevStepSuggestions])
+  const currentStepSuggestionOptions = useMemo(() => {
+    const merged = [...rollingCurrentStepSuggestions]
+    const unique = Array.from(new Set(merged))
+    return unique.filter((name) => name && name.trim())
+  }, [rollingCurrentStepSuggestions])
   const prevReportCompanyRef = useRef<string>("")
   const restoredFromUrlRef = useRef(false)
   const normalizedAddCompanyPreview = useMemo(() => normalizeCompanyName(newCompanyName), [newCompanyName])
@@ -125,26 +136,35 @@ export default function SearchPage() {
     if (reportMode === "REGULAR") {
       setReportRollingNoResponse(false)
       setReportPrevDate(getKoreaToday())
+      setReportPrevStepName("")
       setReportCurrentStepName("")
-      setRollingStepSuggestions([])
-      setShowRollingStepSuggestions(false)
+      setRollingPrevStepSuggestions([])
+      setRollingCurrentStepSuggestions([])
+      setShowPrevStepSuggestions(false)
+      setShowCurrentStepSuggestions(false)
       return
     }
     setReportPrevDate(getKoreaToday())
+    setReportPrevStepName("")
     setReportCurrentStepName("")
     setReportRollingNoResponse(false)
-    setRollingStepSuggestions([])
-    setShowRollingStepSuggestions(false)
+    setRollingPrevStepSuggestions([])
+    setRollingCurrentStepSuggestions([])
+    setShowPrevStepSuggestions(false)
+    setShowCurrentStepSuggestions(false)
   }, [reportMode])
 
   useEffect(() => {
     if (prevReportCompanyRef.current === normalizedReportCompany) return
     prevReportCompanyRef.current = normalizedReportCompany
     setReportPrevDate(getKoreaToday())
+    setReportPrevStepName("")
     setReportCurrentStepName("")
     setReportRollingNoResponse(false)
-    setRollingStepSuggestions([])
-    setShowRollingStepSuggestions(false)
+    setRollingPrevStepSuggestions([])
+    setRollingCurrentStepSuggestions([])
+    setShowPrevStepSuggestions(false)
+    setShowCurrentStepSuggestions(false)
     setReportDate(getKoreaToday())
   }, [normalizedReportCompany])
 
@@ -272,11 +292,14 @@ export default function SearchPage() {
     try {
       await logout()
       setIsAuthenticated(false)
-      router.push("/login")
+      const qs = searchParams?.toString()
+      const nextPath = `${pathname ?? "/"}${qs ? `?${qs}` : ""}`
+      router.push(`/login?next=${encodeURIComponent(nextPath)}`)
     } finally {
       setIsLoggingOut(false)
     }
   }
+  const loginHref = `/login?next=${encodeURIComponent(`${pathname ?? "/"}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`)}`
 
   const handleAddCompany = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -320,6 +343,7 @@ export default function SearchPage() {
     }
 
     setReportCurrentStepName("")
+    setReportPrevStepName("")
     setReportRollingNoResponse(false)
     if (preferredMode) {
       setReportMode(preferredMode)
@@ -327,6 +351,22 @@ export default function SearchPage() {
     if (withToday) setReportDate(getKoreaToday())
     setReportMessage(null)
     setIsReportOpen(true)
+  }
+
+  const applyPairFromPrevIfEmpty = async (nextPrevStepName: string) => {
+    if (reportPrevStepName.trim() || reportCurrentStepName.trim()) return
+    const paired = await resolveRollingStepPair("prev_to_current", nextPrevStepName)
+    if (paired) {
+      setReportCurrentStepName(paired)
+    }
+  }
+
+  const applyPairFromCurrentIfEmpty = async (nextCurrentStepName: string) => {
+    if (reportPrevStepName.trim() || reportCurrentStepName.trim()) return
+    const paired = await resolveRollingStepPair("current_to_prev", nextCurrentStepName)
+    if (paired) {
+      setReportPrevStepName(paired)
+    }
   }
 
   const handleLeadTimeSearch = async (e: React.FormEvent, keywordOverride?: string) => {
@@ -388,7 +428,7 @@ export default function SearchPage() {
   })()
 
   const reportModalTitle = "오늘 결과발표 제보하기"
-  const reportModalDescription = "현재 전형명을 필수로 입력해 주세요. 결과 미수신일 경우 날짜 없이 제보할 수 있어요."
+  const reportModalDescription = "이전 전형/현재 전형과 발표일을 함께 입력해 주세요. 결과 미수신은 현재 전형만 입력하면 돼요."
 
   const handleReportSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -397,10 +437,15 @@ export default function SearchPage() {
     if (!companyName) return
 
     const isRegular = reportMode === "REGULAR"
+    const prevStepName = reportPrevStepName.trim()
     const currentStepName = reportCurrentStepName.trim()
 
     if (!currentStepName) {
       setReportMessage("현재 전형명을 입력해 주세요.")
+      return
+    }
+    if (!reportRollingNoResponse && !prevStepName) {
+      setReportMessage("이전 전형명을 입력해 주세요.")
       return
     }
     if (!reportRollingNoResponse) {
@@ -440,6 +485,7 @@ export default function SearchPage() {
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
         prevReportedDate: reportRollingNoResponse ? undefined : toDateInput(reportPrevDate),
+        prevStepName: reportRollingNoResponse ? undefined : prevStepName,
         currentStepName: currentStepName,
         reportedDate: reportRollingNoResponse
           ? undefined
@@ -447,6 +493,7 @@ export default function SearchPage() {
       })
 
       setReportMessage("리포트가 접수되었습니다. 감사합니다!")
+      setReportPrevStepName("")
       setReportCurrentStepName("")
       setIsReportOpen(false)
     } catch (error) {
@@ -504,16 +551,30 @@ export default function SearchPage() {
   useEffect(() => {
     let cancelled = false
     const handle = setTimeout(async () => {
-      const data = await fetchRollingReportStepNames(normalizedReportCompany, reportCurrentStepName)
+      const data = await fetchRollingReportPrevStepNames(normalizedReportCompany, reportPrevStepName)
       if (cancelled) return
-      setRollingStepSuggestions(data ?? [])
+      setRollingPrevStepSuggestions(data ?? [])
     }, 150)
 
     return () => {
       cancelled = true
       clearTimeout(handle)
     }
-  }, [reportMode, normalizedReportCompany, reportCurrentStepName])
+  }, [normalizedReportCompany, reportPrevStepName])
+
+  useEffect(() => {
+    let cancelled = false
+    const handle = setTimeout(async () => {
+      const data = await fetchRollingReportCurrentStepNames(normalizedReportCompany, reportCurrentStepName)
+      if (cancelled) return
+      setRollingCurrentStepSuggestions(data ?? [])
+    }, 150)
+
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [normalizedReportCompany, reportCurrentStepName])
 
   // 데스크탑 전환 시 모바일 시트 닫기
   useEffect(() => {
@@ -607,9 +668,81 @@ export default function SearchPage() {
               </div>
               {reportRollingNoResponse && (
                 <p className="md:col-span-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-                  현재 전형명만 입력하면 제보할 수 있어요.
+                  현재 전형명만 입력하면 제보할 수 있어요. (이전 전형명/날짜는 생략)
                 </p>
               )}
+              <div className={cn("space-y-2", reportRollingNoResponse ? "md:col-span-2" : "")}>
+                <label className="text-sm font-medium text-foreground">이전 전형명</label>
+                <div className="relative">
+                  <Input
+                    value={reportPrevStepName}
+                    onChange={(e) => setReportPrevStepName(e.target.value)}
+                    onFocus={() => setShowPrevStepSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowPrevStepSuggestions(false), 120)}
+                    placeholder="예: 1차 면접"
+                    className="h-11"
+                    required={!reportRollingNoResponse}
+                  />
+                  {showPrevStepSuggestions && prevStepSuggestionOptions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
+                      <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">이전 전형 연관 검색어</p>
+                      <div className="max-h-56 overflow-auto">
+                        {prevStepSuggestionOptions.map((stepName) => (
+                          <button
+                            key={`rolling-prev-step-${stepName}`}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={async () => {
+                              await applyPairFromPrevIfEmpty(stepName)
+                              setReportPrevStepName(stepName)
+                              setShowPrevStepSuggestions(false)
+                            }}
+                            className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
+                          >
+                            {stepName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">현재 전형명</label>
+                <div className="relative">
+                  <Input
+                    value={reportCurrentStepName}
+                    onChange={(e) => setReportCurrentStepName(e.target.value)}
+                    onFocus={() => setShowCurrentStepSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowCurrentStepSuggestions(false), 120)}
+                    placeholder="예: 1차 면접 합격"
+                    className="h-11"
+                    required
+                  />
+                  {showCurrentStepSuggestions && currentStepSuggestionOptions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
+                      <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">현재 전형 연관 검색어</p>
+                      <div className="max-h-56 overflow-auto">
+                        {currentStepSuggestionOptions.map((stepName) => (
+                          <button
+                            key={`rolling-current-step-${stepName}`}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={async () => {
+                              await applyPairFromCurrentIfEmpty(stepName)
+                              setReportCurrentStepName(stepName)
+                              setShowCurrentStepSuggestions(false)
+                            }}
+                            className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
+                          >
+                            {stepName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               {!reportRollingNoResponse && (
               <>
               <div className="space-y-2">
@@ -637,44 +770,6 @@ export default function SearchPage() {
               </div>
               </>
               )}
-              <div className={cn("space-y-2", reportRollingNoResponse ? "md:col-span-2" : "")}>
-                <label className="text-sm font-medium text-foreground">현재 전형명</label>
-                <div className="relative">
-                  <Input
-                    value={reportCurrentStepName}
-                    onChange={(e) => {
-                      setReportCurrentStepName(e.target.value)
-                      setShowRollingStepSuggestions(true)
-                    }}
-                    onFocus={() => setShowRollingStepSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowRollingStepSuggestions(false), 120)}
-                    placeholder="예: 1차면접"
-                    className="h-11"
-                    required
-                  />
-                  {showRollingStepSuggestions && currentStepSuggestionOptions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
-                      <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">전형 연관 검색어</p>
-                      <div className="max-h-56 overflow-auto">
-                        {currentStepSuggestionOptions.map((stepName) => (
-                          <button
-                            key={`rolling-step-${stepName}`}
-                            type="button"
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => {
-                              setReportCurrentStepName(stepName)
-                              setShowRollingStepSuggestions(false)
-                            }}
-                            className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
-                          >
-                            {stepName}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
               <p className="md:col-span-2 text-xs text-muted-foreground">
                 ( 필기 결과 발표 -&gt; 1차 면접 결과 발표 ) 와 같이 결과 발표 기준으로 제보 부탁드려요
               </p>
@@ -738,7 +833,7 @@ export default function SearchPage() {
             </button>
           ) : (
             <Link
-              href="/login"
+              href={loginHref}
               className="inline-flex h-9 min-w-[88px] items-center justify-center rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60"
             >
               로그인

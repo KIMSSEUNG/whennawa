@@ -401,7 +401,6 @@ export function CompanyDetailPanel({
     new Set(
       regularTimelines
         .flatMap((unit) => unit.steps)
-        .filter((step) => step.prevStepId != null)
         .map((step) => step.label)
         .filter((label): label is string => Boolean(label && label.trim())),
     ),

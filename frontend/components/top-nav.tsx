@@ -3,24 +3,26 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { getUser, logout } from "@/lib/api"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const userNavItems = [
-  { href: "/search", label: "Search" },
-  { href: "/board", label: "Board" },
-  { href: "/profile", label: "Profile" },
+  { href: "/search", label: "발표일 검색" },
+  { href: "/board", label: "회사별 게시판" },
+  { href: "/career-board", label: "취업고민" },
+  { href: "/profile", label: "프로필" },
 ]
 
 const adminNavItems = [
-  { href: "/admin", label: "Timeline" },
-  { href: "/profile", label: "Profile" },
+  { href: "/admin", label: "타임라인" },
+  { href: "/profile", label: "프로필" },
 ]
 
 export function TopNav() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const [role, setRole] = useState<"USER" | "ADMIN" | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -76,9 +78,13 @@ export function TopNav() {
       setRole(null)
       setIsAuthenticated(false)
       setIsLoggingOut(false)
-      router.push("/login")
+      const qs = searchParams?.toString()
+      const nextPath = `${pathname ?? "/"}${qs ? `?${qs}` : ""}`
+      router.push(`/login?next=${encodeURIComponent(nextPath)}`)
     }
   }
+  const qs = searchParams?.toString()
+  const loginHref = `/login?next=${encodeURIComponent(`${pathname ?? "/"}${qs ? `?${qs}` : ""}`)}`
 
   return (
     <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm px-6">
@@ -122,7 +128,7 @@ export function TopNav() {
           </button>
         ) : (
           <Link
-            href="/login"
+            href={loginHref}
             className="text-sm px-3 py-1.5 rounded-lg border border-border/60 text-foreground hover:bg-muted/50 transition-colors"
           >
             로그인

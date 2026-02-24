@@ -1,6 +1,7 @@
 package com.whennawa.repository;
 
 import com.whennawa.entity.RollingStepLog;
+import com.whennawa.entity.enums.LogSourceType;
 import com.whennawa.entity.enums.RollingReportType;
 import java.time.LocalDate;
 import java.util.List;
@@ -21,17 +22,19 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
         """)
     List<String> findTopStepNames();
 
-    Optional<RollingStepLog> findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndPrevReportedDateAndReportedDate(
+    Optional<RollingStepLog> findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
         String companyName,
         String currentStepName,
         RollingReportType rollingResultType,
+        LogSourceType sourceType,
         LocalDate prevReportedDate,
         LocalDate reportedDate
     );
 
-    Optional<RollingStepLog> findFirstByCompanyNameAndCurrentStepNameAndRollingResultType(
+    Optional<RollingStepLog> findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndSourceType(
         String companyName,
         String currentStepName,
-        RollingReportType rollingResultType
+        RollingReportType rollingResultType,
+        LogSourceType sourceType
     );
 }

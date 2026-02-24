@@ -44,6 +44,7 @@ export interface ReportItem {
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
   prevReportedDate: Date | null
+  prevStepName: string | null
   currentStepName: string | null
   reportedDate: Date | null
   status: ReportStatus
@@ -100,4 +101,26 @@ export interface BoardPost {
   authorUserId: number | null
   authorName: string
   createdAt: Date
+}
+
+export interface BoardComment {
+  commentId: number
+  postId: number
+  parentCommentId: number | null
+  content: string
+  authorUserId: number | null
+  authorName: string
+  createdAt: Date
+  updatedAt: Date
+  likeCount: number
+  likedByMe: boolean
+  replyCount: number
+  replies: BoardComment[]
+}
+
+export interface PagedResult<T> {
+  items: T[]
+  page: number
+  size: number
+  hasNext: boolean
 }

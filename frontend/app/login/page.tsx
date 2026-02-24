@@ -27,6 +27,17 @@ function LoginPageContent() {
   const showConsentDenied = searchParams.get("reason") === "consent_denied"
   const showOauthFailed = searchParams.get("reason") === "oauth_failed"
   const next = searchParams.get("next") ?? "/"
+  const handleGoBack = () => {
+    if (next && next !== "/") {
+      router.push(next)
+      return
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back()
+      return
+    }
+    router.push("/search")
+  }
 
   const handleGoogleLogin = async () => {
     setIsLoading(true)
@@ -99,12 +110,22 @@ function LoginPageContent() {
             {isLoading ? "로그인 중..." : "Google로 계속하기"}
           </Button>
 
-          <Link
-            href="/search"
-            className="mt-4 inline-flex w-full items-center justify-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            메인으로 가기
-          </Link>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full rounded-xl"
+              onClick={handleGoBack}
+            >
+              이전 페이지로 가기
+            </Button>
+            <Link
+              href="/search"
+              className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-foreground transition-colors hover:bg-accent/50"
+            >
+              메인으로 가기
+            </Link>
+          </div>
 
           <p className="mt-8 text-xs text-muted-foreground">
             계속 진행하면 이용약관 및 개인정보처리방침에 동의하는 것으로 간주됩니다.

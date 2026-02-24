@@ -1,6 +1,6 @@
 package com.whennawa.entity.enums;
 
-public enum StepDateType {
+public enum LogSourceType {
     OFFICIAL,
     REPORT
 }

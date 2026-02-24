@@ -2,11 +2,13 @@ package com.whennawa.controller;
 
 import com.whennawa.dto.auth.AuthTokensResponse;
 import com.whennawa.dto.auth.UserInfoResponse;
+import com.whennawa.entity.User;
 import com.whennawa.security.JwtService;
 import com.whennawa.security.UserPrincipal;
 import com.whennawa.service.AuthCookieService;
 import com.whennawa.service.AccountService;
 import com.whennawa.exception.AuthTokenException;
+import com.whennawa.repository.UserRepository;
 import com.whennawa.service.RefreshTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -33,15 +35,18 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuthCookieService authCookieService;
     private final AccountService accountService;
+    private final UserRepository userRepository;
 
     public AuthController(RefreshTokenService refreshTokenService,
                           JwtService jwtService,
                           AuthCookieService authCookieService,
-                          AccountService accountService) {
+                          AccountService accountService,
+                          UserRepository userRepository) {
         this.refreshTokenService = refreshTokenService;
         this.jwtService = jwtService;
         this.authCookieService = authCookieService;
         this.accountService = accountService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/refresh")
@@ -121,7 +126,11 @@ public class AuthController {
         if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal principal)) {
             return new UserInfoResponse();
         }
-        return new UserInfoResponse(principal.getUserId(), principal.getEmail(), principal.getRole());
+        User user = userRepository.findByIdAndDeletedAtIsNull(principal.getUserId()).orElse(null);
+        if (user == null) {
+            return new UserInfoResponse();
+        }
+        return new UserInfoResponse(user.getId(), user.getEmail(), user.getNickname(), principal.getRole());
     }
 }
 

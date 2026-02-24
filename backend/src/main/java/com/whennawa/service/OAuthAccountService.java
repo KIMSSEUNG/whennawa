@@ -3,6 +3,7 @@ package com.whennawa.service;
 import com.whennawa.dto.GoogleUserInfoResponse;
 import com.whennawa.entity.User;
 import com.whennawa.repository.UserRepository;
+import com.whennawa.util.NicknameGenerator;
 import java.util.Objects;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -17,10 +18,14 @@ import org.springframework.web.client.RestTemplate;
 public class OAuthAccountService {
     private final RestTemplate restTemplate;
     private final UserRepository userRepository;
+    private final NicknameGenerator nicknameGenerator;
 
-    public OAuthAccountService(RestTemplate restTemplate, UserRepository userRepository) {
+    public OAuthAccountService(RestTemplate restTemplate,
+                               UserRepository userRepository,
+                               NicknameGenerator nicknameGenerator) {
         this.restTemplate = restTemplate;
         this.userRepository = userRepository;
+        this.nicknameGenerator = nicknameGenerator;
     }
 
     @Transactional
@@ -40,9 +45,16 @@ public class OAuthAccountService {
 
         User user = userRepository.findByEmail(googleEmail).orElse(null);
         if (user == null) {
-            user = userRepository.save(new User(googleEmail));
-        } else if (user.isDeleted()) {
-            user.restore();
+            user = new User(googleEmail);
+            user.setNickname(generateUniqueNickname());
+            user = userRepository.save(user);
+        } else {
+            if (user.isDeleted()) {
+                user.restore();
+            }
+            if (user.getNickname() == null || user.getNickname().isBlank()) {
+                user.setNickname(generateUniqueNickname());
+            }
             user = userRepository.save(user);
         }
 
@@ -62,6 +74,10 @@ public class OAuthAccountService {
         );
         GoogleUserInfoResponse body = response.getBody();
         return body == null ? null : body.getEmail();
+    }
+
+    private String generateUniqueNickname() {
+        return nicknameGenerator.generateUnique(userRepository::existsByNickname);
     }
 
     public static class OAuthAccountResult {

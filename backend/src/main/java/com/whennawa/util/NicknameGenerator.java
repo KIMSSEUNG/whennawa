@@ -7,24 +7,31 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class NicknameGenerator {
-    private static final List<String> ADJECTIVES = List.of(
-        "배고픈", "용감한", "상냥한", "차분한", "반짝이는", "신속한", "졸린", "유쾌한", "따뜻한", "영리한"
+    private static final List<String> PREFIXES = List.of(
+        "swift", "calm", "bold", "bright", "lucky", "smart", "quiet", "brave", "fresh", "kind"
     );
-    private static final List<String> ANIMALS = List.of(
-        "장미앵무", "수달", "고양이", "여우", "고래", "펭귄", "참새", "판다", "다람쥐", "부엉이"
+    private static final List<String> NOUNS = List.of(
+        "fox", "otter", "whale", "falcon", "tiger", "koala", "wolf", "panda", "eagle", "bear"
     );
+    private static final int MAX_ATTEMPTS = 200;
+
     private final SecureRandom random = new SecureRandom();
 
-    public String generateUnique(Predicate<String> existsInRoom) {
-        for (int attempt = 0; attempt < 30; attempt++) {
-            String candidate = ADJECTIVES.get(random.nextInt(ADJECTIVES.size()))
-                + " " + ANIMALS.get(random.nextInt(ANIMALS.size()));
-            if (!existsInRoom.test(candidate)) {
+    public String generateUnique(Predicate<String> exists) {
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            String base = PREFIXES.get(random.nextInt(PREFIXES.size()))
+                + "-" + NOUNS.get(random.nextInt(NOUNS.size()));
+            String candidate = base + "#" + String.format("%05d", random.nextInt(100_000));
+            if (!exists.test(candidate)) {
                 return candidate;
             }
         }
-        String fallback = ADJECTIVES.get(random.nextInt(ADJECTIVES.size()))
-            + " " + ANIMALS.get(random.nextInt(ANIMALS.size()));
-        return fallback + "-" + (1000 + random.nextInt(9000));
+        for (int i = 0; i < 10_000; i++) {
+            String fallback = "user#" + String.format("%05d", random.nextInt(100_000));
+            if (!exists.test(fallback)) {
+                return fallback;
+            }
+        }
+        throw new IllegalStateException("Unable to allocate unique nickname");
     }
 }

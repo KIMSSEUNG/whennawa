@@ -60,6 +60,7 @@ public class ReportService {
         if (mode == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recruitment mode is required");
         }
+        String prevStepName = normalizeCurrentStepName(request.getPrevStepName());
         String currentStepName = normalizeCurrentStepName(request.getCurrentStepName());
         RollingReportType rollingResultType = resolveRollingResultType(mode, request.getRollingResultType());
         LocalDate prevReportedDate = request.getPrevReportedDate();
@@ -67,35 +68,38 @@ public class ReportService {
 
         StepDateReport duplicate = null;
         if (mode == RecruitmentMode.REGULAR) {
-            validateRegularFields(currentStepName, prevReportedDate, reportedDate);
+            validateRegularFields(prevStepName, currentStepName, prevReportedDate, reportedDate);
             if (currentStepName != null) {
                 duplicate = reportRepository
-                    .findFirstByCompanyNameAndReportedDateAndCurrentStepNameAndStatusAndDeletedAtIsNull(
+                    .findFirstByCompanyNameAndReportedDateAndPrevStepNameAndCurrentStepNameAndStatusAndDeletedAtIsNull(
                         companyName,
                         reportedDate,
+                        prevStepName,
                         currentStepName,
                         ReportStatus.PENDING
                     )
                     .orElse(null);
             }
         } else {
-            validateRollingFields(currentStepName, prevReportedDate, reportedDate, rollingResultType);
+            validateRollingFields(prevStepName, currentStepName, prevReportedDate, reportedDate, rollingResultType);
             if (rollingResultType == RollingReportType.NO_RESPONSE_REPORTED) {
                 duplicate = reportRepository
-                    .findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndCurrentStepNameAndStatusAndDeletedAtIsNull(
+                    .findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndStatusAndDeletedAtIsNull(
                         companyName,
                         RecruitmentMode.ROLLING,
                         RollingReportType.NO_RESPONSE_REPORTED,
+                        null,
                         currentStepName,
                         ReportStatus.PENDING
                     )
                     .orElse(null);
             } else {
                 duplicate = reportRepository
-                    .findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
+                    .findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
                         companyName,
                         RecruitmentMode.ROLLING,
                         rollingResultType,
+                        prevStepName,
                         currentStepName,
                         prevReportedDate,
                         reportedDate,
@@ -112,6 +116,10 @@ public class ReportService {
                 if ((duplicate.getCurrentStepName() == null || duplicate.getCurrentStepName().isBlank())
                     && currentStepName != null && !currentStepName.isBlank()) {
                     duplicate.setCurrentStepName(currentStepName);
+                }
+                if ((duplicate.getPrevStepName() == null || duplicate.getPrevStepName().isBlank())
+                    && prevStepName != null && !prevStepName.isBlank()) {
+                    duplicate.setPrevStepName(prevStepName);
                 }
                 if (duplicate.getPrevReportedDate() == null && prevReportedDate != null) {
                     duplicate.setPrevReportedDate(prevReportedDate);
@@ -132,6 +140,11 @@ public class ReportService {
                 : mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
                     ? prevReportedDate
                     : null
+        );
+        report.setPrevStepName(
+            mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.NO_RESPONSE_REPORTED
+                ? null
+                : prevStepName
         );
         report.setCurrentStepName(mode == RecruitmentMode.ROLLING || mode == RecruitmentMode.REGULAR ? currentStepName : null);
         report.setReportedDate(mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : reportedDate);
@@ -256,6 +269,7 @@ public class ReportService {
         String requestedCompanyName = normalizeCompanyName(request.getCompanyName());
         Company company = findCompany(requestedCompanyName);
         String companyName = canonicalCompanyName(requestedCompanyName, company);
+        String prevStepName = normalizeCurrentStepName(request.getPrevStepName());
         String currentStepName = normalizeCurrentStepName(request.getCurrentStepName());
         RecruitmentMode mode = request.getRecruitmentMode();
         if (mode == null) {
@@ -264,9 +278,9 @@ public class ReportService {
         RollingReportType rollingResultType = resolveRollingResultType(mode, request.getRollingResultType());
         LocalDate reportedDate = request.getReportedDate();
         if (mode == RecruitmentMode.REGULAR) {
-            validateRegularFields(currentStepName, request.getPrevReportedDate(), reportedDate);
+            validateRegularFields(prevStepName, currentStepName, request.getPrevReportedDate(), reportedDate);
         } else {
-            validateRollingFields(currentStepName, request.getPrevReportedDate(), reportedDate, rollingResultType);
+            validateRollingFields(prevStepName, currentStepName, request.getPrevReportedDate(), reportedDate, rollingResultType);
         }
 
         report.setCompany(company);
@@ -279,6 +293,11 @@ public class ReportService {
                 : mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
                     ? request.getPrevReportedDate()
                     : null
+        );
+        report.setPrevStepName(
+            mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.NO_RESPONSE_REPORTED
+                ? null
+                : prevStepName
         );
         report.setCurrentStepName(mode == RecruitmentMode.ROLLING || mode == RecruitmentMode.REGULAR ? currentStepName : null);
         report.setReportedDate(
@@ -500,6 +519,7 @@ public class ReportService {
             report.getRecruitmentMode(),
             report.getRollingResultType(),
             report.getPrevReportedDate(),
+            report.getPrevStepName(),
             report.getCurrentStepName(),
             report.getReportedDate(),
             report.getStatus(),
@@ -575,7 +595,8 @@ public class ReportService {
         suggestions.putIfAbsent(normalizeKeyword(trimmed), trimmed);
     }
 
-    private void validateRegularFields(String currentStepName,
+    private void validateRegularFields(String prevStepName,
+                                       String currentStepName,
                                        LocalDate prevReportedDate,
                                        LocalDate reportedDate) {
         if (reportedDate != null && (currentStepName == null || currentStepName.isBlank())) {
@@ -583,6 +604,9 @@ public class ReportService {
         }
         if (currentStepName == null || currentStepName.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current step name is required");
+        }
+        if (reportedDate != null && (prevStepName == null || prevStepName.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Previous step name is required");
         }
         if (reportedDate != null && prevReportedDate == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Previous reported date is required");
@@ -595,7 +619,8 @@ public class ReportService {
         }
     }
 
-    private void validateRollingFields(String currentStepName,
+    private void validateRollingFields(String prevStepName,
+                                       String currentStepName,
                                        LocalDate prevReportedDate,
                                        LocalDate reportedDate,
                                        RollingReportType rollingResultType) {
@@ -604,6 +629,9 @@ public class ReportService {
         }
         if (rollingResultType == RollingReportType.NO_RESPONSE_REPORTED) {
             return;
+        }
+        if (prevStepName == null || prevStepName.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Previous step name is required");
         }
         if (prevReportedDate == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Previous reported date is required");
@@ -636,6 +664,9 @@ public class ReportService {
         if (rollingResultType == RollingReportType.NO_RESPONSE_REPORTED) {
             return true;
         }
+        if (report.getPrevStepName() == null || report.getPrevStepName().isBlank()) {
+            return false;
+        }
         if (report.getPrevReportedDate() == null || report.getReportedDate() == null) {
             return false;
         }
@@ -656,6 +687,10 @@ public class ReportService {
         if (prevDate == null && currentDate == null) {
             // no-response report: current step only
             return true;
+        }
+        String prevStepName = normalizeCurrentStepName(report.getPrevStepName());
+        if (prevStepName == null) {
+            return false;
         }
         if (prevDate == null || currentDate == null) {
             return false;

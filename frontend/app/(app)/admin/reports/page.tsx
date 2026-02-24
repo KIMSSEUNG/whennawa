@@ -66,7 +66,7 @@ export default function AdminReportPage() {
     if (report.onHold) return
     setMessage(null)
     try {
-      await processAdminReport(report.reportId, null)
+      await processAdminReport(report.reportId)
       await loadReports()
     } catch (error) {
       console.error("Failed to process report", error)
@@ -87,7 +87,7 @@ export default function AdminReportPage() {
 
   const beginEdit = (report: ReportItem) => {
     setEditingId(report.reportId)
-    const rawCurrent = (report.currentStepName ?? report.stepName ?? "").trim()
+    const rawCurrent = (report.currentStepName ?? "").trim()
     const isNoResponse =
       report.rollingResultType === "NO_RESPONSE_REPORTED" ||
       (!report.prevReportedDate && !report.reportedDate)
@@ -96,7 +96,7 @@ export default function AdminReportPage() {
       recruitmentMode: report.recruitmentMode,
       rollingResultType: report.rollingResultType ?? "DATE_REPORTED",
       prevReportedDate: report.prevReportedDate ? toDateInput(report.prevReportedDate) : "",
-      prevStepName: report.prevStepName ?? "",
+      prevStepName: (report.prevStepName ?? "").trim(),
       currentStepName: rawCurrent,
       reportedDate: toDateInput(report.reportedDate),
       noResponse: isNoResponse,
@@ -112,25 +112,20 @@ export default function AdminReportPage() {
     if (!editingId || !editForm) return
 
     const isRegular = editForm.recruitmentMode === "REGULAR"
-    const prevStepName = editForm.prevStepName.trim()
     const currentStepName = editForm.currentStepName.trim()
 
     if (!currentStepName) {
       setMessage("현재 전형명을 입력해 주세요.")
       return
     }
+    if (!editForm.noResponse && !editForm.prevStepName.trim()) {
+      setMessage("이전 전형명을 입력해 주세요.")
+      return
+    }
 
     if (!editForm.noResponse) {
       if (!editForm.prevReportedDate || !editForm.reportedDate) {
         setMessage("이전 발표일과 현재 발표일을 입력해 주세요.")
-        return
-      }
-      if (isRegular && !prevStepName) {
-        setMessage("이전 전형명을 입력해 주세요.")
-        return
-      }
-      if (isRegular && prevStepName === currentStepName) {
-        setMessage("이전 전형명과 현재 전형명은 다르게 입력해 주세요.")
         return
       }
       if (new Date(editForm.prevReportedDate) >= new Date(editForm.reportedDate)) {
@@ -149,10 +144,9 @@ export default function AdminReportPage() {
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
         prevReportedDate: editForm.noResponse ? undefined : editForm.prevReportedDate,
-        prevStepName: editForm.noResponse ? undefined : prevStepName,
+        prevStepName: editForm.noResponse ? undefined : editForm.prevStepName.trim(),
         currentStepName: currentStepName,
         reportedDate: editForm.noResponse ? undefined : editForm.reportedDate,
-        stepId: undefined,
       })
       await loadReports()
       cancelEdit()
@@ -186,7 +180,7 @@ export default function AdminReportPage() {
             const isNoResponse =
               report.rollingResultType === "NO_RESPONSE_REPORTED" ||
               (!report.prevReportedDate && !report.reportedDate)
-            const currentStepLabel = report.currentStepName ?? report.stepName ?? "-"
+            const currentStepLabel = report.currentStepName ?? "-"
             const modeLabel = isRegular ? "공채" : "수시"
 
             return (
@@ -208,12 +202,10 @@ export default function AdminReportPage() {
                       이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} ·
                       현재 발표일: {report.reportedDate ? toDateInput(report.reportedDate) : "-"}
                     </p>
-                    {isRegular && (
-                      <p className="text-sm text-muted-foreground">
-                        이전 전형명: {report.prevStepName ?? "-"}
-                      </p>
-                    )}
                     <p className="text-sm mt-1">
+                      이전 전형명: {report.prevStepName ?? "-"}
+                    </p>
+                    <p className="text-sm">
                       현재 전형명: {currentStepLabel}
                     </p>
                   </div>
@@ -309,6 +301,15 @@ export default function AdminReportPage() {
                     {!editForm.noResponse && (
                       <>
                         <div className="space-y-2">
+                          <label className="text-sm font-medium">이전 전형명</label>
+                          <Input
+                            value={editForm.prevStepName}
+                            onChange={(e) => setEditForm({ ...editForm, prevStepName: e.target.value })}
+                            placeholder="예: 1차 면접"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
                           <label className="text-sm font-medium">이전 전형 발표일</label>
                           <Input
                             type="date"
@@ -325,16 +326,6 @@ export default function AdminReportPage() {
                             onChange={(e) => setEditForm({ ...editForm, reportedDate: e.target.value })}
                           />
                         </div>
-                        {editForm.recruitmentMode === "REGULAR" && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">이전 전형명</label>
-                            <Input
-                              value={editForm.prevStepName}
-                              onChange={(e) => setEditForm({ ...editForm, prevStepName: e.target.value })}
-                              placeholder="예: 서류 합격"
-                            />
-                          </div>
-                        )}
                       </>
                     )}
 

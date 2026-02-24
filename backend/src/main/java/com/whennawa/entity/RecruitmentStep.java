@@ -25,14 +25,4 @@ public class RecruitmentStep {
 
     @Column(name = "step_name", length = 100, nullable = false)
     private String stepName;
-
-    @Column(name = "step_order", nullable = false)
-    private int stepOrder;
-
-    @Column(name = "prev_step_id")
-    private Integer prevStepId;
-
-    @Column(name = "next_step_id")
-    private Integer nextStepId;
-
 }
