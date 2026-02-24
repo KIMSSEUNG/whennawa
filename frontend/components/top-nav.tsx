@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 const userNavItems = [
   { href: "/search", label: "Search" },
+  { href: "/board", label: "Board" },
   { href: "/profile", label: "Profile" },
 ]
 

@@ -1,6 +1,8 @@
 import { mockCompanies, mockUser } from "./mock-data"
 import type {
   ChatMessage,
+  BoardPost,
+  CompanyCreateResult,
   CompanySearchItem,
   CompanyTimeline,
   KeywordLeadTime,
@@ -30,7 +32,6 @@ type CompanyTimelineInput = {
       label: string
       occurredAt: Date | string
       diffDays: number | null
-      prevStepId?: number | null
     }>
   }>
   timelines?: Array<{
@@ -40,7 +41,6 @@ type CompanyTimelineInput = {
       label: string
       occurredAt: Date | string
       diffDays: number | null
-      prevStepId?: number | null
     }>
   }>
   rollingSteps?: Array<{
@@ -51,6 +51,14 @@ type CompanyTimelineInput = {
     minDays: number | null
     maxDays: number | null
   }>
+}
+
+type CompanyCreateResultInput = {
+  companyId: number
+  companyName: string
+  originalCompanyName: string
+  created: boolean
+  normalizedChanged: boolean
 }
 
 type KeywordLeadTimeInput = {
@@ -72,11 +80,8 @@ type ReportItemInput = {
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
   prevReportedDate: Date | string | null
-  prevStepName: string | null
   currentStepName: string | null
   reportedDate: Date | string | null
-  stepId: number | null
-  stepName: string | null
   status: ReportStatus
   onHold: boolean
 }
@@ -92,6 +97,17 @@ type ChatMessageInput = {
   timestamp: Date | string
 }
 
+type BoardPostInput = {
+  postId: number
+  companyId: number
+  companyName: string
+  title: string
+  content: string
+  authorUserId: number | null
+  authorName: string
+  createdAt: Date | string
+}
+
 type RollingPredictionInput = {
   stepName: string
   previousStepDate: Date | string
@@ -103,6 +119,8 @@ type RollingPredictionInput = {
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "")
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "false"
+const ROLLING_STEP_SAMPLES_TXT_PATH = "/data/rolling-step-samples.txt"
+const DEFAULT_ROLLING_STEP_SAMPLES = ["서류 합격", "코딩 테스트", "1차 면접", "2차 면접", "최종 합격"]
 
 type UserInfoResponse = {
   userId: number
@@ -149,6 +167,15 @@ const normalizeChatMessage = (item: ChatMessageInput): ChatMessage => ({
   timestamp: toDate(item.timestamp),
 })
 
+const normalizeCompanyCreateResult = (item: CompanyCreateResultInput): CompanyCreateResult => ({
+  ...item,
+})
+
+const normalizeBoardPost = (item: BoardPostInput): BoardPost => ({
+  ...item,
+  createdAt: toDate(item.createdAt),
+})
+
 const normalizeRollingPrediction = (item: RollingPredictionInput): RollingPrediction => ({
   ...item,
   previousStepDate: toDate(item.previousStepDate),
@@ -156,6 +183,31 @@ const normalizeRollingPrediction = (item: RollingPredictionInput): RollingPredic
   expectedStartDate: toDateOrNull(item.expectedStartDate),
   expectedEndDate: toDateOrNull(item.expectedEndDate),
 })
+
+function parseStepSamples(text: string): string[] {
+  const unique = new Set<string>()
+  for (const line of text.split(/\r?\n/)) {
+    const sample = line.trim()
+    if (!sample || sample.startsWith("#")) continue
+    unique.add(sample)
+  }
+  return Array.from(unique)
+}
+
+async function loadRollingStepSamplesFromText(): Promise<string[]> {
+  if (typeof window === "undefined") {
+    return DEFAULT_ROLLING_STEP_SAMPLES
+  }
+  try {
+    const response = await fetch(ROLLING_STEP_SAMPLES_TXT_PATH, { cache: "no-store" })
+    if (!response.ok) return DEFAULT_ROLLING_STEP_SAMPLES
+    const text = await response.text()
+    const parsed = parseStepSamples(text)
+    return parsed.length > 0 ? parsed : DEFAULT_ROLLING_STEP_SAMPLES
+  } catch {
+    return DEFAULT_ROLLING_STEP_SAMPLES
+  }
+}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!API_BASE_URL) {
@@ -252,7 +304,7 @@ export async function fetchCompanyTimeline(companyName: string): Promise<Company
             steps: [
               {
                 eventType: "APPLIED",
-                label: "지원",
+                label: "지원서 접수",
                 occurredAt: new Date(),
                 diffDays: null,
               },
@@ -261,7 +313,7 @@ export async function fetchCompanyTimeline(companyName: string): Promise<Company
         ],
         rollingSteps: [
           {
-            stepName: "1차면접",
+            stepName: "1차 면접",
             sampleCount: 5,
             avgDays: 10,
             minDays: 7,
@@ -349,15 +401,95 @@ export async function fetchChatMessages(companyId: number, limit = 200): Promise
   return (data ?? []).map(normalizeChatMessage)
 }
 
+export async function createCompany(companyName: string): Promise<CompanyCreateResult> {
+  if (USE_MOCK) {
+    await delay(200)
+    return {
+      companyId: Math.floor(Math.random() * 100000),
+      companyName,
+      originalCompanyName: companyName,
+      created: true,
+      normalizedChanged: false,
+    }
+  }
+  const data = await request<CompanyCreateResultInput>("/api/companies", {
+    method: "POST",
+    body: JSON.stringify({ companyName }),
+  })
+  return normalizeCompanyCreateResult(data)
+}
+
+export async function fetchBoardPosts(companyName: string, limit = 50): Promise<BoardPost[]> {
+  if (!companyName.trim()) return []
+  if (USE_MOCK) {
+    await delay(150)
+    return []
+  }
+  const params = new URLSearchParams({ limit: String(limit) })
+  const data = await request<BoardPostInput[]>(`/api/boards/${encodeURIComponent(companyName)}/posts?${params.toString()}`)
+  return (data ?? []).map(normalizeBoardPost)
+}
+
+export async function createBoardPost(companyName: string, title: string, content: string): Promise<BoardPost> {
+  if (USE_MOCK) {
+    await delay(150)
+    return {
+      postId: Math.floor(Math.random() * 100000),
+      companyId: 0,
+      companyName,
+      title,
+      content,
+      authorUserId: 0,
+      authorName: "mock",
+      createdAt: new Date(),
+    }
+  }
+  const data = await request<BoardPostInput>(`/api/boards/${encodeURIComponent(companyName)}/posts`, {
+    method: "POST",
+    body: JSON.stringify({ title, content }),
+  })
+  return normalizeBoardPost(data)
+}
+
+export async function searchBoardPosts(
+  companyName: string,
+  query: string,
+  field: "title" | "content",
+  limit = 50,
+): Promise<BoardPost[]> {
+  if (!companyName.trim() || !query.trim()) return []
+  if (USE_MOCK) {
+    await delay(150)
+    return []
+  }
+  const params = new URLSearchParams({ q: query, field, limit: String(limit) })
+  const data = await request<BoardPostInput[]>(
+    `/api/boards/${encodeURIComponent(companyName)}/posts/search?${params.toString()}`,
+  )
+  return (data ?? []).map(normalizeBoardPost)
+}
+
+export async function updateBoardPost(companyName: string, postId: number, title: string, content: string): Promise<BoardPost> {
+  const data = await request<BoardPostInput>(`/api/boards/${encodeURIComponent(companyName)}/posts/${postId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title, content }),
+  })
+  return normalizeBoardPost(data)
+}
+
+export async function deleteBoardPost(companyName: string, postId: number): Promise<void> {
+  await request<void>(`/api/boards/${encodeURIComponent(companyName)}/posts/${postId}`, {
+    method: "DELETE",
+  })
+}
+
 export type ReportCreateRequest = {
   companyName: string
   recruitmentMode: RecruitmentMode
   rollingResultType?: RollingReportType | null
   prevReportedDate?: string | null
-  prevStepName?: string | null
   currentStepName?: string | null
   reportedDate?: string | null
-  stepId?: number | null
 }
 
 export async function fetchReportSteps(
@@ -367,9 +499,9 @@ export async function fetchReportSteps(
   if (USE_MOCK) {
     await delay(200)
     return [
-      { stepId: 1, stepName: "서류발표" },
-      { stepId: 2, stepName: "코딩테스트" },
-      { stepId: 3, stepName: "1차면접" },
+      { stepId: 1, stepName: "서류 발표" },
+      { stepId: 2, stepName: "코딩 테스트" },
+      { stepId: 3, stepName: "1차 면접" },
     ]
   }
   const params = new URLSearchParams({ companyName })
@@ -378,21 +510,14 @@ export async function fetchReportSteps(
 }
 
 export async function fetchRollingReportStepNames(companyName?: string, query?: string): Promise<string[]> {
+  void companyName
   if (USE_MOCK) {
     await delay(120)
-    const samples = ["서류 합격", "코딩 테스트", "1차 면접", "2차 면접", "최종 합격"]
-    const normalizedQuery = query?.trim().toLowerCase() ?? ""
-    if (!normalizedQuery) return samples
-    return samples.filter((name) => name.toLowerCase().includes(normalizedQuery))
   }
-  const params = new URLSearchParams()
-  if (companyName?.trim()) {
-    params.set("companyName", companyName.trim())
-  }
-  if (query?.trim()) {
-    params.set("q", query.trim())
-  }
-  return await request<string[]>(`/api/reports/rolling-steps?${params.toString()}`)
+  const normalizedQuery = query?.trim().toLowerCase() ?? ""
+  const samples = await loadRollingStepSamplesFromText()
+  if (!normalizedQuery) return samples
+  return samples.filter((name) => name.toLowerCase().includes(normalizedQuery))
 }
 
 export async function createReport(payload: ReportCreateRequest): Promise<{ reportId: number }> {
@@ -417,11 +542,8 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         recruitmentMode: "REGULAR",
         rollingResultType: null,
         prevReportedDate: null,
-        prevStepName: null,
         currentStepName: null,
         reportedDate: new Date(),
-        stepId: 1,
-        stepName: "서류발표",
         status: "PENDING",
         onHold: false,
       },
@@ -432,11 +554,8 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         recruitmentMode: "ROLLING",
         rollingResultType: "DATE_REPORTED",
         prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
-        prevStepName: "서류 합격",
-        currentStepName: "1차면접",
+        currentStepName: "1차 면접",
         reportedDate: new Date(),
-        stepId: null,
-        stepName: null,
         status: "PENDING",
         onHold: false,
       },
@@ -453,9 +572,9 @@ export async function fetchAdminReportSteps(reportId: number): Promise<ReportSte
   if (USE_MOCK) {
     await delay(200)
     return [
-      { stepId: 1, stepName: "서류발표" },
-      { stepId: 2, stepName: "코딩테스트" },
-      { stepId: 3, stepName: "1차면접" },
+      { stepId: 1, stepName: "서류 발표" },
+      { stepId: 2, stepName: "코딩 테스트" },
+      { stepId: 3, stepName: "1차 면접" },
     ]
   }
   return await request<ReportStepInput[]>(`/api/admin/reports/${reportId}/steps`)
@@ -466,10 +585,8 @@ export type ReportUpdateRequest = {
   recruitmentMode: RecruitmentMode
   rollingResultType?: RollingReportType | null
   prevReportedDate?: string | null
-  prevStepName?: string | null
   currentStepName?: string | null
   reportedDate?: string | null
-  stepId?: number | null
 }
 
 export async function updateAdminReport(reportId: number, payload: ReportUpdateRequest): Promise<ReportItem> {
@@ -482,11 +599,8 @@ export async function updateAdminReport(reportId: number, payload: ReportUpdateR
       recruitmentMode: payload.recruitmentMode,
       rollingResultType: payload.rollingResultType ?? null,
       prevReportedDate: payload.prevReportedDate ? new Date(payload.prevReportedDate) : null,
-      prevStepName: payload.prevStepName ?? null,
       currentStepName: payload.currentStepName ?? null,
       reportedDate: payload.reportedDate ? new Date(payload.reportedDate) : null,
-      stepId: payload.stepId ?? null,
-      stepName: payload.stepId ? "선택 전형" : null,
       status: "PENDING",
       onHold: false,
     }
@@ -498,7 +612,7 @@ export async function updateAdminReport(reportId: number, payload: ReportUpdateR
   return normalizeReportItem(data)
 }
 
-export async function processAdminReport(reportId: number, stepId?: number | null): Promise<ReportItem> {
+export async function processAdminReport(reportId: number): Promise<ReportItem> {
   if (USE_MOCK) {
     await delay(300)
     return {
@@ -508,19 +622,14 @@ export async function processAdminReport(reportId: number, stepId?: number | nul
       recruitmentMode: "REGULAR",
       rollingResultType: null,
       prevReportedDate: null,
-      prevStepName: null,
       currentStepName: null,
       reportedDate: new Date(),
-      stepId: stepId ?? 1,
-      stepName: "서류발표",
       status: "PROCESSED",
       onHold: false,
     }
   }
-  const body = stepId ? JSON.stringify({ stepId }) : undefined
   const data = await request<ReportItemInput>(`/api/admin/reports/${reportId}/process`, {
     method: "POST",
-    body,
   })
   return normalizeReportItem(data)
 }
@@ -535,11 +644,8 @@ export async function assignAdminReport(reportId: number): Promise<ReportItem> {
       recruitmentMode: "REGULAR",
       rollingResultType: null,
       prevReportedDate: null,
-      prevStepName: null,
       currentStepName: null,
       reportedDate: new Date(),
-      stepId: 1,
-      stepName: "서류합격",
       status: "PENDING",
       onHold: false,
     }
@@ -571,11 +677,8 @@ export async function discardAdminReport(reportId: number): Promise<ReportItem> 
       recruitmentMode: "REGULAR",
       rollingResultType: null,
       prevReportedDate: null,
-      prevStepName: null,
       currentStepName: null,
       reportedDate: new Date(),
-      stepId: null,
-      stepName: null,
       status: "DISCARDED",
       onHold: false,
     }
@@ -642,4 +745,5 @@ export async function withdraw(): Promise<void> {
     throw error
   }
 }
+
 

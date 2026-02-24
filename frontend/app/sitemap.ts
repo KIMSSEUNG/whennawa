@@ -18,6 +18,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${siteUrl}/board`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
   ]
 }
-

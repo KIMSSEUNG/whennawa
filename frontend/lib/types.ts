@@ -8,7 +8,6 @@ export interface CompanyTimelineStep {
   label: string
   occurredAt: Date | null
   diffDays: number | null
-  prevStepId?: number | null
 }
 
 export interface CompanyTimeline {
@@ -45,11 +44,8 @@ export interface ReportItem {
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
   prevReportedDate: Date | null
-  prevStepName: string | null
   currentStepName: string | null
   reportedDate: Date | null
-  stepId: number | null
-  stepName: string | null
   status: ReportStatus
   onHold: boolean
 }
@@ -85,4 +81,23 @@ export interface ChatMessage {
   senderNickname: string
   message: string
   timestamp: Date
+}
+
+export interface CompanyCreateResult {
+  companyId: number
+  companyName: string
+  originalCompanyName: string
+  created: boolean
+  normalizedChanged: boolean
+}
+
+export interface BoardPost {
+  postId: number
+  companyId: number
+  companyName: string
+  title: string
+  content: string
+  authorUserId: number | null
+  authorName: string
+  createdAt: Date
 }

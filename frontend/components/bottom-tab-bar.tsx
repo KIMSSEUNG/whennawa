@@ -9,13 +9,14 @@ import { getUser } from "@/lib/api"
 type Role = "USER" | "ADMIN" | null
 
 const userTabs = [
-  { href: "/search", label: "검색", icon: "S" },
-  { href: "/profile", label: "프로필", icon: "P" },
+  { href: "/search", label: "Search", icon: "S" },
+  { href: "/board", label: "Board", icon: "B" },
+  { href: "/profile", label: "Profile", icon: "P" },
 ]
 
 const adminTabs = [
-  { href: "/admin", label: "타임라인", icon: "T" },
-  { href: "/profile", label: "프로필", icon: "P" },
+  { href: "/admin", label: "Timeline", icon: "T" },
+  { href: "/profile", label: "Profile", icon: "P" },
 ]
 
 export function BottomTabBar() {
@@ -70,7 +71,7 @@ export function BottomTabBar() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm md:hidden">
-      <div className="grid grid-cols-2 px-2 py-2 safe-bottom">
+      <div className="grid px-2 py-2 safe-bottom" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((tab) => {
           const isActive = pathname === tab.href
           return (

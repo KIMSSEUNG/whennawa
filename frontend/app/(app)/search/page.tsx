@@ -11,6 +11,7 @@ import {
   fetchCompanyLeadTime,
   fetchRollingReportStepNames,
   createReport,
+  createCompany,
   getUser,
   logout,
 } from "@/lib/api"
@@ -32,6 +33,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toCompanySlug } from "@/lib/company-slug"
+import { normalizeCompanyName } from "@/lib/company-name"
 
 function formatKoDate(value: unknown) {
   if (!value) return "-"
@@ -81,32 +83,27 @@ export default function SearchPage() {
   const [reportRollingNoResponse, setReportRollingNoResponse] = useState(false)
   const [rollingStepSuggestions, setRollingStepSuggestions] = useState<string[]>([])
   const [showRollingStepSuggestions, setShowRollingStepSuggestions] = useState(false)
-  const [reportPrevStepName, setReportPrevStepName] = useState("")
-  const [rollingPrevStepSuggestions, setRollingPrevStepSuggestions] = useState<string[]>([])
-  const [showRollingPrevStepSuggestions, setShowRollingPrevStepSuggestions] = useState(false)
   const [isReportSubmitting, setIsReportSubmitting] = useState(false)
   const [reportMessage, setReportMessage] = useState<string | null>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [showReportSuggestions, setShowReportSuggestions] = useState(true)
   const [isReportCompanyLocked, setIsReportCompanyLocked] = useState(false)
+  const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
+  const [newCompanyName, setNewCompanyName] = useState("")
+  const [isAddingCompany, setIsAddingCompany] = useState(false)
+  const [addCompanyMessage, setAddCompanyMessage] = useState<string | null>(null)
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const normalizedQuery = useMemo(() => query.trim(), [query])
   const normalizedReportCompany = useMemo(() => reportCompany.trim(), [reportCompany])
-  const prevStepSuggestionOptions = useMemo(() => {
-    const currentStep = reportCurrentStepName.trim()
-    const merged = [...rollingPrevStepSuggestions, ...rollingStepSuggestions]
-    const unique = Array.from(new Set(merged))
-    return unique.filter((name) => name && name.trim() && name.trim() !== currentStep)
-  }, [rollingPrevStepSuggestions, rollingStepSuggestions, reportCurrentStepName])
   const currentStepSuggestionOptions = useMemo(() => {
-    const prevStep = reportPrevStepName.trim()
-    const merged = [...rollingStepSuggestions, ...rollingPrevStepSuggestions]
+    const merged = [...rollingStepSuggestions]
     const unique = Array.from(new Set(merged))
-    return unique.filter((name) => name && name.trim() && name.trim() !== prevStep)
-  }, [rollingStepSuggestions, rollingPrevStepSuggestions, reportPrevStepName])
+    return unique.filter((name) => name && name.trim())
+  }, [rollingStepSuggestions])
   const prevReportCompanyRef = useRef<string>("")
   const restoredFromUrlRef = useRef(false)
+  const normalizedAddCompanyPreview = useMemo(() => normalizeCompanyName(newCompanyName), [newCompanyName])
 
   const syncSearchUrl = (q: string | null, companyName: string | null) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -135,12 +132,9 @@ export default function SearchPage() {
     }
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
-    setReportPrevStepName("")
     setReportRollingNoResponse(false)
     setRollingStepSuggestions([])
     setShowRollingStepSuggestions(false)
-    setRollingPrevStepSuggestions([])
-    setShowRollingPrevStepSuggestions(false)
   }, [reportMode])
 
   useEffect(() => {
@@ -148,12 +142,9 @@ export default function SearchPage() {
     prevReportCompanyRef.current = normalizedReportCompany
     setReportPrevDate(getKoreaToday())
     setReportCurrentStepName("")
-    setReportPrevStepName("")
     setReportRollingNoResponse(false)
     setRollingStepSuggestions([])
     setShowRollingStepSuggestions(false)
-    setRollingPrevStepSuggestions([])
-    setShowRollingPrevStepSuggestions(false)
     setReportDate(getKoreaToday())
   }, [normalizedReportCompany])
 
@@ -287,6 +278,31 @@ export default function SearchPage() {
     }
   }
 
+  const handleAddCompany = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!newCompanyName.trim()) return
+    setIsAddingCompany(true)
+    setAddCompanyMessage(null)
+    try {
+      const result = await createCompany(newCompanyName)
+      if (!result.created) {
+        setAddCompanyMessage("해당 회사명은 이미 등록되어 있습니다.")
+      } else {
+        const normalizedNotice = result.normalizedChanged
+          ? `입력값이 정규화되어 "${result.companyName}" 이름으로 저장되었습니다.`
+          : null
+        setAddCompanyMessage(`회사 추가가 완료되었습니다.${normalizedNotice ? ` ${normalizedNotice}` : ""}`)
+      }
+      setQuery(result.companyName)
+      setShowRelatedSuggestions(true)
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "회사 추가에 실패했습니다."
+      setAddCompanyMessage(text)
+    } finally {
+      setIsAddingCompany(false)
+    }
+  }
+
   const openReportModal = (
     companyName?: string,
     withToday?: boolean,
@@ -304,10 +320,7 @@ export default function SearchPage() {
     }
 
     setReportCurrentStepName("")
-    setReportPrevStepName("")
     setReportRollingNoResponse(false)
-    setRollingPrevStepSuggestions([])
-    setShowRollingPrevStepSuggestions(false)
     if (preferredMode) {
       setReportMode(preferredMode)
     }
@@ -384,22 +397,12 @@ export default function SearchPage() {
     if (!companyName) return
 
     const isRegular = reportMode === "REGULAR"
-    const prevStepName = reportPrevStepName.trim()
     const currentStepName = reportCurrentStepName.trim()
 
     if (!currentStepName) {
       setReportMessage("현재 전형명을 입력해 주세요.")
       return
     }
-    if (!reportRollingNoResponse && !prevStepName) {
-      setReportMessage("이전 전형명을 입력해 주세요.")
-      return
-    }
-    if (!reportRollingNoResponse && prevStepName === currentStepName) {
-      setReportMessage("이전 전형명과 현재 전형명은 다르게 입력해 주세요.")
-      return
-    }
-
     if (!reportRollingNoResponse) {
       const today = getKoreaToday()
       if (reportDate > today) {
@@ -437,16 +440,13 @@ export default function SearchPage() {
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
         prevReportedDate: reportRollingNoResponse ? undefined : toDateInput(reportPrevDate),
-        prevStepName: reportRollingNoResponse ? undefined : prevStepName,
         currentStepName: currentStepName,
         reportedDate: reportRollingNoResponse
           ? undefined
           : toDateInput(reportDate),
-        stepId: undefined,
       })
 
       setReportMessage("리포트가 접수되었습니다. 감사합니다!")
-      setReportPrevStepName("")
       setReportCurrentStepName("")
       setIsReportOpen(false)
     } catch (error) {
@@ -514,26 +514,6 @@ export default function SearchPage() {
       clearTimeout(handle)
     }
   }, [reportMode, normalizedReportCompany, reportCurrentStepName])
-
-  useEffect(() => {
-    if (reportRollingNoResponse) {
-      setRollingPrevStepSuggestions([])
-      setShowRollingPrevStepSuggestions(false)
-      return
-    }
-
-    let cancelled = false
-    const handle = setTimeout(async () => {
-      const data = await fetchRollingReportStepNames(normalizedReportCompany, reportPrevStepName)
-      if (cancelled) return
-      setRollingPrevStepSuggestions(data ?? [])
-    }, 150)
-
-    return () => {
-      cancelled = true
-      clearTimeout(handle)
-    }
-  }, [normalizedReportCompany, reportPrevStepName, reportRollingNoResponse])
 
   // 데스크탑 전환 시 모바일 시트 닫기
   useEffect(() => {
@@ -657,46 +637,6 @@ export default function SearchPage() {
               </div>
               </>
               )}
-              {!reportRollingNoResponse && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">이전 전형명</label>
-                  <div className="relative">
-                    <Input
-                      value={reportPrevStepName}
-                      onChange={(e) => {
-                        setReportPrevStepName(e.target.value)
-                        setShowRollingPrevStepSuggestions(true)
-                      }}
-                      onFocus={() => setShowRollingPrevStepSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowRollingPrevStepSuggestions(false), 120)}
-                      placeholder="예: 서류합격"
-                      className="h-11"
-                      required
-                    />
-                    {showRollingPrevStepSuggestions && prevStepSuggestionOptions.length > 0 && (
-                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
-                        <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">전형 연관 검색어</p>
-                        <div className="max-h-56 overflow-auto">
-                          {prevStepSuggestionOptions.map((stepName) => (
-                            <button
-                              key={`rolling-prev-step-${stepName}`}
-                              type="button"
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => {
-                                setReportPrevStepName(stepName)
-                                setShowRollingPrevStepSuggestions(false)
-                              }}
-                              className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
-                            >
-                              {stepName}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
               <div className={cn("space-y-2", reportRollingNoResponse ? "md:col-span-2" : "")}>
                 <label className="text-sm font-medium text-foreground">현재 전형명</label>
                 <div className="relative">
@@ -736,9 +676,7 @@ export default function SearchPage() {
                 </div>
               </div>
               <p className="md:col-span-2 text-xs text-muted-foreground">
-                예시: {reportMode === "REGULAR" ? "지원서 접수 마감" : "지원서 접수"} {"->"} 서류 합격
-                <br />
-                코딩테스트 합격 {"->"} 1차 면접 합격
+                ( 필기 결과 발표 -&gt; 1차 면접 결과 발표 ) 와 같이 결과 발표 기준으로 제보 부탁드려요
               </p>
             </div>
 
@@ -748,6 +686,32 @@ export default function SearchPage() {
               </Button>
               {reportMessage && <span className="text-sm text-muted-foreground">{reportMessage}</span>}
             </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>회사 추가하기</DialogTitle>
+            <DialogDescription>공백과 (주), ㈜ 는 제거되어 정규화된 이름으로 저장됩니다.</DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleAddCompany}>
+            <Input
+              value={newCompanyName}
+              onChange={(e) => setNewCompanyName(e.target.value)}
+              placeholder="회사명을 입력해 주세요."
+              required
+            />
+            {newCompanyName.trim() && normalizedAddCompanyPreview && normalizedAddCompanyPreview !== newCompanyName.trim() && (
+              <p className="text-xs text-muted-foreground">
+                정규화 저장 이름: <span className="font-medium text-foreground">{normalizedAddCompanyPreview}</span>
+              </p>
+            )}
+            {addCompanyMessage && <p className="text-xs text-muted-foreground">{addCompanyMessage}</p>}
+            <Button type="submit" disabled={isAddingCompany || !newCompanyName.trim()}>
+              {isAddingCompany ? "추가 중..." : "추가하기"}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -787,7 +751,7 @@ export default function SearchPage() {
       {/* Search Area */}
       <section className="mb-6 rounded-2xl border border-border/60 bg-card p-3 md:p-4">
         <form onSubmit={handleSearch}>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <div className="relative flex-1">
               <Input
                 type="search"
@@ -829,6 +793,14 @@ export default function SearchPage() {
             >
               {isSearching ? "검색 중..." : "검색"}
             </button>
+            <Button type="button" variant="outline" className="h-12" onClick={() => setIsAddCompanyOpen(true)}>
+              회사 추가하기
+            </Button>
+            {selectedCompany && (
+              <Link href={`/board/${toCompanySlug(selectedCompany.companyName)}`}>
+                <Button type="button" variant="outline" className="h-12">게시판 가기</Button>
+              </Link>
+            )}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">회사명으로 검색하고, 선택 후 상세 타임라인을 확인할 수 있습니다.</p>
         </form>
@@ -892,13 +864,22 @@ export default function SearchPage() {
                     </div>
                     <p className="text-xs text-muted-foreground">저장된 타임라인 보기</p>
                     <div className="mt-2">
-                      <Link
-                        href={`/company/${toCompanySlug(company.companyName)}`}
-                        onClick={(event) => event.stopPropagation()}
-                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                      >
-                        공개 페이지
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/company/${toCompanySlug(company.companyName)}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        >
+                          공개 페이지
+                        </Link>
+                        <Link
+                          href={`/board/${toCompanySlug(company.companyName)}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        >
+                          게시판
+                        </Link>
+                      </div>
                     </div>
                   </button>
                 ))}
