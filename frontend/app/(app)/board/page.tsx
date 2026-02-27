@@ -8,6 +8,15 @@ import type { CompanySearchItem } from "@/lib/types"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { toCompanySlug } from "@/lib/company-slug"
 
@@ -25,6 +34,8 @@ export default function BoardPage() {
   const [newCompanyName, setNewCompanyName] = useState("")
   const [addMessage, setAddMessage] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
+  const [isCompanyRequestPopupOpen, setIsCompanyRequestPopupOpen] = useState(false)
+  const [companyRequestPopupMessage, setCompanyRequestPopupMessage] = useState("")
 
   const normalizedQuery = useMemo(() => query.trim(), [query])
   const normalizedPreview = useMemo(() => normalizeCompanyName(newCompanyName), [newCompanyName])
@@ -56,8 +67,14 @@ export default function BoardPage() {
     setAddMessage(null)
     try {
       const result = await createCompany(newCompanyName)
-      if (!result.created) {
-        setAddMessage("해당 회사명은 이미 등록되어 있습니다.")
+      if (result.pending) {
+        const message = result.message ?? "회사 등록 요청 감사합니다. 처리에는 일정 시간이 소요될 수 있습니다."
+        setAddMessage(null)
+        setShowRelatedSuggestions(false)
+        setCompanyRequestPopupMessage(message)
+        setIsCompanyRequestPopupOpen(true)
+      } else if (!result.created) {
+        setAddMessage(result.message ?? "해당 회사명은 이미 등록되어 있습니다.")
       } else {
         const normalizedNotice = result.normalizedChanged
           ? `입력값이 정규화되어 "${result.companyName}" 이름으로 저장되었습니다.`
@@ -65,7 +82,9 @@ export default function BoardPage() {
         setAddMessage(`회사 추가가 완료되었습니다.${normalizedNotice ? ` ${normalizedNotice}` : ""}`)
       }
       setQuery(result.companyName)
-      await runSearch(result.companyName)
+      if (!result.pending) {
+        await runSearch(result.companyName)
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "회사 추가에 실패했습니다."
       setAddMessage(message)
@@ -100,7 +119,7 @@ export default function BoardPage() {
         <div className="relative">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Community Board</p>
           <h1 className="mt-2 text-2xl font-bold text-foreground md:text-3xl">회사 게시판 찾기</h1>
-          <p className="mt-1 text-sm text-muted-foreground">회사명을 검색해서 게시판으로 바로 이동하고, 필요한 경우 새 회사를 등록할 수 있습니다.</p>
+          <p className="mt-1 text-sm text-muted-foreground">회사명을 검색해 게시판으로 이동하고, 없으면 회사 추가 요청을 보낼 수 있습니다.</p>
 
           <form
             className="mt-5 flex flex-wrap gap-2"
@@ -118,10 +137,10 @@ export default function BoardPage() {
                   setShowRelatedSuggestions(true)
                 }}
                 onFocus={() => setShowRelatedSuggestions(true)}
-                placeholder="회사명을 입력해 주세요"
+                placeholder="회사명을 입력해 주세요."
                 className="h-12 rounded-xl border-border/70 bg-background/80"
               />
-              {showRelatedSuggestions && normalizedQuery && relatedResults.length > 0 && !exactMatch && (
+              {showRelatedSuggestions && !isCompanyRequestPopupOpen && normalizedQuery && relatedResults.length > 0 && !exactMatch && (
                 <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[100] rounded-2xl border border-border/70 bg-card p-2 shadow-lg">
                   <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">연관 검색어</p>
                   <div className="max-h-64 overflow-auto">
@@ -182,7 +201,7 @@ export default function BoardPage() {
                   입장
                 </span>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">게시글 확인, 검색, 작성 페이지 이동</p>
+              <p className="mt-2 text-xs text-muted-foreground">게시글 확인, 글 작성 페이지 이동</p>
               <p className="mt-3 text-[11px] text-muted-foreground/80 group-hover:text-muted-foreground">클릭하면 회사 게시판으로 이동합니다.</p>
             </button>
           ))}
@@ -193,13 +212,13 @@ export default function BoardPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>회사 추가하기</DialogTitle>
-            <DialogDescription>공백과 (주), ㈜ 는 제거되어 정규화된 이름으로 저장됩니다.</DialogDescription>
+            <DialogDescription>공백과 (주), ㈜ 같은 표현은 제거되어 정규화된 이름으로 저장됩니다.</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleAddCompany}>
             <Input
               value={newCompanyName}
               onChange={(e) => setNewCompanyName(e.target.value)}
-              placeholder="회사명을 입력해 주세요"
+              placeholder="회사명을 입력해 주세요."
               required
             />
             {newCompanyName.trim() && normalizedPreview && normalizedPreview !== newCompanyName.trim() && (
@@ -214,6 +233,18 @@ export default function BoardPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isCompanyRequestPopupOpen} onOpenChange={setIsCompanyRequestPopupOpen}>
+        <AlertDialogContent className="max-w-sm rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>회사 등록 요청</AlertDialogTitle>
+            <AlertDialogDescription>{companyRequestPopupMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>확인</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

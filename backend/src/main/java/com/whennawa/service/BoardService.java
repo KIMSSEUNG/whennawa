@@ -88,6 +88,7 @@ public class BoardService {
         post.setUser(user);
         post.setTitle(profanityMasker.mask(title));
         post.setContent(profanityMasker.mask(content));
+        post.setAnonymous(Boolean.TRUE.equals(request == null ? null : request.getAnonymous()));
         return toPostResponse(boardPostRepository.save(post));
     }
 
@@ -244,6 +245,7 @@ public class BoardService {
         comment.setParentComment(parent);
         comment.setUser(user);
         comment.setContent(profanityMasker.mask(content));
+        comment.setAnonymous(Boolean.TRUE.equals(request == null ? null : request.getAnonymous()));
         comment.setLikeCount(0);
 
         BoardComment saved = boardCommentRepository.save(comment);
@@ -446,6 +448,13 @@ public class BoardService {
         return email.split("@")[0];
     }
 
+    private String resolveAnonymousAlias(Long id) {
+        if (id == null) {
+            return "익명";
+        }
+        return "익명#" + String.format("%05d", Math.floorMod(id, 100_000));
+    }
+
     private BoardPostResponse toPostResponse(BoardPost post) {
         return new BoardPostResponse(
             post.getPostId(),
@@ -454,7 +463,7 @@ public class BoardService {
             post.getTitle(),
             post.getContent(),
             post.getUser() == null ? null : post.getUser().getId(),
-            resolveAuthorName(post.getUser()),
+            post.isAnonymous() ? resolveAnonymousAlias(post.getPostId()) : resolveAuthorName(post.getUser()),
             post.getCreatedAt()
         );
     }
@@ -470,7 +479,7 @@ public class BoardService {
             parentId,
             comment.getContent(),
             comment.getUser() == null ? null : comment.getUser().getId(),
-            resolveAuthorName(comment.getUser()),
+            comment.isAnonymous() ? resolveAnonymousAlias(comment.getCommentId()) : resolveAuthorName(comment.getUser()),
             comment.getCreatedAt(),
             comment.getUpdatedAt(),
             Math.max(0, comment.getLikeCount()),

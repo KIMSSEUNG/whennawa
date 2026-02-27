@@ -10,6 +10,7 @@ import com.whennawa.dto.company.RollingPredictionResponse;
 import com.whennawa.dto.company.RollingStepStatsResponse;
 import com.whennawa.entity.Company;
 import com.whennawa.entity.RollingStepLog;
+import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.RollingStepLogRepository;
@@ -32,13 +33,16 @@ public class CompanySearchService {
     private final CompanyRepository companyRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
     private final com.whennawa.config.AppProperties appProperties;
+    private final ProfanityMasker profanityMasker;
 
     public CompanySearchService(CompanyRepository companyRepository,
                                 RollingStepLogRepository rollingStepLogRepository,
-                                com.whennawa.config.AppProperties appProperties) {
+                                com.whennawa.config.AppProperties appProperties,
+                                ProfanityMasker profanityMasker) {
         this.companyRepository = companyRepository;
         this.rollingStepLogRepository = rollingStepLogRepository;
         this.appProperties = appProperties;
+        this.profanityMasker = profanityMasker;
     }
 
     public List<CompanySearchResponse> searchCompanies(String query, Integer limit) {
@@ -74,22 +78,27 @@ public class CompanySearchService {
             .limit(resolvedLimit)
             .toList();
     }
-
     public CompanyCreateResponse createCompany(String rawCompanyName) {
         String original = rawCompanyName == null ? "" : rawCompanyName.trim();
         String normalizedName = CompanyNameNormalizer.normalizeForDisplay(rawCompanyName);
         if (normalizedName.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Company name is required");
         }
+        if (profanityMasker.containsProfanity(normalizedName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "부적절한 회사명은 등록할 수 없습니다.");
+        }
 
         Company found = resolveActiveCompany(normalizedName);
         if (found != null) {
             return new CompanyCreateResponse(
                 found.getCompanyId(),
+                null,
                 found.getCompanyName(),
                 original,
                 false,
-                !found.getCompanyName().equals(original)
+                false,
+                !found.getCompanyName().equals(original),
+                "해당 회사는 이미 등록되어 있습니다."
             );
         }
 
@@ -99,13 +108,15 @@ public class CompanySearchService {
         Company saved = companyRepository.save(created);
         return new CompanyCreateResponse(
             saved.getCompanyId(),
+            null,
             saved.getCompanyName(),
             original,
             true,
-            !saved.getCompanyName().equals(original)
+            false,
+            !saved.getCompanyName().equals(original),
+            "회사 추가가 완료되었습니다."
         );
     }
-
     public CompanyTimelineResponse getRepresentativeTimeline(String companyName) {
         if (companyName == null || companyName.isBlank()) {
             return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
@@ -137,7 +148,10 @@ public class CompanySearchService {
         }
 
         List<Long> allDiffs = new ArrayList<>();
-        List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
+        List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
+            company.getCompanyName(),
+            RecruitmentMode.REGULAR
+        );
         for (RollingStepLog log : logs) {
             if (log == null) {
                 continue;
@@ -224,7 +238,10 @@ public class CompanySearchService {
             return List.of();
         }
 
-        List<RollingStepLog> rollingLogs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
+        List<RollingStepLog> rollingLogs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
+            company.getCompanyName(),
+            RecruitmentMode.ROLLING
+        );
         if (rollingLogs.isEmpty()) {
             return List.of();
         }
@@ -309,7 +326,10 @@ public class CompanySearchService {
         if (company == null) {
             return List.of();
         }
-        List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
+        List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
+            company.getCompanyName(),
+            RecruitmentMode.REGULAR
+        );
         if (logs.isEmpty()) {
             return List.of();
         }
@@ -375,3 +395,4 @@ public class CompanySearchService {
             .orElse(null);
     }
 }
+

@@ -26,7 +26,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final RefreshTokenService refreshTokenService;
     private final AuthCookieService authCookieService;
 
-    @Value("${spring.security.oauth2.client.redirectUrl}")
+    @Value("${app.frontend.base-url}")
     private String redirectURL;
 
     public OAuth2SuccessHandler(OAuth2AuthorizedClientService clientService,

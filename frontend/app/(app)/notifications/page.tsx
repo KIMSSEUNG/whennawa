@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
@@ -27,7 +27,7 @@ function formatDate(value: Date | null | undefined) {
   return value.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })
 }
 
-export default function NotificationsPage() {
+function NotificationsPageClient() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -509,5 +509,19 @@ export default function NotificationsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+export default function NotificationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto max-w-[1520px] px-4 py-6 text-sm text-muted-foreground">
+          불러오는 중...
+        </div>
+      }
+    >
+      <NotificationsPageClient />
+    </Suspense>
   )
 }

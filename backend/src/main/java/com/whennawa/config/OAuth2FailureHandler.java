@@ -20,7 +20,7 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
         this.authCookieService = authCookieService;
     }
 
-    @Value("${spring.security.oauth2.client.redirectUrl}")
+    @Value("${app.frontend.base-url}")
     private String redirectURL;
 
     @Override

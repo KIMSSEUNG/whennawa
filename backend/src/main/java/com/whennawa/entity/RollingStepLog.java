@@ -1,7 +1,9 @@
 package com.whennawa.entity;
 
 import com.whennawa.entity.converter.RollingReportTypeConverter;
+import com.whennawa.entity.converter.RecruitmentModeConverter;
 import com.whennawa.entity.enums.LogSourceType;
+import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.RollingReportType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -39,6 +41,10 @@ public class RollingStepLog extends BaseEntity {
     @Convert(converter = RollingReportTypeConverter.class)
     @Column(name = "rolling_result_type", length = 32, nullable = false)
     private RollingReportType rollingResultType = RollingReportType.DATE_REPORTED;
+
+    @Convert(converter = RecruitmentModeConverter.class)
+    @Column(name = "recruitment_mode", length = 16)
+    private RecruitmentMode recruitmentMode;
 
     @Column(name = "prev_reported_date")
     private LocalDate prevReportedDate;

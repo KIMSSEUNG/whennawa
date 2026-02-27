@@ -7,6 +7,7 @@ import com.whennawa.security.RequestLoggingFilter;
 import com.whennawa.service.AuthCookieService;
 import com.whennawa.service.OAuthAccountService;
 import com.whennawa.service.RefreshTokenService;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +40,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${spring.security.oauth2.client.redirectUrl}")
+    @Value("${app.frontend.base-url}")
     private String redirectURL;
+
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
@@ -163,8 +167,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(redirectURL));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        List<String> origins = new ArrayList<>();
+        for (String origin : allowedOrigins.split(",")) {
+            String trimmed = origin.trim();
+            if (!trimmed.isEmpty()) origins.add(trimmed);
+        }
+        String redirectOrigin = redirectURL == null ? "" : redirectURL.trim();
+        if (!redirectOrigin.isEmpty() && !origins.contains(redirectOrigin)) {
+            origins.add(redirectOrigin);
+        }
+
+        config.setAllowedOrigins(origins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

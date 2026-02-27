@@ -33,4 +33,7 @@ public class BoardPost extends BaseEntity {
 
     @Column(name = "content", length = 3000, nullable = false)
     private String content;
+
+    @Column(name = "is_anonymous", nullable = false)
+    private boolean anonymous;
 }

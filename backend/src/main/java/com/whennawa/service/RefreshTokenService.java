@@ -65,6 +65,28 @@ public class RefreshTokenService {
     }
 
     @Transactional
+    public User validateTokenAndGetUser(String refreshToken) {
+        Claims claims = parseAndValidate(refreshToken);
+        String hash = hash(refreshToken);
+        UserRefreshToken stored = tokenRepository.findByTokenHash(hash)
+            .orElseThrow(() -> new AuthTokenException("Refresh token not found"));
+        if (stored.isRevoked()) {
+            throw new AuthTokenException("Refresh token revoked");
+        }
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (stored.getExpiresAt().isBefore(now)) {
+            stored.revoke(now);
+            tokenRepository.save(stored);
+            throw new AuthTokenException("Refresh token expired");
+        }
+        Long tokenUserId = jwtService.getUserId(claims);
+        if (!stored.getUser().getId().equals(tokenUserId)) {
+            throw new AuthTokenException("Refresh token user mismatch");
+        }
+        return stored.getUser();
+    }
+
+    @Transactional
     public void revokeToken(String refreshToken) {
         String hash = hash(refreshToken);
         Optional<UserRefreshToken> storedOpt = tokenRepository.findByTokenHash(hash);
@@ -119,4 +141,3 @@ public class RefreshTokenService {
 
     public record RotationResult(User user, String refreshToken, LocalDateTime expiresAt) {}
 }
-

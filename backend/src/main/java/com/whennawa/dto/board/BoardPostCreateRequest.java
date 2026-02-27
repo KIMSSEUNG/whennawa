@@ -12,6 +12,8 @@ public class BoardPostCreateRequest {
     @Size(max = 3000)
     private String content;
 
+    private Boolean anonymous;
+
     public String getTitle() {
         return title;
     }
@@ -26,5 +28,13 @@ public class BoardPostCreateRequest {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Boolean getAnonymous() {
+        return anonymous;
+    }
+
+    public void setAnonymous(Boolean anonymous) {
+        this.anonymous = anonymous;
     }
 }

@@ -32,7 +32,11 @@ type PageProps = {
 }
 
 async function fetchTimeline(companyName: string): Promise<CompanyTimelineResponse | null> {
-  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "")
+  const apiBaseUrl = (
+    process.env.INTERNAL_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    ""
+  ).replace(/\/$/, "")
   if (!apiBaseUrl) return null
 
   try {

@@ -10,14 +10,15 @@ type Role = "USER" | "ADMIN" | null
 
 const userTabs = [
   { href: "/search", label: "발표일 검색", icon: "검" },
-  { href: "/board", label: "회사 게시판", icon: "판" },
+  { href: "/board", label: "회사 게시판", icon: "게" },
   { href: "/career-board", label: "취업고민", icon: "고" },
   { href: "/notifications", label: "알림", icon: "알" },
   { href: "/profile", label: "프로필", icon: "프" },
 ]
 
 const adminTabs = [
-  { href: "/admin", label: "관리", icon: "관" },
+  { href: "/admin/reports", label: "공고", icon: "공" },
+  { href: "/admin/company-requests", label: "회사", icon: "회" },
   { href: "/profile", label: "프로필", icon: "프" },
 ]
 

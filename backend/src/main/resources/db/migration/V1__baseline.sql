@@ -33,6 +33,28 @@ CREATE TABLE IF NOT EXISTS company (
 CREATE INDEX idx_company_name ON company (company_name);
 CREATE INDEX idx_company_is_active ON company (is_active);
 
+CREATE TABLE IF NOT EXISTS company_name_request (
+  request_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  company_id BIGINT NULL,
+  original_company_name VARCHAR(100) NOT NULL,
+  normalized_company_name VARCHAR(100) NOT NULL,
+  pending_normalized_name VARCHAR(100)
+    GENERATED ALWAYS AS (CASE WHEN status = 'PENDING' THEN normalized_company_name ELSE NULL END) STORED,
+  request_count INT NOT NULL DEFAULT 1,
+  status ENUM('PENDING', 'PROCESSED', 'DISCARDED') NOT NULL DEFAULT 'PENDING',
+  created_by_user_id BIGINT NULL,
+  processed_at DATETIME NULL,
+  review_note VARCHAR(200) NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT fk_company_name_request_company FOREIGN KEY (company_id) REFERENCES company(company_id)
+);
+
+CREATE INDEX idx_company_name_request_status ON company_name_request (status);
+CREATE INDEX idx_company_name_request_normalized_name ON company_name_request (normalized_company_name);
+CREATE INDEX idx_company_name_request_created_at ON company_name_request (created_at);
+CREATE UNIQUE INDEX uk_company_name_request_pending_name ON company_name_request (pending_normalized_name);
+
 CREATE TABLE IF NOT EXISTS recruitment_channel (
   channel_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   company_id BIGINT NOT NULL,
@@ -87,6 +109,7 @@ CREATE TABLE IF NOT EXISTS rolling_step_log (
   company_name VARCHAR(100) NOT NULL,
   current_step_name VARCHAR(100) NOT NULL,
   rolling_result_type VARCHAR(32) NOT NULL,
+  recruitment_mode VARCHAR(16),
   source_type ENUM('OFFICIAL', 'REPORT') NOT NULL DEFAULT 'REPORT',
   prev_reported_date DATE,
   reported_date DATE,
@@ -99,6 +122,7 @@ CREATE TABLE IF NOT EXISTS rolling_step_log (
 CREATE INDEX idx_rolling_step_log_company_name ON rolling_step_log (company_name);
 CREATE INDEX idx_rolling_step_log_step_name ON rolling_step_log (current_step_name);
 CREATE INDEX idx_rolling_step_log_result_type ON rolling_step_log (rolling_result_type);
+CREATE INDEX idx_rolling_step_log_mode ON rolling_step_log (recruitment_mode);
 CREATE INDEX idx_rolling_step_log_source_type ON rolling_step_log (source_type);
 CREATE INDEX idx_rolling_step_log_prev_date ON rolling_step_log (prev_reported_date);
 CREATE INDEX idx_rolling_step_log_reported_date ON rolling_step_log (reported_date);
@@ -140,6 +164,7 @@ CREATE TABLE IF NOT EXISTS board_post (
   user_id BIGINT NOT NULL,
   title VARCHAR(120) NOT NULL,
   content VARCHAR(3000) NOT NULL,
+  is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   CONSTRAINT fk_board_post_company FOREIGN KEY (company_id) REFERENCES company(company_id),
@@ -155,6 +180,7 @@ CREATE TABLE IF NOT EXISTS board_comment (
   parent_comment_id BIGINT NULL,
   user_id BIGINT NOT NULL,
   content VARCHAR(3000) NOT NULL,
+  is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
   like_count INT NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
@@ -230,7 +256,6 @@ INSERT IGNORE INTO users (
   NOW()
 );
 
-/*
 INSERT IGNORE INTO users (
   public_id,
   email,
@@ -246,4 +271,3 @@ INSERT IGNORE INTO users (
   NOW(),
   NOW()
 );
-*/

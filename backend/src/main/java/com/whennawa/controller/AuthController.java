@@ -56,9 +56,9 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing refresh token");
         }
         try {
-            RefreshTokenService.RotationResult rotation = refreshTokenService.rotateToken(refreshToken);
-            String accessToken = jwtService.createAccessToken(rotation.user());
-            authCookieService.setAuthCookies(response, accessToken, rotation.refreshToken());
+            User user = refreshTokenService.validateTokenAndGetUser(refreshToken);
+            String accessToken = jwtService.createAccessToken(user);
+            authCookieService.setAccessCookie(response, accessToken);
             return new AuthTokensResponse(accessToken);
         } catch (AuthTokenException ex) {
             authCookieService.clearAuthCookies(response);

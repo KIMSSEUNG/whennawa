@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { fetchChatMessages, getUser } from "@/lib/api"
+import { fetchChatMessages, getUser, joinChatRoom } from "@/lib/api"
 import type { ChatMessage } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -121,14 +121,17 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
     if (!companyId) return
     setIsJoining(true)
     const user = await getUser().catch(() => null)
-    setIsJoining(false)
     if (!user) {
+      setIsJoining(false)
       const query = searchParams?.toString()
       const nextPath = query ? `${pathname}?${query}` : pathname
       router.replace(`/login?reason=auth_required&next=${encodeURIComponent(nextPath)}`)
       return
     }
-    setNickname(user.name ?? null)
+    const joined = await joinChatRoom(companyId).catch(() => null)
+    setIsJoining(false)
+    if (!joined) return
+    setNickname(joined.nickname ?? null)
     setIsJoined(true)
   }
 

@@ -1,7 +1,8 @@
 ﻿"use client"
 
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { getUser, logout, withdraw } from "@/lib/api"
 import type { User } from "@/lib/types"
@@ -20,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-export default function ProfilePage() {
+function ProfilePageClient() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -38,7 +39,7 @@ export default function ProfilePage() {
       const data = await getUser()
       if (!mounted) return
       if (!data || data.role !== "USER") {
-        router.push(loginPath)
+        router.replace(loginPath)
         return
       }
       setUser(data)
@@ -62,13 +63,13 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     setIsLoggingOut(true)
     await logout()
-    router.push(loginPath)
+    router.replace(loginPath)
   }
 
   const handleWithdraw = async () => {
     setIsWithdrawing(true)
     await withdraw()
-    router.push(loginPath)
+    router.replace(loginPath)
   }
 
   return (
@@ -76,10 +77,10 @@ export default function ProfilePage() {
       {/* Header - mobile only */}
       <header className="mb-6 flex items-start justify-between md:hidden">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <Image src="/logo.png" alt="언제나와 로고" width={24} height={24} className="rounded-md" priority />
             <span className="text-base font-semibold text-foreground">언제나와</span>
-          </div>
+          </Link>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">프로필</h1>
           <p className="text-sm text-muted-foreground">계정 설정</p>
         </div>
@@ -166,6 +167,14 @@ export default function ProfilePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-6 text-sm text-muted-foreground">불러오는 중...</div>}>
+      <ProfilePageClient />
+    </Suspense>
   )
 }
 

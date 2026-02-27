@@ -10,6 +10,8 @@ public class BoardCommentCreateRequest {
     @Size(max = 3000)
     private String content;
 
+    private Boolean anonymous;
+
     public Long getParentCommentId() {
         return parentCommentId;
     }
@@ -24,5 +26,13 @@ public class BoardCommentCreateRequest {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Boolean getAnonymous() {
+        return anonymous;
+    }
+
+    public void setAnonymous(Boolean anonymous) {
+        this.anonymous = anonymous;
     }
 }

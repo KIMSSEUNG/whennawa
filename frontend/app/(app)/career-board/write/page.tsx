@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createBoardPost } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CAREER_BOARD_COMPANY_NAME, CAREER_BOARD_PATH } from "@/lib/career-board"
@@ -16,6 +17,7 @@ export default function CareerBoardWritePage() {
 
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
+  const [isAnonymous, setIsAnonymous] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -26,7 +28,7 @@ export default function CareerBoardWritePage() {
     setIsSubmitting(true)
     setMessage(null)
     try {
-      await createBoardPost(companyName, title, content)
+      await createBoardPost(companyName, title, content, { anonymous: isAnonymous })
       router.push(boardHref)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "게시글 등록에 실패했습니다.")
@@ -71,6 +73,10 @@ export default function CareerBoardWritePage() {
               maxLength={3000}
               required
             />
+            <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Checkbox checked={isAnonymous} onCheckedChange={(checked) => setIsAnonymous(checked === true)} />
+              <span>익명으로 작성</span>
+            </label>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "등록 중..." : "게시글 등록"}

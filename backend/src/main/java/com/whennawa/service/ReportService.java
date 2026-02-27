@@ -185,7 +185,7 @@ public class ReportService {
         Map<String, String> suggestions = new LinkedHashMap<>();
 
         if (companyName == null || companyName.isBlank()) {
-            for (String stepName : rollingStepLogRepository.findTopStepNames()) {
+            for (String stepName : rollingStepLogRepository.findTopStepNamesByRecruitmentMode(RecruitmentMode.ROLLING)) {
                 addSuggestion(suggestions, stepName);
             }
             List<StepDateReport> recentReports = reportRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
@@ -193,18 +193,27 @@ public class ReportService {
                 if (report == null) {
                     continue;
                 }
+                if (report.getRecruitmentMode() != RecruitmentMode.ROLLING) {
+                    continue;
+                }
                 addSuggestion(suggestions, report.getCurrentStepName());
             }
         } else {
             Company company = findCompany(companyName.trim());
             if (company != null) {
-                List<RollingStepLog> rollingLogs = rollingStepLogRepository.findByCompanyNameIgnoreCase(company.getCompanyName());
+                List<RollingStepLog> rollingLogs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
+                    company.getCompanyName(),
+                    RecruitmentMode.ROLLING
+                );
                 for (RollingStepLog log : rollingLogs) {
                     addSuggestion(suggestions, log == null ? null : log.getCurrentStepName());
                 }
                 List<StepDateReport> recentReports = reportRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
                 for (StepDateReport report : recentReports) {
                     if (report == null) {
+                        continue;
+                    }
+                    if (report.getRecruitmentMode() != RecruitmentMode.ROLLING) {
                         continue;
                     }
                     String reportCompanyName = report.getCompanyName();
@@ -216,12 +225,15 @@ public class ReportService {
                 }
             }
             if (suggestions.isEmpty()) {
-                for (String stepName : rollingStepLogRepository.findTopStepNames()) {
+                for (String stepName : rollingStepLogRepository.findTopStepNamesByRecruitmentMode(RecruitmentMode.ROLLING)) {
                     addSuggestion(suggestions, stepName);
                 }
                 List<StepDateReport> recentReports = reportRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
                 for (StepDateReport report : recentReports) {
                     if (report == null) {
+                        continue;
+                    }
+                    if (report.getRecruitmentMode() != RecruitmentMode.ROLLING) {
                         continue;
                     }
                     addSuggestion(suggestions, report.getCurrentStepName());
@@ -364,16 +376,18 @@ public class ReportService {
 
             java.util.Optional<RollingStepLog> existing;
             if (rollingResultType == RollingReportType.NO_RESPONSE_REPORTED) {
-                existing = rollingStepLogRepository.findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndSourceType(
+                existing = rollingStepLogRepository.findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceType(
                     rollingCompanyName,
+                    RecruitmentMode.ROLLING,
                     rollingStepName,
                     RollingReportType.NO_RESPONSE_REPORTED,
                     LogSourceType.REPORT
                 );
             } else {
                 existing = rollingStepLogRepository
-                    .findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+                    .findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
                         rollingCompanyName,
+                        RecruitmentMode.ROLLING,
                         rollingStepName,
                         rollingResultType,
                         LogSourceType.REPORT,
@@ -388,6 +402,7 @@ public class ReportService {
                 created.setCompanyName(rollingCompanyName);
                 created.setCurrentStepName(rollingStepName);
                 created.setRollingResultType(rollingResultType);
+                created.setRecruitmentMode(RecruitmentMode.ROLLING);
                 created.setSourceType(LogSourceType.REPORT);
                 created.setPrevReportedDate(rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getPrevReportedDate());
                 created.setReportedDate(rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getReportedDate());
@@ -407,6 +422,9 @@ public class ReportService {
                 }
                 if (rollingLog.getSourceType() == null) {
                     rollingLog.setSourceType(LogSourceType.REPORT);
+                }
+                if (rollingLog.getRecruitmentMode() == null) {
+                    rollingLog.setRecruitmentMode(RecruitmentMode.ROLLING);
                 }
                 if (rollingResultType != RollingReportType.NO_RESPONSE_REPORTED) {
                     if (rollingLog.getPrevReportedDate() == null) {
@@ -443,16 +461,18 @@ public class ReportService {
 
             java.util.Optional<RollingStepLog> existingRegular;
             if (regularResultType == RollingReportType.NO_RESPONSE_REPORTED) {
-                existingRegular = rollingStepLogRepository.findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndSourceType(
+                existingRegular = rollingStepLogRepository.findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceType(
                     regularCompanyName,
+                    RecruitmentMode.REGULAR,
                     finalRegularCurrentStep,
                     RollingReportType.NO_RESPONSE_REPORTED,
                     LogSourceType.REPORT
                 );
             } else {
                 existingRegular = rollingStepLogRepository
-                    .findFirstByCompanyNameAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+                    .findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
                         regularCompanyName,
+                        RecruitmentMode.REGULAR,
                         finalRegularCurrentStep,
                         RollingReportType.DATE_REPORTED,
                         LogSourceType.REPORT,
@@ -467,6 +487,7 @@ public class ReportService {
                 created.setCompanyName(regularCompanyName);
                 created.setCurrentStepName(finalRegularCurrentStep);
                 created.setRollingResultType(regularResultType);
+                created.setRecruitmentMode(RecruitmentMode.REGULAR);
                 created.setSourceType(LogSourceType.REPORT);
                 created.setPrevReportedDate(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getPrevReportedDate());
                 created.setReportedDate(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getReportedDate());
@@ -486,6 +507,9 @@ public class ReportService {
                 }
                 if (regularLog.getSourceType() == null) {
                     regularLog.setSourceType(LogSourceType.REPORT);
+                }
+                if (regularLog.getRecruitmentMode() == null) {
+                    regularLog.setRecruitmentMode(RecruitmentMode.REGULAR);
                 }
                 if (regularResultType != RollingReportType.NO_RESPONSE_REPORTED) {
                     if (regularLog.getPrevReportedDate() == null) {

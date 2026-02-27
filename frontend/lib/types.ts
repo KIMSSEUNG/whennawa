@@ -31,6 +31,7 @@ export type RecruitmentMode = "REGULAR" | "ROLLING"
 export type RollingReportType = "DATE_REPORTED" | "NO_RESPONSE_REPORTED"
 
 export type ReportStatus = "PENDING" | "PROCESSED" | "DISCARDED"
+export type CompanyRequestStatus = "PENDING" | "PROCESSED" | "DISCARDED"
 
 export interface ReportStep {
   stepId: number
@@ -85,11 +86,27 @@ export interface ChatMessage {
 }
 
 export interface CompanyCreateResult {
-  companyId: number
+  companyId: number | null
+  requestId: number | null
   companyName: string
   originalCompanyName: string
   created: boolean
+  pending: boolean
   normalizedChanged: boolean
+  message: string | null
+}
+
+export interface CompanyNameRequestItem {
+  requestId: number
+  originalCompanyName: string
+  normalizedCompanyName: string
+  requestCount: number
+  status: CompanyRequestStatus
+  alreadyExists: boolean
+  existingCompanyName: string | null
+  message: string | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface BoardPost {

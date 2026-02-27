@@ -27,6 +27,11 @@ public class AuthCookieService {
         addCookie(response, REFRESH_COOKIE, refreshToken, refreshTtl, true);
     }
 
+    public void setAccessCookie(HttpServletResponse response, String accessToken) {
+        Duration accessTtl = Duration.ofMinutes(appProperties.getJwt().getAccessTtlMinutes());
+        addCookie(response, ACCESS_COOKIE, accessToken, accessTtl, true);
+    }
+
     public void clearAuthCookies(HttpServletResponse response) {
         addCookie(response, ACCESS_COOKIE, "", Duration.ZERO, true);
         addCookie(response, REFRESH_COOKIE, "", Duration.ZERO, true);

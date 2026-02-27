@@ -11,6 +11,7 @@ import com.whennawa.repository.ChatMessageRepository;
 import com.whennawa.repository.ChatRoomMemberRepository;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.UserRepository;
+import com.whennawa.util.NicknameGenerator;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +32,24 @@ public class ChatService {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ProfanityMasker profanityMasker;
+    private final NicknameGenerator nicknameGenerator;
     private final ConcurrentMap<Long, Long> lastChatAtByUserId = new ConcurrentHashMap<>();
+
+    @Transactional
+    public String joinRoom(Long companyId, Long userId) {
+        if (companyId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Company id is required");
+        }
+        Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthenticated"));
+
+        ChatRoomMember member = findOrCreateMember(company, user);
+        String roomNickname = allocateRoomNickname(company.getCompanyId());
+        member.setNickname(roomNickname);
+        return chatRoomMemberRepository.save(member).getNickname();
+    }
 
     @Transactional
     public ChatMessageResponse processAndSave(ChatMessageRequest request, Long userId) {
@@ -83,32 +101,20 @@ public class ChatService {
     }
 
     private ChatRoomMember findOrCreateMember(Company company, User user) {
-        String effectiveNickname = resolveNickname(user);
         return chatRoomMemberRepository.findByCompanyCompanyIdAndUserId(company.getCompanyId(), user.getId())
-            .map(existing -> {
-                if (!effectiveNickname.equals(existing.getNickname())) {
-                    if (chatRoomMemberRepository.existsByCompanyCompanyIdAndNickname(company.getCompanyId(), effectiveNickname)) {
-                        return existing;
-                    }
-                    existing.setNickname(effectiveNickname);
-                    return chatRoomMemberRepository.save(existing);
-                }
-                return existing;
-            })
             .orElseGet(() -> {
                 ChatRoomMember created = new ChatRoomMember();
                 created.setCompany(company);
                 created.setUser(user);
-                created.setNickname(effectiveNickname);
+                created.setNickname(allocateRoomNickname(company.getCompanyId()));
                 return chatRoomMemberRepository.save(created);
             });
     }
 
-    private String resolveNickname(User user) {
-        if (user.getNickname() != null && !user.getNickname().isBlank()) {
-            return user.getNickname();
-        }
-        return "user#" + String.format("%05d", Math.floorMod(user.getId() == null ? 0L : user.getId(), 100_000));
+    private String allocateRoomNickname(Long companyId) {
+        return nicknameGenerator.generateUnique(
+            candidate -> chatRoomMemberRepository.existsByCompanyCompanyIdAndNickname(companyId, candidate)
+        );
     }
 
     private String normalizeMessage(String raw) {

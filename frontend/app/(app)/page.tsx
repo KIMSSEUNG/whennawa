@@ -157,7 +157,7 @@ export default function HomePage() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <article className="rounded-2xl border border-border/60 bg-card p-5 lg:col-span-2">
-          <h3 className="text-lg font-bold text-foreground">오늘 가장 많이 쓰는 흐름</h3>
+          <h3 className="text-lg font-bold text-foreground">추천 이용</h3>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Link
               href="/search"
@@ -182,7 +182,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/notifications"
-              className="rounded-xl border border-primary/40 bg-primary/5 p-4 text-sm hover:bg-primary/10"
+              className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm hover:bg-muted/40"
             >
               <p className="font-semibold text-foreground">4. 알림 등록</p>
               <p className="mt-1 text-muted-foreground">오늘 결과 발표 제보 알림을 회사 단위로 수신</p>
@@ -205,7 +205,7 @@ export default function HomePage() {
             <Link href="/career-board" className="block rounded-lg border border-border/60 px-3 py-2 text-sm hover:bg-muted/40">
               취업고민 게시판
             </Link>
-            <Link href="/notifications" className="block rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-sm hover:bg-primary/10">
+            <Link href="/notifications" className="block rounded-lg border border-border/60 px-3 py-2 text-sm hover:bg-muted/40">
               알림 관리
             </Link>
           </div>

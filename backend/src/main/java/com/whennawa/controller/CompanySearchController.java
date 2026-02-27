@@ -6,6 +6,7 @@ import com.whennawa.dto.company.CompanyCreateRequest;
 import com.whennawa.dto.company.CompanyCreateResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
 import com.whennawa.dto.company.RollingPredictionResponse;
+import com.whennawa.service.CompanyNameRequestService;
 import com.whennawa.service.CompanySearchService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -24,9 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/companies")
 public class CompanySearchController {
     private final CompanySearchService companySearchService;
+    private final CompanyNameRequestService companyNameRequestService;
 
-    public CompanySearchController(CompanySearchService companySearchService) {
+    public CompanySearchController(CompanySearchService companySearchService,
+                                   CompanyNameRequestService companyNameRequestService) {
         this.companySearchService = companySearchService;
+        this.companyNameRequestService = companyNameRequestService;
     }
 
     @GetMapping("/search")
@@ -38,7 +42,7 @@ public class CompanySearchController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CompanyCreateResponse createCompany(@Valid @RequestBody CompanyCreateRequest request) {
-        return companySearchService.createCompany(request.getCompanyName());
+        return companyNameRequestService.submitRequest(request.getCompanyName(), null);
     }
 
     @GetMapping("/{companyName}/timeline")

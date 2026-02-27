@@ -87,10 +87,12 @@ export default function BoardPostDetailPage() {
   const [isDeletingPost, setIsDeletingPost] = useState(false)
 
   const [newCommentContent, setNewCommentContent] = useState("")
+  const [newCommentAnonymous, setNewCommentAnonymous] = useState(false)
   const [isCreatingComment, setIsCreatingComment] = useState(false)
 
   const [replyTargetId, setReplyTargetId] = useState<number | null>(null)
   const [replyContent, setReplyContent] = useState("")
+  const [replyAnonymous, setReplyAnonymous] = useState(false)
   const [isCreatingReply, setIsCreatingReply] = useState(false)
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
@@ -192,8 +194,11 @@ export default function BoardPostDetailPage() {
     setIsCreatingComment(true)
     setMessage(null)
     try {
-      await createBoardComment(companyName, postId, newCommentContent)
+      await createBoardComment(companyName, postId, newCommentContent, undefined, {
+        anonymous: newCommentAnonymous,
+      })
       setNewCommentContent("")
+      setNewCommentAnonymous(false)
       await refreshComments()
     } catch (error) {
       const text = error instanceof Error ? error.message : "댓글 등록에 실패했습니다."
@@ -208,9 +213,12 @@ export default function BoardPostDetailPage() {
     setIsCreatingReply(true)
     setMessage(null)
     try {
-      await createBoardComment(companyName, postId, replyContent, replyTargetId)
+      await createBoardComment(companyName, postId, replyContent, replyTargetId, {
+        anonymous: replyAnonymous,
+      })
       setReplyTargetId(null)
       setReplyContent("")
+      setReplyAnonymous(false)
       await refreshComments()
     } catch (error) {
       const text = error instanceof Error ? error.message : "답글 등록에 실패했습니다."
@@ -324,6 +332,7 @@ export default function BoardPostDetailPage() {
               onClick={() => {
                 setReplyTargetId((prev) => (prev === comment.commentId ? null : comment.commentId))
                 setReplyContent("")
+                setReplyAnonymous(false)
               }}
             >
               답글
@@ -348,6 +357,15 @@ export default function BoardPostDetailPage() {
               className="min-h-[90px]"
               maxLength={3000}
             />
+            <label className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={replyAnonymous}
+                onChange={(e) => setReplyAnonymous(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <span>익명으로 답글 달기</span>
+            </label>
             <div className="mt-2 flex gap-2">
               <Button type="button" onClick={() => void handleCreateReply()} disabled={isCreatingReply || !replyContent.trim()}>
                 {isCreatingReply ? "등록 중..." : "답글 등록"}
@@ -438,9 +456,20 @@ export default function BoardPostDetailPage() {
             className="min-h-[110px]"
             maxLength={3000}
           />
-          <Button type="button" onClick={() => void handleCreateComment()} disabled={isCreatingComment || !newCommentContent.trim()}>
-            {isCreatingComment ? "등록 중..." : "댓글 등록"}
-          </Button>
+          <div className="flex flex-col items-start gap-2">
+            <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={newCommentAnonymous}
+                onChange={(e) => setNewCommentAnonymous(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <span>익명으로 댓글 달기</span>
+            </label>
+            <Button type="button" onClick={() => void handleCreateComment()} disabled={isCreatingComment || !newCommentContent.trim()}>
+              {isCreatingComment ? "등록 중..." : "댓글 등록"}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6 space-y-3">

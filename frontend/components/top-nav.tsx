@@ -17,7 +17,8 @@ const userNavItems = [
 ]
 
 const adminNavItems = [
-  { href: "/admin", label: "타임라인" },
+  { href: "/admin/reports", label: "공고 제보 검수" },
+  { href: "/admin/company-requests", label: "회사 추가 검수" },
   { href: "/profile", label: "프로필" },
 ]
 

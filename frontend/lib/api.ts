@@ -1,6 +1,8 @@
 import { mockCompanies, mockUser } from "./mock-data"
 import type {
   ChatMessage,
+  CompanyNameRequestItem,
+  CompanyRequestStatus,
   BoardComment,
   BoardPost,
   CompanyCreateResult,
@@ -58,11 +60,14 @@ type CompanyTimelineInput = {
 }
 
 type CompanyCreateResultInput = {
-  companyId: number
+  companyId: number | null
+  requestId: number | null
   companyName: string
   originalCompanyName: string
   created: boolean
+  pending: boolean
   normalizedChanged: boolean
+  message: string | null
 }
 
 type KeywordLeadTimeInput = {
@@ -95,11 +100,28 @@ type ReportAssignBatchResponseInput = {
   updatedCount: number
 }
 
+type CompanyNameRequestItemInput = {
+  requestId: number
+  originalCompanyName: string
+  normalizedCompanyName: string
+  requestCount: number
+  status: CompanyRequestStatus
+  alreadyExists: boolean
+  existingCompanyName: string | null
+  message: string | null
+  createdAt: Date | string
+  updatedAt: Date | string
+}
+
 type ChatMessageInput = {
   companyId: number
   senderNickname: string
   message: string
   timestamp: Date | string
+}
+
+type ChatJoinResponseInput = {
+  nickname: string
 }
 
 type BoardPostInput = {
@@ -229,6 +251,12 @@ const normalizeCompanyCreateResult = (item: CompanyCreateResultInput): CompanyCr
   ...item,
 })
 
+const normalizeCompanyNameRequestItem = (item: CompanyNameRequestItemInput): CompanyNameRequestItem => ({
+  ...item,
+  createdAt: toDate(item.createdAt),
+  updatedAt: toDate(item.updatedAt),
+})
+
 const normalizeBoardPost = (item: BoardPostInput): BoardPost => ({
   ...item,
   createdAt: toDate(item.createdAt),
@@ -336,10 +364,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         const hadSession = window.localStorage.getItem("had_session") === "1"
         const reason = hadSession ? "session_expired" : "auth_required"
         const next = `${window.location.pathname}${window.location.search}`
-        window.location.assign(`/login?reason=${reason}&next=${encodeURIComponent(next)}`)
+        window.location.replace(`/login?reason=${reason}&next=${encodeURIComponent(next)}`)
       }
     }
-    const message = await response.text()
+    const raw = await response.text()
+    let message = raw
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { message?: string }
+        if (parsed?.message && parsed.message.trim()) {
+          message = parsed.message
+        }
+      } catch {
+        // Keep raw text when response body is not JSON.
+      }
+    }
     throw new Error(message || `Request failed with ${response.status}`)
   }
 
@@ -511,11 +550,14 @@ export async function createCompany(companyName: string): Promise<CompanyCreateR
   if (USE_MOCK) {
     await delay(200)
     return {
-      companyId: Math.floor(Math.random() * 100000),
+      companyId: null,
+      requestId: Math.floor(Math.random() * 100000),
       companyName,
       originalCompanyName: companyName,
-      created: true,
+      created: false,
+      pending: true,
       normalizedChanged: false,
+      message: "회사 등록 요청 감사합니다. 처리에는 일정 시간이 소요될 수 있습니다.",
     }
   }
   const data = await request<CompanyCreateResultInput>("/api/companies", {
@@ -552,7 +594,12 @@ export async function fetchBoardPost(companyName: string, postId: number): Promi
   return normalizeBoardPost(data)
 }
 
-export async function createBoardPost(companyName: string, title: string, content: string): Promise<BoardPost> {
+export async function createBoardPost(
+  companyName: string,
+  title: string,
+  content: string,
+  options?: { anonymous?: boolean },
+): Promise<BoardPost> {
   if (USE_MOCK) {
     await delay(150)
     return {
@@ -568,7 +615,7 @@ export async function createBoardPost(companyName: string, title: string, conten
   }
   const data = await request<BoardPostInput>(`/api/boards/${encodeURIComponent(companyName)}/posts`, {
     method: "POST",
-    body: JSON.stringify({ title, content }),
+    body: JSON.stringify({ title, content, anonymous: Boolean(options?.anonymous) }),
   })
   return normalizeBoardPost(data)
 }
@@ -634,15 +681,31 @@ export async function createBoardComment(
   postId: number,
   content: string,
   parentCommentId?: number | null,
+  options?: { anonymous?: boolean },
 ): Promise<BoardComment> {
   const data = await request<BoardCommentInput>(
     `/api/boards/${encodeURIComponent(companyName)}/posts/${postId}/comments`,
     {
       method: "POST",
-      body: JSON.stringify({ content, parentCommentId: parentCommentId ?? null }),
+      body: JSON.stringify({
+        content,
+        parentCommentId: parentCommentId ?? null,
+        anonymous: Boolean(options?.anonymous),
+      }),
     },
   )
   return normalizeBoardComment(data)
+}
+
+export async function joinChatRoom(companyId: number): Promise<{ nickname: string }> {
+  if (USE_MOCK) {
+    await delay(120)
+    return { nickname: `user#${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}` }
+  }
+  const data = await request<ChatJoinResponseInput>(`/api/chat/room/${companyId}/join`, {
+    method: "POST",
+  })
+  return { nickname: data.nickname }
 }
 
 export async function updateBoardComment(
@@ -983,6 +1046,85 @@ export async function discardAdminReport(reportId: number): Promise<ReportItem> 
     method: "POST",
   })
   return normalizeReportItem(data)
+}
+
+export async function fetchAdminCompanyNameRequests(status?: CompanyRequestStatus): Promise<CompanyNameRequestItem[]> {
+  if (USE_MOCK) {
+    await delay(250)
+    return []
+  }
+  const params = new URLSearchParams()
+  if (status) params.set("status", status)
+  const qs = params.toString()
+  const data = await request<CompanyNameRequestItemInput[]>(`/api/admin/company-requests${qs ? `?${qs}` : ""}`)
+  return (data ?? []).map(normalizeCompanyNameRequestItem)
+}
+
+export async function updateAdminCompanyNameRequest(requestId: number, companyName: string): Promise<CompanyNameRequestItem> {
+  if (USE_MOCK) {
+    await delay(200)
+    return {
+      requestId,
+      originalCompanyName: companyName,
+      normalizedCompanyName: companyName,
+      requestCount: 1,
+      status: "PENDING",
+      alreadyExists: false,
+      existingCompanyName: null,
+      message: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  }
+  const data = await request<CompanyNameRequestItemInput>(`/api/admin/company-requests/${requestId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ companyName }),
+  })
+  return normalizeCompanyNameRequestItem(data)
+}
+
+export async function processAdminCompanyNameRequest(requestId: number): Promise<CompanyNameRequestItem> {
+  if (USE_MOCK) {
+    await delay(220)
+    return {
+      requestId,
+      originalCompanyName: "Sample",
+      normalizedCompanyName: "Sample",
+      requestCount: 1,
+      status: "PROCESSED",
+      alreadyExists: false,
+      existingCompanyName: null,
+      message: "회사 등록이 완료되었습니다.",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  }
+  const data = await request<CompanyNameRequestItemInput>(`/api/admin/company-requests/${requestId}/process`, {
+    method: "POST",
+  })
+  return normalizeCompanyNameRequestItem(data)
+}
+
+export async function discardAdminCompanyNameRequest(requestId: number): Promise<CompanyNameRequestItem> {
+  if (USE_MOCK) {
+    await delay(200)
+    return {
+      requestId,
+      originalCompanyName: "Sample",
+      normalizedCompanyName: "Sample",
+      requestCount: 1,
+      status: "DISCARDED",
+      alreadyExists: false,
+      existingCompanyName: null,
+      message: "요청을 폐기했습니다.",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  }
+  const data = await request<CompanyNameRequestItemInput>(`/api/admin/company-requests/${requestId}/discard`, {
+    method: "POST",
+  })
+  return normalizeCompanyNameRequestItem(data)
 }
 
 export async function loginWithGoogle(nextPath?: string): Promise<boolean> {

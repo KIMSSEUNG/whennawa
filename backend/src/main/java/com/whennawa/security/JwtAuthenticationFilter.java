@@ -4,7 +4,6 @@ import com.whennawa.entity.User;
 import com.whennawa.repository.UserRepository;
 import com.whennawa.service.AuthCookieService;
 import com.whennawa.service.RefreshTokenService;
-import com.whennawa.service.RefreshTokenService.RotationResult;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -123,13 +122,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return false;
         }
         try {
-            RotationResult rotation = refreshTokenService.rotateToken(refreshToken);
-            String accessToken = jwtService.createAccessToken(rotation.user());
-            authCookieService.setAuthCookies(response, accessToken, rotation.refreshToken());
-            authenticate(rotation.user());
+            User user = refreshTokenService.validateTokenAndGetUser(refreshToken);
+            String accessToken = jwtService.createAccessToken(user);
+            authCookieService.setAccessCookie(response, accessToken);
+            authenticate(user);
             return true;
         } catch (Exception ex) {
-            authCookieService.clearAuthCookies(response);
             SecurityContextHolder.clearContext();
             return false;
         }

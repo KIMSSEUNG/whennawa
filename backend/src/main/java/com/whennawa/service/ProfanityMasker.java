@@ -42,6 +42,18 @@ public class ProfanityMasker {
         return sanitized;
     }
 
+    public boolean containsProfanity(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        for (Pattern pattern : patterns) {
+            if (pattern.matcher(text).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void reloadPatterns() {
         List<Pattern> loaded = new ArrayList<>();
         if (!profanityWordsResource.exists()) {
