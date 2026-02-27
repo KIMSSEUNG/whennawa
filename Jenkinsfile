@@ -1,11 +1,13 @@
-﻿pipeline {
+pipeline {
   agent any
 
   options {
     timestamps()
+    ansiColor('xterm')
     disableConcurrentBuilds()
   }
 
+  // GitHub webhook trigger (GitHub plugin)
   triggers {
     githubPush()
   }
@@ -51,10 +53,13 @@
       steps {
         sh '''
           set -e
+
           if [ ! -f ".env" ]; then
             echo "[ERROR] .env not found in workspace."
+            echo "Create .env on Jenkins host (or inject it before deploy)."
             exit 1
           fi
+
           docker compose down --remove-orphans || true
           docker compose up -d --build
         '''
@@ -68,7 +73,11 @@
       steps {
         sh '''
           set -e
+
+          # frontend
           curl -fsS http://127.0.0.1:3000 > /dev/null
+
+          # backend
           curl -fsS "http://127.0.0.1:8080/api/companies/search?query=test" > /dev/null
         '''
       }
