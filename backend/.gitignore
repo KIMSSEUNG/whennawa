@@ -1,0 +1,51 @@
+﻿# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Gradle / build
+.gradle/
+build/
+out/
+target/
+
+# Java / JVM
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+*.pid
+
+# Spring Boot runtime files
+logs/
+
+# Environment / secrets
+.env
+.env.*
+*.env
+
+# Spring local/secret config (keep default application.yml tracked if needed)
+application-local.yml
+application-local.properties
+application-secret.yml
+application-secret.properties
+application-prod.yml
+application-prod.properties
+
+# OAuth / keys
+client_secret*.json
+service-account*.json
+*.pem
+*.key
+*.p12
+
+# DB / dumps
+*.mv.db
+*.trace.db
+*.h2.db
+data/
+dump/
