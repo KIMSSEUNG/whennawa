@@ -1,9 +1,22 @@
 pipeline {
   agent any
+
+  triggers {
+    githubPush()
+  }
+
   stages {
-    stage('Deploy') {
+    stage('Deploy main') {
+      when {
+        branch 'main'
+      }
       steps {
-        sh 'bash /opt/deploy/deploy.sh'
+        sh '''
+          docker compose down || true
+          docker compose build --no-cache
+          docker compose up -d
+          docker image prune -f
+        '''
       }
     }
   }
