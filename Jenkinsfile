@@ -51,14 +51,25 @@
       steps {
         sh '''
           set -e
-
           if [ ! -f ".env" ]; then
             echo "[ERROR] .env not found in workspace."
             exit 1
           fi
-
           docker compose down --remove-orphans || true
           docker compose up -d --build
+        '''
+      }
+    }
+
+    stage('Health Check (main only)') {
+      when {
+        branch 'main'
+      }
+      steps {
+        sh '''
+          set -e
+          curl -fsS http://127.0.0.1:3000 > /dev/null
+          curl -fsS "http://127.0.0.1:8080/api/companies/search?query=test" > /dev/null
         '''
       }
     }
