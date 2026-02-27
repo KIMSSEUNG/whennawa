@@ -3,13 +3,7 @@ pipeline {
 
   options {
     timestamps()
-    ansiColor('xterm')
     disableConcurrentBuilds()
-  }
-
-  // GitHub webhook trigger (GitHub plugin)
-  triggers {
-    githubPush()
   }
 
   environment {
@@ -18,6 +12,7 @@ pipeline {
   }
 
   stages {
+
     stage('Checkout') {
       steps {
         checkout scm
@@ -30,7 +25,7 @@ pipeline {
           set -e
           cd backend
           chmod +x gradlew
-          ./gradlew --no-daemon clean compileJava
+          ./gradlew --no-daemon clean build -x test
         '''
       }
     }
@@ -47,47 +42,57 @@ pipeline {
     }
 
     stage('Deploy (main only)') {
-      when {
-        branch 'main'
-      }
       steps {
-        sh '''
-          set -e
+        script {
+          if (env.BRANCH_NAME == 'main') {
+            sh '''
+              set -e
 
-          if [ ! -f ".env" ]; then
-            echo "[ERROR] .env not found in workspace."
-            echo "Create .env on Jenkins host (or inject it before deploy)."
-            exit 1
-          fi
+              if [ ! -f ".env" ]; then
+                echo "[ERROR] .env not found in workspace."
+                exit 1
+              fi
 
-          docker compose down --remove-orphans || true
-          docker compose up -d --build
-        '''
+              docker compose down --remove-orphans || true
+              docker compose up -d --build
+            '''
+          } else {
+            echo "Not main branch. Skipping deploy."
+          }
+        }
       }
     }
 
     stage('Health Check (main only)') {
-      when {
-        branch 'main'
-      }
       steps {
-        sh '''
-          set -e
+        script {
+          if (env.BRANCH_NAME == 'main') {
+            sh '''
+              set -e
+              sleep 10
 
-          # frontend
-          curl -fsS http://127.0.0.1:3000 > /dev/null
-
-          # backend
-          curl -fsS "http://127.0.0.1:8080/api/companies/search?query=test" > /dev/null
-        '''
+              curl -fsS http://127.0.0.1:3000 > /dev/null
+              curl -fsS "http://127.0.0.1:8080/api/companies/search?query=test" > /dev/null
+            '''
+          }
+        }
       }
     }
+
   }
 
   post {
+    success {
+      echo "Build & Deploy Success ✅"
+    }
     failure {
+      echo "Build Failed ❌"
+
       sh '''
+        echo "==== Docker Status ===="
         docker compose ps || true
+
+        echo "==== Docker Logs ===="
         docker compose logs --tail=200 || true
       '''
     }
