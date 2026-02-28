@@ -13,18 +13,16 @@ pipeline {
 
   stages {
 
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
-
     stage('Backend Build') {
       steps {
         sh '''
           set -e
           cd backend
           chmod +x gradlew
+
+          # 🔥 Gradle 메모리 제한 (t3.micro 대응)
+          export GRADLE_OPTS="-Xmx512m"
+
           ./gradlew --no-daemon clean build -x test
         '''
       }
@@ -69,10 +67,11 @@ pipeline {
           if (env.BRANCH_NAME == 'main') {
             sh '''
               set -e
-              sleep 10
+              sleep 15
 
-              curl -fsS http://127.0.0.1:3000 > /dev/null
-              curl -fsS "http://127.0.0.1:8080/api/companies/search?query=test" > /dev/null
+              # timeout 5초
+              curl -m 5 -fsS http://127.0.0.1:3000 > /dev/null
+              curl -m 5 -fsS "http://127.0.0.1:8080/api/companies/search?query=test" > /dev/null
             '''
           }
         }
@@ -85,6 +84,7 @@ pipeline {
     success {
       echo "Build & Deploy Success ✅"
     }
+
     failure {
       echo "Build Failed ❌"
 
