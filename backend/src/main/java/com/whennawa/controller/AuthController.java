@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
-@RequestMapping("/auth/api")
+@RequestMapping("/api/auth")
 @Slf4j
 public class AuthController {
     private final RefreshTokenService refreshTokenService;

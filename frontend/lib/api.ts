@@ -359,7 +359,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     if (response.status === 401 && typeof window !== "undefined") {
-      const isMeEndpoint = path.startsWith("/auth/api/me")
+      const isMeEndpoint = path.startsWith("/api/auth/me")
       if (!isMeEndpoint && window.location.pathname !== "/login") {
         const hadSession = window.localStorage.getItem("had_session") === "1"
         const reason = hadSession ? "session_expired" : "auth_required"
@@ -399,7 +399,7 @@ export async function getUser(): Promise<User | null> {
       return mockUser
     }
 
-    const data = await request<UserInfoResponse>("/auth/api/me")
+    const data = await request<UserInfoResponse>("/api/auth/me")
     if (!data?.userId || !data.email) {
       return null
     }
@@ -1158,7 +1158,7 @@ export async function logout(): Promise<void> {
       return
     }
 
-    await request<void>("/auth/api/logout", { method: "POST" })
+    await request<void>("/api/auth/logout", { method: "POST" })
   } catch (error) {
     console.error("Failed to logout", error)
   } finally {
@@ -1177,7 +1177,7 @@ export async function withdraw(): Promise<void> {
       return
     }
 
-    await request<void>("/auth/api/withdraw", { method: "DELETE" })
+    await request<void>("/api/auth/withdraw", { method: "DELETE" })
   } catch (error) {
     console.error("Failed to withdraw", error)
     throw error

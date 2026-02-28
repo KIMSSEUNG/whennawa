@@ -41,6 +41,6 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/auth/api");
+        return !request.getRequestURI().startsWith("/api/auth");
     }
 }

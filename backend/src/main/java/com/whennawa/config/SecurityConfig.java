@@ -58,10 +58,10 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex
                     .defaultAuthenticationEntryPointFor(
                             (req, res, e) -> res.sendError(401),
-                            new AntPathRequestMatcher("/auth/api/**")
+                            new AntPathRequestMatcher("/api/auth/**")
                     )
             )
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/api/**", "/api/**", "/webhooks/**", "/h2-console/**"))
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/auth/**", "/api/**", "/webhooks/**", "/h2-console/**"))
             .securityContext(sc -> sc.securityContextRepository(new NullSecurityContextRepository()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
@@ -69,9 +69,10 @@ public class SecurityConfig {
                     "/auth/login/**",
                     "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/**").permitAll()
-                .requestMatchers("/auth/api/**").authenticated()
+                .requestMatchers("/api/auth/refresh").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/auth/**").authenticated()
+                .requestMatchers("/api/**").permitAll()
                 .anyRequest().permitAll()
             )
             .oauth2Login(oauth2 -> oauth2
