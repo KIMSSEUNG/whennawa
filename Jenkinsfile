@@ -18,8 +18,12 @@ pipeline {
       steps {
         sh '''
           cd $WORKSPACE
-          docker-compose down || true
-          docker-compose up -d --build
+
+          # 1️⃣ backend / frontend만 빌드
+          docker compose build backend frontend
+
+          # 2️⃣ backend / frontend만 재시작
+          docker compose up -d backend frontend
         '''
       }
     }
@@ -31,7 +35,7 @@ pipeline {
         echo ==== Docker Status ====
         docker ps || true
         echo ==== Docker Logs ====
-        docker-compose logs --tail=200 || true
+        docker compose logs --tail=200 backend frontend || true
       '''
     }
   }
