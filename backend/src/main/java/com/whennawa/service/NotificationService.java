@@ -40,7 +40,7 @@ public class NotificationService {
     @Transactional
     public NotificationSubscriptionResponse subscribe(Long userId, String companyNameRaw) {
         User user = findActiveUser(userId);
-        Company company = resolveOrCreateCompany(companyNameRaw);
+        Company company = resolveActiveCompany(companyNameRaw);
 
         CompanyNotificationSubscription existing = subscriptionRepository
             .findByUser_IdAndCompanyCompanyId(user.getId(), company.getCompanyId())
@@ -196,7 +196,7 @@ public class NotificationService {
         );
     }
 
-    private Company resolveOrCreateCompany(String companyNameRaw) {
+    private Company resolveActiveCompany(String companyNameRaw) {
         String companyName = normalizeCompanyName(companyNameRaw);
         Company found = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName).orElse(null);
         if (found != null) {
@@ -213,11 +213,10 @@ public class NotificationService {
                 return normalizedMatch;
             }
         }
-
-        Company created = new Company();
-        created.setCompanyName(companyName);
-        created.setActive(true);
-        return companyRepository.save(created);
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Only registered companies can be subscribed. Please request company addition first."
+        );
     }
 
     private User findActiveUser(Long userId) {

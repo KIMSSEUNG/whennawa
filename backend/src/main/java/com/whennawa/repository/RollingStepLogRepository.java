@@ -26,10 +26,11 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
         """)
     List<String> findTopStepNamesByRecruitmentMode(@Param("recruitmentMode") RecruitmentMode recruitmentMode);
 
-    Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+    Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
         String companyName,
         RecruitmentMode recruitmentMode,
         String currentStepName,
+        String prevStepName,
         RollingReportType rollingResultType,
         LogSourceType sourceType,
         LocalDate prevReportedDate,

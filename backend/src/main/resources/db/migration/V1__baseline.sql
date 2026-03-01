@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS rolling_step_log (
   company_id BIGINT,
   company_name VARCHAR(100) NOT NULL,
   current_step_name VARCHAR(100) NOT NULL,
+  prev_step_name VARCHAR(100),
   rolling_result_type VARCHAR(32) NOT NULL,
   recruitment_mode VARCHAR(16),
   source_type ENUM('OFFICIAL', 'REPORT') NOT NULL DEFAULT 'REPORT',
@@ -121,6 +122,7 @@ CREATE TABLE IF NOT EXISTS rolling_step_log (
 
 CREATE INDEX idx_rolling_step_log_company_name ON rolling_step_log (company_name);
 CREATE INDEX idx_rolling_step_log_step_name ON rolling_step_log (current_step_name);
+CREATE INDEX idx_rolling_step_log_prev_step_name ON rolling_step_log (prev_step_name);
 CREATE INDEX idx_rolling_step_log_result_type ON rolling_step_log (rolling_result_type);
 CREATE INDEX idx_rolling_step_log_mode ON rolling_step_log (recruitment_mode);
 CREATE INDEX idx_rolling_step_log_source_type ON rolling_step_log (source_type);

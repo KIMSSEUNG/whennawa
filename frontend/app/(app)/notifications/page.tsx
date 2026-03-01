@@ -1,9 +1,9 @@
 ﻿"use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
-import Link from "next/link"
+import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
+  createCompany,
   createNotificationSubscription,
   deleteNotification,
   deleteNotificationSubscription,
@@ -16,6 +16,16 @@ import type { CompanySearchItem, NotificationSubscription, UserNotification } fr
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { normalizeCompanyName } from "@/lib/company-name"
 import { cn } from "@/lib/utils"
 
 const SUBSCRIPTION_PAGE_SIZE = 12
@@ -37,6 +47,12 @@ function NotificationsPageClient() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
+  const [newCompanyName, setNewCompanyName] = useState("")
+  const [isAddingCompany, setIsAddingCompany] = useState(false)
+  const [addCompanyMessage, setAddCompanyMessage] = useState<string | null>(null)
+  const [isCompanyRequestPopupOpen, setIsCompanyRequestPopupOpen] = useState(false)
+  const [companyRequestPopupMessage, setCompanyRequestPopupMessage] = useState("")
 
   const [subscriptions, setSubscriptions] = useState<NotificationSubscription[]>([])
   const [subscriptionPage, setSubscriptionPage] = useState(0)
@@ -57,6 +73,7 @@ function NotificationsPageClient() {
   const [expandedMessageIds, setExpandedMessageIds] = useState<Set<number>>(new Set())
 
   const trimmedQuery = useMemo(() => query.trim(), [query])
+  const normalizedAddCompanyPreview = useMemo(() => normalizeCompanyName(newCompanyName), [newCompanyName])
   const notificationsByCompanyId = useMemo(() => {
     const grouped = new Map<number, UserNotification[]>()
     for (const item of notifications) {
@@ -164,17 +181,71 @@ function NotificationsPageClient() {
     setIsAdding(true)
     setActionMessage(null)
     try {
-      await createNotificationSubscription(companyName)
+      let resolvedCompanyName = companyName
+      const exactFromSuggestions = suggestions.find(
+        (item) => item.companyName?.trim().toLowerCase() === companyName.toLowerCase(),
+      )
+      if (exactFromSuggestions?.companyName) {
+        resolvedCompanyName = exactFromSuggestions.companyName
+      } else {
+        const related = await searchCompanies(companyName, 10)
+        const exact = (related ?? []).find(
+          (item) => item.companyName?.trim().toLowerCase() === companyName.toLowerCase(),
+        )
+        if (!exact?.companyName) {
+          setActionMessage("등록된 회사만 알림 등록이 가능합니다. 회사 추가를 먼저 진행해 주세요.")
+          return
+        }
+        resolvedCompanyName = exact.companyName
+      }
+
+      await createNotificationSubscription(resolvedCompanyName)
       setQuery("")
       setSuggestions([])
       setShowSuggestions(false)
-      setActionMessage(`"${companyName}" 알림이 등록되었습니다.`)
+      setActionMessage(`"${resolvedCompanyName}" 알림이 등록되었습니다.`)
       await loadSubscriptions(0, false)
     } catch (error) {
       const message = error instanceof Error ? error.message : "알림 등록에 실패했습니다."
       setActionMessage(message)
     } finally {
       setIsAdding(false)
+    }
+  }
+
+  const handleAddSubscriptionSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    void handleAdd()
+  }
+
+  const handleAddCompany = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!newCompanyName.trim()) return
+    setIsAddingCompany(true)
+    setAddCompanyMessage(null)
+    try {
+      const result = await createCompany(newCompanyName)
+      if (result.pending) {
+        const message = result.message ?? "회사 등록 요청 감사합니다. 처리에는 일정 시간이 소요될 수 있습니다."
+        setAddCompanyMessage(null)
+        setShowSuggestions(false)
+        setCompanyRequestPopupMessage(message)
+        setIsCompanyRequestPopupOpen(true)
+      } else if (!result.created) {
+        setAddCompanyMessage(result.message ?? "해당 회사명은 이미 등록되어 있습니다.")
+      } else {
+        const normalizedNotice = result.normalizedChanged
+          ? `입력값이 정규화되어 "${result.companyName}" 이름으로 저장되었습니다.`
+          : null
+        setAddCompanyMessage(`회사 추가가 완료되었습니다.${normalizedNotice ? ` ${normalizedNotice}` : ""}`)
+      }
+      setQuery(result.companyName)
+      setShowSuggestions(true)
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "회사 추가에 실패했습니다."
+      setAddCompanyMessage(text)
+    } finally {
+      setIsAddingCompany(false)
     }
   }
 
@@ -261,7 +332,7 @@ function NotificationsPageClient() {
           누군가 등록 회사의 <span className="font-extrabold text-primary">오늘 결과 발표가 났어요</span> 버튼으로 제보 시 알림이 와요.
         </p>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        <form className="mt-5 flex flex-wrap gap-2" onSubmit={handleAddSubscriptionSubmit}>
           <div className="relative min-w-[220px] flex-1">
             <Input
               value={query}
@@ -290,17 +361,16 @@ function NotificationsPageClient() {
             )}
           </div>
           <Button
-            type="button"
+            type="submit"
             className="h-12 px-6"
             disabled={isAdding || !trimmedQuery || !isAuthenticated}
-            onClick={() => void handleAdd()}
           >
             {isAdding ? "등록 중..." : "알림 등록"}
           </Button>
-          <Link href="/search" className="inline-flex h-12 items-center rounded-xl border border-border px-4 text-sm hover:bg-muted/40">
-            발표일 검색으로 이동
-          </Link>
-        </div>
+          <Button type="button" variant="outline" className="h-12 px-6" onClick={() => setIsAddCompanyOpen(true)}>
+            회사 추가
+          </Button>
+        </form>
         {actionMessage && <p className="mt-3 text-sm text-muted-foreground">{actionMessage}</p>}
       </section>
 
@@ -316,12 +386,6 @@ function NotificationsPageClient() {
                 <Button type="button" onClick={() => router.push(loginPath)}>
                   로그인하러 가기
                 </Button>
-                <Link
-                  href="/search"
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm hover:bg-muted/40"
-                >
-                  발표일 검색으로
-                </Link>
               </div>
             </div>
           </div>
@@ -508,6 +572,44 @@ function NotificationsPageClient() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>회사 추가하기</DialogTitle>
+            <DialogDescription>공백과 (주), ㈜ 는 제거되어 정규화된 이름으로 저장됩니다.</DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleAddCompany}>
+            <Input
+              value={newCompanyName}
+              onChange={(e) => setNewCompanyName(e.target.value)}
+              placeholder="회사명을 입력해 주세요."
+              required
+            />
+            {newCompanyName.trim() && normalizedAddCompanyPreview && normalizedAddCompanyPreview !== newCompanyName.trim() && (
+              <p className="text-xs text-muted-foreground">
+                정규화 저장 이름: <span className="font-medium text-foreground">{normalizedAddCompanyPreview}</span>
+              </p>
+            )}
+            {addCompanyMessage && <p className="text-xs text-muted-foreground">{addCompanyMessage}</p>}
+            <Button type="submit" disabled={isAddingCompany || !newCompanyName.trim()}>
+              {isAddingCompany ? "추가 중..." : "추가하기"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={isCompanyRequestPopupOpen} onOpenChange={setIsCompanyRequestPopupOpen}>
+        <AlertDialogContent className="max-w-sm rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>회사 등록 요청</AlertDialogTitle>
+            <AlertDialogDescription>{companyRequestPopupMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>확인</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -369,6 +369,7 @@ public class ReportService {
                 ? RollingReportType.DATE_REPORTED
                 : report.getRollingResultType();
             String rollingStepName = normalizeCurrentStepName(report.getCurrentStepName());
+            String rollingPrevStepName = normalizeCurrentStepName(report.getPrevStepName());
             if (rollingStepName == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current step name is required");
             }
@@ -385,10 +386,11 @@ public class ReportService {
                 );
             } else {
                 existing = rollingStepLogRepository
-                    .findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+                    .findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
                         rollingCompanyName,
                         RecruitmentMode.ROLLING,
                         rollingStepName,
+                        rollingPrevStepName,
                         rollingResultType,
                         LogSourceType.REPORT,
                         report.getPrevReportedDate(),
@@ -401,6 +403,7 @@ public class ReportService {
                 created.setCompany(report.getCompany());
                 created.setCompanyName(rollingCompanyName);
                 created.setCurrentStepName(rollingStepName);
+                created.setPrevStepName(rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : rollingPrevStepName);
                 created.setRollingResultType(rollingResultType);
                 created.setRecruitmentMode(RecruitmentMode.ROLLING);
                 created.setSourceType(LogSourceType.REPORT);
@@ -419,6 +422,10 @@ public class ReportService {
                 }
                 if (rollingLog.getCurrentStepName() == null || rollingLog.getCurrentStepName().isBlank()) {
                     rollingLog.setCurrentStepName(rollingStepName);
+                }
+                if (rollingResultType != RollingReportType.NO_RESPONSE_REPORTED
+                    && (rollingLog.getPrevStepName() == null || rollingLog.getPrevStepName().isBlank())) {
+                    rollingLog.setPrevStepName(rollingPrevStepName);
                 }
                 if (rollingLog.getSourceType() == null) {
                     rollingLog.setSourceType(LogSourceType.REPORT);
@@ -453,10 +460,12 @@ public class ReportService {
                 report.getReportedDate() == null ? RollingReportType.NO_RESPONSE_REPORTED : RollingReportType.DATE_REPORTED;
 
             String regularCurrentStep = normalizeCurrentStepName(report.getCurrentStepName());
+            String regularPrevStep = normalizeCurrentStepName(report.getPrevStepName());
             if (regularCurrentStep == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current step name is required");
             }
             final String finalRegularCurrentStep = regularCurrentStep;
+            final String finalRegularPrevStep = regularPrevStep;
             String regularCompanyName = canonicalCompanyName(normalizeCompanyName(report.getCompanyName()), report.getCompany());
 
             java.util.Optional<RollingStepLog> existingRegular;
@@ -470,10 +479,11 @@ public class ReportService {
                 );
             } else {
                 existingRegular = rollingStepLogRepository
-                    .findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+                    .findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
                         regularCompanyName,
                         RecruitmentMode.REGULAR,
                         finalRegularCurrentStep,
+                        finalRegularPrevStep,
                         RollingReportType.DATE_REPORTED,
                         LogSourceType.REPORT,
                         report.getPrevReportedDate(),
@@ -486,6 +496,7 @@ public class ReportService {
                 created.setCompany(report.getCompany());
                 created.setCompanyName(regularCompanyName);
                 created.setCurrentStepName(finalRegularCurrentStep);
+                created.setPrevStepName(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : finalRegularPrevStep);
                 created.setRollingResultType(regularResultType);
                 created.setRecruitmentMode(RecruitmentMode.REGULAR);
                 created.setSourceType(LogSourceType.REPORT);
@@ -504,6 +515,10 @@ public class ReportService {
                 }
                 if (regularLog.getCurrentStepName() == null || regularLog.getCurrentStepName().isBlank()) {
                     regularLog.setCurrentStepName(finalRegularCurrentStep);
+                }
+                if (regularResultType != RollingReportType.NO_RESPONSE_REPORTED
+                    && (regularLog.getPrevStepName() == null || regularLog.getPrevStepName().isBlank())) {
+                    regularLog.setPrevStepName(finalRegularPrevStep);
                 }
                 if (regularLog.getSourceType() == null) {
                     regularLog.setSourceType(LogSourceType.REPORT);

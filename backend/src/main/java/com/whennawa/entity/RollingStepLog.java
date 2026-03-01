@@ -38,6 +38,9 @@ public class RollingStepLog extends BaseEntity {
     @Column(name = "current_step_name", length = 100, nullable = false)
     private String currentStepName;
 
+    @Column(name = "prev_step_name", length = 100)
+    private String prevStepName;
+
     @Convert(converter = RollingReportTypeConverter.class)
     @Column(name = "rolling_result_type", length = 32, nullable = false)
     private RollingReportType rollingResultType = RollingReportType.DATE_REPORTED;
