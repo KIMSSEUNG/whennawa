@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { Suspense, useState, useEffect } from "react"
 import Image from "next/image"
@@ -73,7 +73,7 @@ function ProfilePageClient() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="page-shell py-6">
       {/* Header - mobile only */}
       <header className="mb-6 flex items-start justify-between md:hidden">
         <div className="min-w-0">
@@ -172,7 +172,7 @@ function ProfilePageClient() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="container mx-auto px-4 py-6 text-sm text-muted-foreground">불러오는 중...</div>}>
+    <Suspense fallback={<div className="page-shell py-6 text-sm text-muted-foreground">불러오는 중...</div>}>
       <ProfilePageClient />
     </Suspense>
   )

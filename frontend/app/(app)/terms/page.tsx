@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next"
+import type { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "이용약관",
@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 md:px-6">
+    <div className="page-shell [--page-max:56rem] py-10">
       <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8">
         <h1 className="text-2xl font-bold text-foreground">이용약관</h1>
         <p className="mt-2 text-sm text-muted-foreground">최종 업데이트: 2026-02-14</p>

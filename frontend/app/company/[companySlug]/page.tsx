@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { fromCompanySlug } from "@/lib/company-slug"
 import { getSiteUrl } from "@/lib/seo"
@@ -96,7 +96,7 @@ export default async function CompanyPublicPage({ params }: PageProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-10">
+    <main className="page-shell [--page-max:56rem] py-10">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
         <p className="mt-2 text-sm text-muted-foreground">공채/수시 데이터가 있는 항목만 노출됩니다.</p>

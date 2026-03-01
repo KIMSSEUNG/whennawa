@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -82,7 +82,7 @@ export default function HomePage() {
   }, [subscriptions, notificationsByCompanyId])
 
   return (
-    <div className="container mx-auto max-w-[1500px] space-y-6 px-4 py-6">
+    <div className="page-shell [--page-max:1500px] space-y-6 py-6">
       <section className="overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/15 via-background to-sky-500/10 p-6 md:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">When Nawa Home</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-4xl">
@@ -98,7 +98,7 @@ export default function HomePage() {
       <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4 md:p-5">
         <Link
           href="/notifications"
-          className="inline-flex w-auto max-w-[180px] items-center gap-1 rounded-xl border border-primary/30 bg-background/80 px-3 py-2.5 hover:bg-background"
+          className="inline-flex w-full sm:w-auto items-center gap-1 rounded-xl border border-primary/30 bg-background/80 px-3 py-2.5 hover:bg-background"
         >
           <div className="flex min-w-0 items-center gap-2">
             <Bell className="h-4 w-4 shrink-0 text-primary" />

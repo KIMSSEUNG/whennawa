@@ -24,6 +24,7 @@ interface CompanyDetailPanelProps {
     mode: "REGULAR" | "ROLLING",
     options?: { todayAnnouncement?: boolean },
   ) => void
+  showCompanyHeader?: boolean
   className?: string
 }
 
@@ -206,7 +207,12 @@ function LeadTimeCalendar({
               >
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-[11px]">{day}</span>
-                  {isExpectedDate && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">예상 발표일</span>}
+                  {isExpectedDate && (
+                    <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">
+                      <span className="sm:hidden">예상</span>
+                      <span className="hidden sm:inline">예상 발표일</span>
+                    </span>
+                  )}
                 </div>
               </button>
             )
@@ -376,6 +382,7 @@ export function CompanyDetailPanel({
   isTimelineLoading,
   isLeadTimeLoading,
   onQuickReport,
+  showCompanyHeader = true,
   className,
 }: CompanyDetailPanelProps) {
   const leadTimeSectionRef = useRef<HTMLElement | null>(null)
@@ -432,9 +439,11 @@ export function CompanyDetailPanel({
 
   return (
     <div className={cn("flex flex-col", className)}>
-      <div className="border-b border-border px-6 py-4">
-        <h2 className="text-xl font-semibold">{company.companyName}</h2>
-      </div>
+      {showCompanyHeader && (
+        <div className="border-b border-border px-6 py-4">
+          <h2 className="text-xl font-semibold">{company.companyName}</h2>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {(hasRegular || hasRolling) && (

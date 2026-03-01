@@ -66,6 +66,7 @@ export function CompanyDetailSheet({
           isTimelineLoading={isTimelineLoading}
           isLeadTimeLoading={isLeadTimeLoading}
           onQuickReport={onQuickReport}
+          showCompanyHeader={false}
           className="h-full"
         />
       </SheetContent>

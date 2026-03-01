@@ -42,7 +42,7 @@ export default function BoardWritePage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[980px] space-y-6 px-4 py-6">
+    <div className="page-shell [--page-max:980px] space-y-6 py-6">
       <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-5 md:p-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.18),transparent_55%)]" />
         <div className="relative">

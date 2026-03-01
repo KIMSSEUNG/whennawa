@@ -375,7 +375,7 @@ export default function CareerBoardPostDetailPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1000px] space-y-6 px-4 py-6">
+    <div className="page-shell [--page-max:1000px] space-y-6 py-6">
       <section className="rounded-3xl border border-border/60 bg-card p-5 md:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Post Detail</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">취업 고민 게시글</h1>

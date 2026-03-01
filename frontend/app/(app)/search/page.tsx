@@ -384,7 +384,7 @@ function SearchPageClient() {
       </AlertDialog>
 
       {/* Header - mobile only */}
-      <header className="mb-6 flex items-start justify-between md:hidden">
+      <header className="mb-6 space-y-3 md:hidden">
         <div className="min-w-0">
           <Link href="/" className="inline-flex items-center gap-2">
             <Image src="/logo.png" alt="언제나와 로고" width={24} height={24} className="rounded-md" priority />
@@ -393,20 +393,20 @@ function SearchPageClient() {
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">회사 검색</h1>
           <p className="text-sm text-muted-foreground">회사명을 검색해서 지원 이력과 전형 타임라인을 확인해 보세요.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 whitespace-nowrap">
           {isAuthenticated ? (
             <button
               type="button"
               onClick={handleMobileLogout}
               disabled={isLoggingOut}
-              className="inline-flex h-9 min-w-[88px] items-center justify-center rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 disabled:opacity-50"
             >
               {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
             </button>
           ) : (
             <Link
               href={loginHref}
-              className="inline-flex h-9 min-w-[88px] items-center justify-center rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60"
+              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60"
             >
               로그인
             </Link>
@@ -418,8 +418,9 @@ function SearchPageClient() {
       {/* Search Area */}
       <section className="mb-6 rounded-2xl border border-border/60 bg-card p-3 md:p-4">
         <form onSubmit={handleSearch}>
-          <div className="flex flex-wrap gap-2">
-            <div className="relative flex-1">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
               <Input
                 type="search"
                 placeholder="회사명을 입력해 주세요."
@@ -453,21 +454,24 @@ function SearchPageClient() {
                 </div>
               )}
             </div>
-            <button
-              type="submit"
-              disabled={isSearching || !normalizedQuery}
-              className="h-12 px-6 min-w-[80px] rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {isSearching ? "검색 중..." : "검색"}
-            </button>
-            <Button type="button" variant="outline" className="h-12" onClick={() => setIsAddCompanyOpen(true)}>
-              회사 추가하기
-            </Button>
-            {selectedCompany && (
-              <Link href={`/board/${toCompanySlug(selectedCompany.companyName)}`}>
-                <Button type="button" variant="outline" className="h-12">게시판 가기</Button>
-              </Link>
-            )}
+              <button
+                type="submit"
+                disabled={isSearching || !normalizedQuery}
+                className="h-12 shrink-0 whitespace-nowrap rounded-xl bg-primary px-6 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isSearching ? "검색 중..." : "검색"}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setIsAddCompanyOpen(true)}>
+                회사 추가하기
+              </Button>
+              {selectedCompany && (
+                <Link href={`/board/${toCompanySlug(selectedCompany.companyName)}`} className="w-full sm:w-auto">
+                  <Button type="button" variant="outline" className="h-12 w-full sm:w-auto">게시판 가기</Button>
+                </Link>
+              )}
+            </div>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">회사명으로 검색하고, 선택 후 상세 타임라인을 확인할 수 있습니다.</p>
         </form>

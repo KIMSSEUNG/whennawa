@@ -93,7 +93,7 @@ export default function AdminCompanyRequestsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-5xl">
+    <div className="page-shell [--page-max:64rem] py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-foreground">회사 추가 검수</h1>
         <p className="text-sm text-muted-foreground mt-1">사용자 회사 추가 요청(PENDING)을 승인/폐기합니다.</p>

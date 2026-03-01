@@ -130,6 +130,21 @@ body {
   overscroll-behavior: none;
 }
 
+/* Shared responsive page width:
+   use percentage first, capped by per-page --page-max */
+.page-shell {
+  width: min(94%, var(--page-max, 1520px));
+  margin-inline: auto;
+  box-sizing: border-box;
+  padding-inline: clamp(12px, 2.6vw, 28px);
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    width: min(92%, var(--page-max, 1520px));
+  }
+}
+
 /* Safe area padding for mobile devices */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);

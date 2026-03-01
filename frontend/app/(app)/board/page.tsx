@@ -113,7 +113,7 @@ export default function BoardPage() {
   }, [normalizedQuery])
 
   return (
-    <div className="container mx-auto max-w-[1200px] space-y-6 px-4 py-6">
+    <div className="page-shell [--page-max:1200px] space-y-6 py-6">
       <section className="relative overflow-visible rounded-3xl border border-border/60 bg-card p-5 md:p-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(80,120,255,0.2),transparent_55%)]" />
         <div className="relative">
@@ -128,7 +128,7 @@ export default function BoardPage() {
               void runSearch()
             }}
           >
-            <div className="relative min-w-[240px] flex-1">
+            <div className="relative w-full min-w-0 flex-1">
               <Input
                 type="search"
                 value={query}

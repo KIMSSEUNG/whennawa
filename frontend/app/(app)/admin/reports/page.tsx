@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import {
@@ -157,7 +157,7 @@ export default function AdminReportPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-5xl">
+    <div className="page-shell [--page-max:64rem] py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-foreground">리포트 처리</h1>
         <p className="text-sm text-muted-foreground mt-1">

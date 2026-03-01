@@ -188,7 +188,7 @@ export default function CompanyBoardPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1200px] space-y-6 px-4 py-6">
+    <div className="page-shell [--page-max:1200px] space-y-6 py-6">
       <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-5 md:p-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_55%)]" />
         <div className="relative">
@@ -231,7 +231,7 @@ export default function CompanyBoardPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="검색어를 입력해 주세요"
-            className="h-10 min-w-[220px] flex-1"
+            className="h-10 w-full min-w-0 flex-1"
           />
           <Button type="submit" className="h-10" disabled={isSearching}>
             {isSearching ? "검색 중..." : "검색"}

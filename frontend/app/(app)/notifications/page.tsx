@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -324,7 +324,7 @@ function NotificationsPageClient() {
   })()
 
   return (
-    <div className="container mx-auto max-w-[1520px] space-y-6 px-4 py-6">
+    <div className="page-shell [--page-max:1520px] space-y-6 py-6">
       <section className="rounded-3xl border border-border/60 bg-card p-5 md:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Notifications</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground md:text-3xl">회사 발표 알림</h1>
@@ -333,7 +333,7 @@ function NotificationsPageClient() {
         </p>
 
         <form className="mt-5 flex flex-wrap gap-2" onSubmit={handleAddSubscriptionSubmit}>
-          <div className="relative min-w-[220px] flex-1">
+          <div className="relative w-full min-w-0 flex-1">
             <Input
               value={query}
               onChange={(e) => {
@@ -458,7 +458,7 @@ function NotificationsPageClient() {
                         event.stopPropagation()
                         void handleRemoveSubscription(item.subscriptionId)
                       }}
-                      className="inline-flex min-w-[64px] items-center justify-center rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                      className="inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                     >
                       삭제
                     </button>
@@ -550,7 +550,7 @@ function NotificationsPageClient() {
                     <button
                       type="button"
                       onClick={() => void handleDeleteNotification(item.notificationId)}
-                      className="inline-flex min-w-[64px] items-center justify-center rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                      className="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                     >
                       읽음
                     </button>
@@ -618,7 +618,7 @@ export default function NotificationsPage() {
   return (
     <Suspense
       fallback={
-        <div className="container mx-auto max-w-[1520px] px-4 py-6 text-sm text-muted-foreground">
+        <div className="page-shell [--page-max:1520px] py-6 text-sm text-muted-foreground">
           불러오는 중...
         </div>
       }
