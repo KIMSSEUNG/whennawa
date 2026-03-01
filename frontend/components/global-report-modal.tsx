@@ -337,7 +337,7 @@ export function GlobalReportModal() {
       </Button>
 
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="w-[min(94vw,720px)] max-w-xl max-h-[88dvh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{reportModalTitle}</DialogTitle>
             <DialogDescription className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground/85">
@@ -346,7 +346,7 @@ export function GlobalReportModal() {
           </DialogHeader>
 
           <form onSubmit={handleReportSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">회사명</label>
                 <Input
@@ -356,7 +356,7 @@ export function GlobalReportModal() {
                     setShowReportSuggestions(true)
                   }}
                   placeholder="회사명을 입력해 주세요."
-                  className="h-11 disabled:cursor-not-allowed disabled:bg-muted/60 disabled:text-muted-foreground"
+                  className="h-11 w-full text-sm placeholder:text-sm disabled:cursor-not-allowed disabled:bg-muted/60 disabled:text-muted-foreground"
                   required
                   readOnly={isReportCompanyLocked}
                   disabled={isReportCompanyLocked}
@@ -385,7 +385,7 @@ export function GlobalReportModal() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">전형 구분</label>
                 <Select value={reportMode} onValueChange={(v) => setReportMode(v as RecruitmentMode)} disabled={reportNotifySubscribers}>
-                  <SelectTrigger className="h-11">
+                  <SelectTrigger className="h-11 w-full">
                     <SelectValue placeholder="전형 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -395,12 +395,13 @@ export function GlobalReportModal() {
                 </Select>
               </div>
 
-              <div className="md:col-span-2 flex flex-wrap items-center gap-2">
+              <div className="md:col-span-2 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => {
-                    setReportNotifySubscribers((prev) => !prev)
-                    if (!reportNotifySubscribers) {
+                    const next = !reportNotifySubscribers
+                    setReportNotifySubscribers(next)
+                    if (next) {
                       setReportTodayFixed(true)
                       setReportMode("REGULAR")
                       setReportRollingNoResponse(false)
@@ -410,7 +411,7 @@ export function GlobalReportModal() {
                     }
                   }}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs",
+                    "w-full min-w-0 rounded-full border px-3 py-2 text-[11px] sm:text-xs whitespace-normal break-keep text-left sm:text-center leading-relaxed",
                     reportNotifySubscribers
                       ? "border-primary/40 bg-primary/15 text-primary"
                       : "border-border/70 text-muted-foreground hover:bg-accent/60",
@@ -420,22 +421,28 @@ export function GlobalReportModal() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setReportRollingNoResponse((prev) => (reportNotifySubscribers ? false : !prev))}
+                  onClick={() => {
+                    const next = !reportRollingNoResponse
+                    setReportRollingNoResponse(next)
+                    if (next) {
+                      setReportNotifySubscribers(false)
+                      setReportTodayFixed(false)
+                      setReportNotificationMessage("")
+                    }
+                  }}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs",
+                    "w-full min-w-0 rounded-full border px-3 py-2 text-[11px] sm:text-xs whitespace-normal break-keep text-left sm:text-center leading-relaxed",
                     reportRollingNoResponse
                       ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                       : "border-border/70 text-muted-foreground hover:bg-accent/60",
-                    reportNotifySubscribers ? "cursor-not-allowed opacity-50" : "",
                   )}
-                  disabled={reportNotifySubscribers}
                 >
                   결과발표 메일을 받지 못했습니다
                 </button>
               </div>
 
               {reportRollingNoResponse && (
-                <p className="md:col-span-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                <p className="md:col-span-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm leading-relaxed break-keep text-emerald-700 dark:text-emerald-300">
                   현재 전형명만 입력하면 제보할 수 있어요. (이전 전형명/날짜는 생략)
                 </p>
               )}
@@ -449,7 +456,7 @@ export function GlobalReportModal() {
                     onFocus={() => setShowPrevStepSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowPrevStepSuggestions(false), 120)}
                     placeholder="예: 1차 면접"
-                    className="h-11"
+                    className="h-11 w-full text-sm"
                     required={!reportRollingNoResponse}
                   />
                   {showPrevStepSuggestions && prevStepSuggestionOptions.length > 0 && (
@@ -486,7 +493,7 @@ export function GlobalReportModal() {
                     onFocus={() => setShowCurrentStepSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowCurrentStepSuggestions(false), 120)}
                     placeholder="예: 1차 면접 발표"
-                    className="h-11"
+                    className="h-11 w-full text-sm"
                     required
                   />
                   {showCurrentStepSuggestions && currentStepSuggestionOptions.length > 0 && (
@@ -522,7 +529,7 @@ export function GlobalReportModal() {
                       type="date"
                       value={toDateInput(reportPrevDate)}
                       onChange={(e) => setReportPrevDate(new Date(`${e.target.value}T00:00:00+09:00`))}
-                      className="h-11 max-w-[220px]"
+                      className="h-11 w-full text-sm"
                       max={prevDateMaxInput}
                       required
                     />
@@ -535,7 +542,7 @@ export function GlobalReportModal() {
                       type="date"
                       value={reportTodayFixed ? todayInput : toDateInput(reportDate)}
                       onChange={(e) => setReportDate(new Date(`${e.target.value}T00:00:00+09:00`))}
-                      className="h-11 max-w-[220px]"
+                      className="h-11 w-full text-sm"
                       min={currentDateMinInput}
                       max={todayInput}
                       readOnly={reportTodayFixed}
@@ -553,16 +560,16 @@ export function GlobalReportModal() {
                     value={reportNotificationMessage}
                     onChange={(e) => setReportNotificationMessage(e.target.value.slice(0, 120))}
                     placeholder="첫 제보자인 경우 구독자에게 전달할 한 줄 메시지"
-                    className="h-11"
+                    className="h-11 w-full text-sm placeholder:text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     첫 제보자의 메시지만 알림에 반영돼요. ({reportNotificationMessage.length}/120)
                   </p>
                 </div>
               )}
 
-              <p className="md:col-span-2 text-xs text-muted-foreground">
-                ( 필기 - 필기 발표&gt; 1차 면접 결과 발표 ) 와 같이 결과 발표 기준으로 제보 부탁드려요
+              <p className="md:col-span-2 text-xs leading-relaxed break-keep text-muted-foreground">
+                ( 필기 전형-&gt; 필기 발표 , 1차 면접-&gt; 1차 면접 발표 )와 같이 전형-&gt; 전형 발표 기준으로 제보 부탁드리겠습니다.
               </p>
             </div>
 
