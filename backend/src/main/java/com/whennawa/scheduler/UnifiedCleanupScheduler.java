@@ -34,8 +34,8 @@ public class UnifiedCleanupScheduler {
         AppProperties.Scheduler scheduler = appProperties.getScheduler();
 
         // 1) 게시판 오래된 글 정리
-        long boardPostRetentionDays = scheduler.getBoardPostRetentionDays();
-        long deletedBoardPosts = boardService.purgeOldPosts(boardPostRetentionDays);
+//        long boardPostRetentionDays = scheduler.getBoardPostRetentionDays();
+//        long deletedBoardPosts = boardService.purgeOldPosts(boardPostRetentionDays);
 
         // 2) 채팅 오래된 메시지 정리
         long chatRetentionDays = scheduler.getChatRetentionDays();
@@ -58,7 +58,7 @@ public class UnifiedCleanupScheduler {
 
         log.info(
             "Unified cleanup done - boardPosts: {}, chatMessages: {}, refreshTokens: {}, reports: {}, notifications: {}",
-            deletedBoardPosts,
+            //deletedBoardPosts,
             deletedChatMessages,
             deletedRefreshTokens,
             deletedReports,

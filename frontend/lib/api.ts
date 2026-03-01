@@ -1,4 +1,4 @@
-import { mockCompanies, mockUser } from "./mock-data"
+﻿import { mockCompanies, mockUser } from "./mock-data"
 import type {
   ChatMessage,
   CompanyNameRequestItem,
@@ -41,6 +41,15 @@ type CompanyTimelineInput = {
     }>
   }>
   timelines?: Array<{
+    year: number
+    steps: Array<{
+      eventType: string
+      label: string
+      occurredAt: Date | string
+      diffDays: number | null
+    }>
+  }>
+  internTimelines?: Array<{
     year: number
     steps: Array<{
       eventType: string
@@ -192,6 +201,9 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "false"
 const ROLLING_STEP_CURRENT_SAMPLES_TXT_PATH = "/data/rolling-step-samples.txt"
 const ROLLING_STEP_PREV_SAMPLES_TXT_PATH = "/data/rolling-step-prev-samples.txt"
 const ROLLING_STEP_PAIRS_TXT_PATH = "/data/rolling-step-pairs.txt"
+const INTERN_STEP_CURRENT_SAMPLES_TXT_PATH = "/data/intern-step-samples.txt"
+const INTERN_STEP_PREV_SAMPLES_TXT_PATH = "/data/intern-step-prev-samples.txt"
+const INTERN_STEP_PAIRS_TXT_PATH = "/data/intern-step-pairs.txt"
 const DEFAULT_ROLLING_STEP_CURRENT_SAMPLES = ["서류 발표", "코딩 테스트 발표", "1차 면접 발표", "2차 면접 발표", "최종 발표"]
 const DEFAULT_ROLLING_STEP_PREV_SAMPLES = ["서류", "코딩 테스트", "1차 면접", "2차 면접", "최종 면접"]
 const DEFAULT_ROLLING_STEP_PAIRS: Array<{ prev: string; current: string }> = [
@@ -200,6 +212,15 @@ const DEFAULT_ROLLING_STEP_PAIRS: Array<{ prev: string; current: string }> = [
   { prev: "1차 면접", current: "1차 면접 발표" },
   { prev: "2차 면접", current: "2차 면접 발표" },
   { prev: "최종 면접", current: "최종 발표" },
+]
+const DEFAULT_INTERN_STEP_CURRENT_SAMPLES = ["서류 발표", "코딩 테스트 발표", "1차 면접 발표", "최종 발표", "인턴 합격 발표"]
+const DEFAULT_INTERN_STEP_PREV_SAMPLES = ["서류", "코딩 테스트", "1차 면접", "최종 면접", "인턴 지원"]
+const DEFAULT_INTERN_STEP_PAIRS: Array<{ prev: string; current: string }> = [
+  { prev: "서류", current: "서류 발표" },
+  { prev: "코딩 테스트", current: "코딩 테스트 발표" },
+  { prev: "1차 면접", current: "1차 면접 발표" },
+  { prev: "최종 면접", current: "최종 발표" },
+  { prev: "인턴 지원", current: "인턴 합격 발표" },
 ]
 type UserInfoResponse = {
   userId: number
@@ -220,6 +241,13 @@ const normalizeTimeline = (timeline: CompanyTimelineInput): CompanyTimeline => (
   companyId: timeline.companyId,
   companyName: timeline.companyName,
   regularTimelines: (timeline.regularTimelines ?? timeline.timelines ?? []).map((unit) => ({
+    ...unit,
+    steps: unit.steps.map((step) => ({
+      ...step,
+      occurredAt: toDateOrNull(step.occurredAt),
+    })),
+  })),
+  internTimelines: (timeline.internTimelines ?? []).map((unit) => ({
     ...unit,
     steps: unit.steps.map((step) => ({
       ...step,
@@ -328,18 +356,18 @@ async function loadSamplesFromText(path: string, fallback: string[]): Promise<st
   }
 }
 
-async function loadStepPairsFromText(): Promise<Array<{ prev: string; current: string }>> {
+async function loadStepPairsFromText(path: string, fallback: Array<{ prev: string; current: string }>): Promise<Array<{ prev: string; current: string }>> {
   if (typeof window === "undefined") {
-    return DEFAULT_ROLLING_STEP_PAIRS
+    return fallback
   }
   try {
-    const response = await fetch(ROLLING_STEP_PAIRS_TXT_PATH, { cache: "no-store" })
-    if (!response.ok) return DEFAULT_ROLLING_STEP_PAIRS
+    const response = await fetch(path, { cache: "no-store" })
+    if (!response.ok) return fallback
     const text = await response.text()
     const parsed = parseStepPairs(text)
-    return parsed.length > 0 ? parsed : DEFAULT_ROLLING_STEP_PAIRS
+    return parsed.length > 0 ? parsed : fallback
   } catch {
-    return DEFAULT_ROLLING_STEP_PAIRS
+    return fallback
   }
 }
 
@@ -449,17 +477,31 @@ export async function fetchCompanyTimeline(companyName: string): Promise<Company
             steps: [
               {
                 eventType: "APPLIED",
-                label: "吏?먯꽌 ?묒닔",
+                label: "서류 발표",
                 occurredAt: new Date(),
                 diffDays: null,
               },
             ],
           },
         ],
+        internTimelines: [
+          {
+            year: new Date().getFullYear(),
+            steps: [
+              {
+                eventType: "REPORTED",
+                label: "인턴 서류 발표",
+                occurredAt: new Date(),
+                diffDays: 9,
+              },
+            ],
+          },
+        ],
         rollingSteps: [
           {
-            stepName: "1李?硫댁젒",
+            stepName: "1차 면접 발표",
             sampleCount: 5,
+            noResponseCount: 0,
             avgDays: 10,
             minDays: 7,
             maxDays: 14,
@@ -476,7 +518,11 @@ export async function fetchCompanyTimeline(companyName: string): Promise<Company
   }
 }
 
-export async function fetchCompanyLeadTime(companyName: string, keyword: string): Promise<KeywordLeadTime | null> {
+export async function fetchCompanyLeadTime(
+  companyName: string,
+  keyword: string,
+  mode: RecruitmentMode = "REGULAR",
+): Promise<KeywordLeadTime | null> {
   try {
     if (USE_MOCK) {
       await delay(400)
@@ -489,7 +535,7 @@ export async function fetchCompanyLeadTime(companyName: string, keyword: string)
     }
 
     const data = await request<KeywordLeadTimeInput>(
-      `/api/companies/${encodeURIComponent(companyName)}/lead-time?q=${encodeURIComponent(keyword)}`,
+      `/api/companies/${encodeURIComponent(companyName)}/lead-time?q=${encodeURIComponent(keyword)}&mode=${encodeURIComponent(mode)}`,
     )
     return data
   } catch (error) {
@@ -557,7 +603,7 @@ export async function createCompany(companyName: string): Promise<CompanyCreateR
       created: false,
       pending: true,
       normalizedChanged: false,
-      message: "회사 등록 요청 감사합니다. 처리에는 일정 시간이 소요될 수 있습니다.",
+      message: "?뚯궗 ?깅줉 ?붿껌 媛먯궗?⑸땲?? 泥섎━?먮뒗 ?쇱젙 ?쒓컙???뚯슂?????덉뒿?덈떎.",
     }
   }
   const data = await request<CompanyCreateResultInput>("/api/companies", {
@@ -771,8 +817,8 @@ export async function fetchReportSteps(
     await delay(200)
     return [
       { stepId: 1, stepName: "서류 발표" },
-      { stepId: 2, stepName: "코딩 테스트" },
-      { stepId: 3, stepName: "1차 면접" },
+      { stepId: 2, stepName: "코딩 테스트 발표" },
+      { stepId: 3, stepName: "1차 면접 발표" },
     ]
   }
   const params = new URLSearchParams({ companyName })
@@ -780,24 +826,28 @@ export async function fetchReportSteps(
   return data
 }
 
-export async function fetchRollingReportCurrentStepNames(companyName?: string, query?: string): Promise<string[]> {
+export async function fetchRollingReportCurrentStepNames(companyName?: string, query?: string, mode: RecruitmentMode = "ROLLING"): Promise<string[]> {
   void companyName
   if (USE_MOCK) {
     await delay(120)
   }
   const normalizedQuery = query?.trim().toLowerCase() ?? ""
-  const samples = await loadSamplesFromText(ROLLING_STEP_CURRENT_SAMPLES_TXT_PATH, DEFAULT_ROLLING_STEP_CURRENT_SAMPLES)
+  const samplePath = mode === "INTERN" ? INTERN_STEP_CURRENT_SAMPLES_TXT_PATH : ROLLING_STEP_CURRENT_SAMPLES_TXT_PATH
+  const fallback = mode === "INTERN" ? DEFAULT_INTERN_STEP_CURRENT_SAMPLES : DEFAULT_ROLLING_STEP_CURRENT_SAMPLES
+  const samples = await loadSamplesFromText(samplePath, fallback)
   if (!normalizedQuery) return samples
   return samples.filter((name) => name.toLowerCase().includes(normalizedQuery))
 }
 
-export async function fetchRollingReportPrevStepNames(companyName?: string, query?: string): Promise<string[]> {
+export async function fetchRollingReportPrevStepNames(companyName?: string, query?: string, mode: RecruitmentMode = "ROLLING"): Promise<string[]> {
   void companyName
   if (USE_MOCK) {
     await delay(120)
   }
   const normalizedQuery = query?.trim().toLowerCase() ?? ""
-  const samples = await loadSamplesFromText(ROLLING_STEP_PREV_SAMPLES_TXT_PATH, DEFAULT_ROLLING_STEP_PREV_SAMPLES)
+  const samplePath = mode === "INTERN" ? INTERN_STEP_PREV_SAMPLES_TXT_PATH : ROLLING_STEP_PREV_SAMPLES_TXT_PATH
+  const fallback = mode === "INTERN" ? DEFAULT_INTERN_STEP_PREV_SAMPLES : DEFAULT_ROLLING_STEP_PREV_SAMPLES
+  const samples = await loadSamplesFromText(samplePath, fallback)
   if (!normalizedQuery) return samples
   return samples.filter((name) => name.toLowerCase().includes(normalizedQuery))
 }
@@ -805,10 +855,13 @@ export async function fetchRollingReportPrevStepNames(companyName?: string, quer
 export async function resolveRollingStepPair(
   direction: "prev_to_current" | "current_to_prev",
   stepName: string,
+  mode: RecruitmentMode = "ROLLING",
 ): Promise<string | null> {
   const target = stepName.trim()
   if (!target) return null
-  const pairs = await loadStepPairsFromText()
+  const pairPath = mode === "INTERN" ? INTERN_STEP_PAIRS_TXT_PATH : ROLLING_STEP_PAIRS_TXT_PATH
+  const fallback = mode === "INTERN" ? DEFAULT_INTERN_STEP_PAIRS : DEFAULT_ROLLING_STEP_PAIRS
+  const pairs = await loadStepPairsFromText(pairPath, fallback)
   if (direction === "prev_to_current") {
     const found = pairs.find((pair) => pair.prev === target)
     return found?.current ?? null
@@ -908,7 +961,7 @@ export async function fetchAdminReports(status?: ReportStatus): Promise<ReportIt
         rollingResultType: "DATE_REPORTED",
         prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
         prevStepName: "서류",
-        currentStepName: "1李?硫댁젒",
+        currentStepName: "1차 면접 발표",
         reportedDate: new Date(),
         status: "PENDING",
         onHold: false,
@@ -927,8 +980,8 @@ export async function fetchAdminReportSteps(reportId: number): Promise<ReportSte
     await delay(200)
     return [
       { stepId: 1, stepName: "서류 발표" },
-      { stepId: 2, stepName: "코딩 테스트" },
-      { stepId: 3, stepName: "1차 면접" },
+      { stepId: 2, stepName: "코딩 테스트 발표" },
+      { stepId: 3, stepName: "1차 면접 발표" },
     ]
   }
   return await request<ReportStepInput[]>(`/api/admin/reports/${reportId}/steps`)
@@ -1094,7 +1147,7 @@ export async function processAdminCompanyNameRequest(requestId: number): Promise
       status: "PROCESSED",
       alreadyExists: false,
       existingCompanyName: null,
-      message: "회사 등록이 완료되었습니다.",
+      message: "?뚯궗 ?깅줉???꾨즺?섏뿀?듬땲??",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -1116,7 +1169,7 @@ export async function discardAdminCompanyNameRequest(requestId: number): Promise
       status: "DISCARDED",
       alreadyExists: false,
       existingCompanyName: null,
-      message: "요청을 폐기했습니다.",
+      message: "?붿껌???먭린?덉뒿?덈떎.",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -1183,6 +1236,8 @@ export async function withdraw(): Promise<void> {
     throw error
   }
 }
+
+
 
 
 

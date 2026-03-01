@@ -12,7 +12,7 @@ interface CompanyDetailSheetProps {
   keyword: string
   lastLeadTimeKeyword: string
   onKeywordChange: (value: string) => void
-  onKeywordSearch: (event: React.FormEvent, keywordOverride?: string) => void
+  onKeywordSearch: (event: React.FormEvent, keywordOverride?: string, modeOverride?: "REGULAR" | "INTERN") => void
   selectedCalendarDate: string | null
   onCalendarDateSelect: (dateStr: string) => void
   isCalendarVisible: boolean
@@ -20,7 +20,7 @@ interface CompanyDetailSheetProps {
   isLeadTimeLoading: boolean
   onQuickReport: (
     companyName: string,
-    mode: "REGULAR" | "ROLLING",
+    mode: "REGULAR" | "ROLLING" | "INTERN",
     options?: { todayAnnouncement?: boolean },
   ) => void
   open: boolean

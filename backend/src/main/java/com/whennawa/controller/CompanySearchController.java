@@ -6,6 +6,7 @@ import com.whennawa.dto.company.CompanyCreateRequest;
 import com.whennawa.dto.company.CompanyCreateResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
 import com.whennawa.dto.company.RollingPredictionResponse;
+import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.service.CompanyNameRequestService;
 import com.whennawa.service.CompanySearchService;
 import jakarta.validation.Valid;
@@ -52,8 +53,9 @@ public class CompanySearchController {
 
     @GetMapping("/{companyName}/lead-time")
     public KeywordLeadTimeResponse leadTime(@PathVariable("companyName") String companyName,
-                                            @RequestParam("q") String keyword) {
-        return companySearchService.getKeywordLeadTime(companyName, keyword);
+                                            @RequestParam("q") String keyword,
+                                            @RequestParam(value = "mode", required = false) RecruitmentMode mode) {
+        return companySearchService.getKeywordLeadTime(companyName, keyword, mode);
     }
 
     @GetMapping("/{companyName}/rolling-predict")

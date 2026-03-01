@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS step_date_report (
   report_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   company_id BIGINT,
   company_name VARCHAR(100) NOT NULL,
-  recruitment_mode ENUM('REGULAR', 'ROLLING') NOT NULL DEFAULT 'REGULAR',
+  recruitment_mode ENUM('REGULAR', 'ROLLING', 'INTERN') NOT NULL DEFAULT 'REGULAR',
   rolling_result_type VARCHAR(32),
   reported_date DATE,
   prev_reported_date DATE,

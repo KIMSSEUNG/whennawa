@@ -150,7 +150,7 @@ export function GlobalReportModal() {
 
     const rawMode = (searchParams?.get("reportMode") ?? "").toUpperCase()
     const preferredMode: RecruitmentMode | undefined =
-      rawMode === "REGULAR" || rawMode === "ROLLING" ? (rawMode as RecruitmentMode) : undefined
+      rawMode === "REGULAR" || rawMode === "ROLLING" || rawMode === "INTERN" ? (rawMode as RecruitmentMode) : undefined
     const reportCompanyFromUrl = (searchParams?.get("reportCompany") ?? "").trim()
     const todayAnnouncement = searchParams?.get("reportToday") === "1"
     const notifySubscribers = searchParams?.get("reportNotify") === "1"
@@ -187,13 +187,13 @@ export function GlobalReportModal() {
 
   const applyPairFromPrevIfEmpty = async (nextPrevStepName: string) => {
     if (reportPrevStepName.trim() || reportCurrentStepName.trim()) return
-    const paired = await resolveRollingStepPair("prev_to_current", nextPrevStepName)
+    const paired = await resolveRollingStepPair("prev_to_current", nextPrevStepName, reportMode)
     if (paired) setReportCurrentStepName(paired)
   }
 
   const applyPairFromCurrentIfEmpty = async (nextCurrentStepName: string) => {
     if (reportPrevStepName.trim() || reportCurrentStepName.trim()) return
-    const paired = await resolveRollingStepPair("current_to_prev", nextCurrentStepName)
+    const paired = await resolveRollingStepPair("current_to_prev", nextCurrentStepName, reportMode)
     if (paired) setReportPrevStepName(paired)
   }
 
@@ -287,7 +287,7 @@ export function GlobalReportModal() {
   useEffect(() => {
     let cancelled = false
     const handle = setTimeout(async () => {
-      const data = await fetchRollingReportPrevStepNames(normalizedReportCompany, reportPrevStepName)
+      const data = await fetchRollingReportPrevStepNames(normalizedReportCompany, reportPrevStepName, reportMode)
       if (cancelled) return
       setRollingPrevStepSuggestions(data ?? [])
     }, 150)
@@ -295,12 +295,12 @@ export function GlobalReportModal() {
       cancelled = true
       clearTimeout(handle)
     }
-  }, [normalizedReportCompany, reportPrevStepName])
+  }, [normalizedReportCompany, reportPrevStepName, reportMode])
 
   useEffect(() => {
     let cancelled = false
     const handle = setTimeout(async () => {
-      const data = await fetchRollingReportCurrentStepNames(normalizedReportCompany, reportCurrentStepName)
+      const data = await fetchRollingReportCurrentStepNames(normalizedReportCompany, reportCurrentStepName, reportMode)
       if (cancelled) return
       setRollingCurrentStepSuggestions(data ?? [])
     }, 150)
@@ -308,7 +308,7 @@ export function GlobalReportModal() {
       cancelled = true
       clearTimeout(handle)
     }
-  }, [normalizedReportCompany, reportCurrentStepName])
+  }, [normalizedReportCompany, reportCurrentStepName, reportMode])
 
   const todayInput = toDateInput(getKoreaToday())
   const prevDateMaxInput = (() => {
@@ -390,6 +390,7 @@ export function GlobalReportModal() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="REGULAR">공채</SelectItem>
+                    <SelectItem value="INTERN">인턴</SelectItem>
                     <SelectItem value="ROLLING">수시</SelectItem>
                   </SelectContent>
                 </Select>

@@ -17,6 +17,10 @@ export interface CompanyTimeline {
     year: number
     steps: CompanyTimelineStep[]
   }>
+  internTimelines: Array<{
+    year: number
+    steps: CompanyTimelineStep[]
+  }>
   rollingSteps: RollingStepStat[]
 }
 
@@ -27,7 +31,7 @@ export interface KeywordLeadTime {
   maxDays: number | null
 }
 
-export type RecruitmentMode = "REGULAR" | "ROLLING"
+export type RecruitmentMode = "REGULAR" | "ROLLING" | "INTERN"
 export type RollingReportType = "DATE_REPORTED" | "NO_RESPONSE_REPORTED"
 
 export type ReportStatus = "PENDING" | "PROCESSED" | "DISCARDED"

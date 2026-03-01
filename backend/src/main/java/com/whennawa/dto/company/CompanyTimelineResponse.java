@@ -4,15 +4,18 @@ public class CompanyTimelineResponse {
     private final Long companyId;
     private final String companyName;
     private final java.util.List<CompanyUnitTimelineResponse> regularTimelines;
+    private final java.util.List<CompanyUnitTimelineResponse> internTimelines;
     private final java.util.List<RollingStepStatsResponse> rollingSteps;
 
     public CompanyTimelineResponse(Long companyId,
                                    String companyName,
                                    java.util.List<CompanyUnitTimelineResponse> regularTimelines,
+                                   java.util.List<CompanyUnitTimelineResponse> internTimelines,
                                    java.util.List<RollingStepStatsResponse> rollingSteps) {
         this.companyId = companyId;
         this.companyName = companyName;
         this.regularTimelines = regularTimelines;
+        this.internTimelines = internTimelines;
         this.rollingSteps = rollingSteps;
     }
 
@@ -30,6 +33,10 @@ public class CompanyTimelineResponse {
 
     public java.util.List<CompanyUnitTimelineResponse> getTimelines() {
         return regularTimelines;
+    }
+
+    public java.util.List<CompanyUnitTimelineResponse> getInternTimelines() {
+        return internTimelines;
     }
 
     public java.util.List<RollingStepStatsResponse> getRollingSteps() {

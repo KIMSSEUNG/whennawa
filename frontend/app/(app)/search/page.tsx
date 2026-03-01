@@ -259,7 +259,7 @@ function SearchPageClient() {
 
   const openGlobalReport = (
     companyName?: string,
-    mode?: "REGULAR" | "ROLLING",
+    mode?: "REGULAR" | "ROLLING" | "INTERN",
     options?: { todayAnnouncement?: boolean },
   ) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -281,7 +281,11 @@ function SearchPageClient() {
     router.replace(`${pathname ?? "/search"}${qs ? `?${qs}` : ""}`)
   }
 
-  const handleLeadTimeSearch = async (e: React.FormEvent, keywordOverride?: string) => {
+  const handleLeadTimeSearch = async (
+    e: React.FormEvent,
+    keywordOverride?: string,
+    modeOverride: "REGULAR" | "INTERN" = "REGULAR",
+  ) => {
     e.preventDefault()
     if (!selectedCompany) return
 
@@ -290,7 +294,7 @@ function SearchPageClient() {
 
     setIsLeadTimeLoading(true)
     try {
-      const result = await fetchCompanyLeadTime(selectedCompany.companyName, trimmed)
+      const result = await fetchCompanyLeadTime(selectedCompany.companyName, trimmed, modeOverride)
       const hasLeadTime =
         result != null && (result.minDays != null || result.maxDays != null || result.medianDays != null)
 

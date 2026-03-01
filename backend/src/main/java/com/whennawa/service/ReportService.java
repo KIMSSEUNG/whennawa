@@ -68,15 +68,18 @@ public class ReportService {
         LocalDate reportedDate = request.getReportedDate();
 
         StepDateReport duplicate = null;
-        if (mode == RecruitmentMode.REGULAR) {
+        if (!isRollingMode(mode)) {
             validateRegularFields(prevStepName, currentStepName, prevReportedDate, reportedDate);
             if (currentStepName != null) {
                 duplicate = reportRepository
-                    .findFirstByCompanyNameAndReportedDateAndPrevStepNameAndCurrentStepNameAndStatusAndDeletedAtIsNull(
+                    .findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
                         companyName,
-                        reportedDate,
+                        mode,
+                        null,
                         prevStepName,
                         currentStepName,
+                        prevReportedDate,
+                        reportedDate,
                         ReportStatus.PENDING
                     )
                     .orElse(null);
@@ -113,7 +116,7 @@ public class ReportService {
         if (duplicate != null) {
             int current = duplicate.getReportCount() == null ? 0 : duplicate.getReportCount();
             duplicate.setReportCount(current + 1);
-            if (mode == RecruitmentMode.REGULAR) {
+            if (!isRollingMode(mode)) {
                 if ((duplicate.getCurrentStepName() == null || duplicate.getCurrentStepName().isBlank())
                     && currentStepName != null && !currentStepName.isBlank()) {
                     duplicate.setCurrentStepName(currentStepName);
@@ -137,9 +140,9 @@ public class ReportService {
         report.setCompany(company);
         report.setCompanyName(companyName);
         report.setRecruitmentMode(mode);
-        report.setRollingResultType(mode == RecruitmentMode.ROLLING ? rollingResultType : null);
+        report.setRollingResultType(isRollingMode(mode) ? rollingResultType : null);
         report.setPrevReportedDate(
-            mode == RecruitmentMode.REGULAR
+            !isRollingMode(mode)
                 ? prevReportedDate
                 : mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
                     ? prevReportedDate
@@ -150,7 +153,7 @@ public class ReportService {
                 ? null
                 : prevStepName
         );
-        report.setCurrentStepName(mode == RecruitmentMode.ROLLING || mode == RecruitmentMode.REGULAR ? currentStepName : null);
+        report.setCurrentStepName(currentStepName);
         report.setReportedDate(mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : reportedDate);
         report.setStatus(ReportStatus.PENDING);
 
@@ -296,7 +299,7 @@ public class ReportService {
         }
         RollingReportType rollingResultType = resolveRollingResultType(mode, request.getRollingResultType());
         LocalDate reportedDate = request.getReportedDate();
-        if (mode == RecruitmentMode.REGULAR) {
+        if (!isRollingMode(mode)) {
             validateRegularFields(prevStepName, currentStepName, request.getPrevReportedDate(), reportedDate);
         } else {
             validateRollingFields(prevStepName, currentStepName, request.getPrevReportedDate(), reportedDate, rollingResultType);
@@ -305,9 +308,9 @@ public class ReportService {
         report.setCompany(company);
         report.setCompanyName(companyName);
         report.setRecruitmentMode(mode);
-        report.setRollingResultType(mode == RecruitmentMode.ROLLING ? rollingResultType : null);
+        report.setRollingResultType(isRollingMode(mode) ? rollingResultType : null);
         report.setPrevReportedDate(
-            mode == RecruitmentMode.REGULAR
+            !isRollingMode(mode)
                 ? request.getPrevReportedDate()
                 : mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.DATE_REPORTED
                     ? request.getPrevReportedDate()
@@ -318,7 +321,7 @@ public class ReportService {
                 ? null
                 : prevStepName
         );
-        report.setCurrentStepName(mode == RecruitmentMode.ROLLING || mode == RecruitmentMode.REGULAR ? currentStepName : null);
+        report.setCurrentStepName(currentStepName);
         report.setReportedDate(
             mode == RecruitmentMode.ROLLING && rollingResultType == RollingReportType.NO_RESPONSE_REPORTED
                 ? null
@@ -455,35 +458,38 @@ public class ReportService {
 
         // New regular flow: process regular reports as interval logs (same shape as rolling).
         if (isValidRegularReport(report)) {
+            RecruitmentMode nonRollingMode = report.getRecruitmentMode() == null
+                ? RecruitmentMode.REGULAR
+                : report.getRecruitmentMode();
             int reportCountToApply = report.getReportCount() == null ? 1 : Math.max(report.getReportCount(), 1);
-            RollingReportType regularResultType =
+            RollingReportType nonRollingResultType =
                 report.getReportedDate() == null ? RollingReportType.NO_RESPONSE_REPORTED : RollingReportType.DATE_REPORTED;
 
-            String regularCurrentStep = normalizeCurrentStepName(report.getCurrentStepName());
-            String regularPrevStep = normalizeCurrentStepName(report.getPrevStepName());
-            if (regularCurrentStep == null) {
+            String nonRollingCurrentStep = normalizeCurrentStepName(report.getCurrentStepName());
+            String nonRollingPrevStep = normalizeCurrentStepName(report.getPrevStepName());
+            if (nonRollingCurrentStep == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current step name is required");
             }
-            final String finalRegularCurrentStep = regularCurrentStep;
-            final String finalRegularPrevStep = regularPrevStep;
-            String regularCompanyName = canonicalCompanyName(normalizeCompanyName(report.getCompanyName()), report.getCompany());
+            final String finalNonRollingCurrentStep = nonRollingCurrentStep;
+            final String finalNonRollingPrevStep = nonRollingPrevStep;
+            String nonRollingCompanyName = canonicalCompanyName(normalizeCompanyName(report.getCompanyName()), report.getCompany());
 
             java.util.Optional<RollingStepLog> existingRegular;
-            if (regularResultType == RollingReportType.NO_RESPONSE_REPORTED) {
+            if (nonRollingResultType == RollingReportType.NO_RESPONSE_REPORTED) {
                 existingRegular = rollingStepLogRepository.findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceType(
-                    regularCompanyName,
-                    RecruitmentMode.REGULAR,
-                    finalRegularCurrentStep,
+                    nonRollingCompanyName,
+                    nonRollingMode,
+                    finalNonRollingCurrentStep,
                     RollingReportType.NO_RESPONSE_REPORTED,
                     LogSourceType.REPORT
                 );
             } else {
                 existingRegular = rollingStepLogRepository
                     .findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
-                        regularCompanyName,
-                        RecruitmentMode.REGULAR,
-                        finalRegularCurrentStep,
-                        finalRegularPrevStep,
+                        nonRollingCompanyName,
+                        nonRollingMode,
+                        finalNonRollingCurrentStep,
+                        finalNonRollingPrevStep,
                         RollingReportType.DATE_REPORTED,
                         LogSourceType.REPORT,
                         report.getPrevReportedDate(),
@@ -494,14 +500,14 @@ public class ReportService {
             RollingStepLog regularLog = existingRegular.orElseGet(() -> {
                 RollingStepLog created = new RollingStepLog();
                 created.setCompany(report.getCompany());
-                created.setCompanyName(regularCompanyName);
-                created.setCurrentStepName(finalRegularCurrentStep);
-                created.setPrevStepName(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : finalRegularPrevStep);
-                created.setRollingResultType(regularResultType);
-                created.setRecruitmentMode(RecruitmentMode.REGULAR);
+                created.setCompanyName(nonRollingCompanyName);
+                created.setCurrentStepName(finalNonRollingCurrentStep);
+                created.setPrevStepName(nonRollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : finalNonRollingPrevStep);
+                created.setRollingResultType(nonRollingResultType);
+                created.setRecruitmentMode(nonRollingMode);
                 created.setSourceType(LogSourceType.REPORT);
-                created.setPrevReportedDate(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getPrevReportedDate());
-                created.setReportedDate(regularResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getReportedDate());
+                created.setPrevReportedDate(nonRollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getPrevReportedDate());
+                created.setReportedDate(nonRollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : report.getReportedDate());
                 created.setReportCount(reportCountToApply);
                 return created;
             });
@@ -511,22 +517,22 @@ public class ReportService {
                     regularLog.setCompany(report.getCompany());
                 }
                 if (regularLog.getCompanyName() == null || regularLog.getCompanyName().isBlank()) {
-                    regularLog.setCompanyName(regularCompanyName);
+                    regularLog.setCompanyName(nonRollingCompanyName);
                 }
                 if (regularLog.getCurrentStepName() == null || regularLog.getCurrentStepName().isBlank()) {
-                    regularLog.setCurrentStepName(finalRegularCurrentStep);
+                    regularLog.setCurrentStepName(finalNonRollingCurrentStep);
                 }
-                if (regularResultType != RollingReportType.NO_RESPONSE_REPORTED
+                if (nonRollingResultType != RollingReportType.NO_RESPONSE_REPORTED
                     && (regularLog.getPrevStepName() == null || regularLog.getPrevStepName().isBlank())) {
-                    regularLog.setPrevStepName(finalRegularPrevStep);
+                    regularLog.setPrevStepName(finalNonRollingPrevStep);
                 }
                 if (regularLog.getSourceType() == null) {
                     regularLog.setSourceType(LogSourceType.REPORT);
                 }
                 if (regularLog.getRecruitmentMode() == null) {
-                    regularLog.setRecruitmentMode(RecruitmentMode.REGULAR);
+                    regularLog.setRecruitmentMode(nonRollingMode);
                 }
-                if (regularResultType != RollingReportType.NO_RESPONSE_REPORTED) {
+                if (nonRollingResultType != RollingReportType.NO_RESPONSE_REPORTED) {
                     if (regularLog.getPrevReportedDate() == null) {
                         regularLog.setPrevReportedDate(report.getPrevReportedDate());
                     }
@@ -746,7 +752,7 @@ public class ReportService {
     }
 
     private RollingReportType resolveRollingResultType(RecruitmentMode mode, RollingReportType requested) {
-        if (mode != RecruitmentMode.ROLLING) {
+        if (!isRollingMode(mode)) {
             return null;
         }
         return requested == null ? RollingReportType.DATE_REPORTED : requested;
@@ -754,7 +760,7 @@ public class ReportService {
 
     private boolean assignReportRelations(StepDateReport report) {
         boolean changed = false;
-        if (report.getRecruitmentMode() == RecruitmentMode.ROLLING) {
+        if (isRollingMode(report.getRecruitmentMode())) {
             Company rollingCompany = report.getCompany();
             if (rollingCompany == null && report.getCompanyName() != null && !report.getCompanyName().isBlank()) {
                 rollingCompany = findCompany(report.getCompanyName().trim());
@@ -883,5 +889,9 @@ public class ReportService {
 
     private String normalizeCompanyKey(String value) {
         return CompanyNameNormalizer.normalizeKey(value);
+    }
+
+    private boolean isRollingMode(RecruitmentMode mode) {
+        return mode == RecruitmentMode.ROLLING;
     }
 }

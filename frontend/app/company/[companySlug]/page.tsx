@@ -23,6 +23,7 @@ type RollingStep = {
 type CompanyTimelineResponse = {
   companyName: string
   regularTimelines?: TimelineUnit[]
+  internTimelines?: TimelineUnit[]
   timelines?: TimelineUnit[]
   rollingSteps?: RollingStep[]
 }
@@ -75,8 +76,10 @@ export default async function CompanyPublicPage({ params }: PageProps) {
   const companyName = fromCompanySlug(companySlug)
   const timeline = await fetchTimeline(companyName)
   const regularUnits = timeline?.regularTimelines ?? timeline?.timelines ?? []
+  const internUnits = timeline?.internTimelines ?? []
   const rollingSteps = timeline?.rollingSteps ?? []
   const hasRegular = regularUnits.length > 0
+  const hasIntern = internUnits.length > 0
   const hasRolling = rollingSteps.length > 0
   const regularStepCards = regularUnits
     .flatMap((unit) => unit.steps ?? [])
@@ -102,7 +105,7 @@ export default async function CompanyPublicPage({ params }: PageProps) {
         <p className="mt-2 text-sm text-muted-foreground">공채/수시 데이터가 있는 항목만 노출됩니다.</p>
       </header>
 
-      {!hasRegular && !hasRolling ? (
+      {!hasRegular && !hasIntern && !hasRolling ? (
         <section className="rounded-2xl border border-border/60 bg-card p-5">
           <h2 className="text-base font-semibold text-foreground">공개 데이터가 없습니다</h2>
           <p className="mt-2 text-sm text-muted-foreground">나중에 다시 확인해 주세요.</p>
@@ -119,6 +122,23 @@ export default async function CompanyPublicPage({ params }: PageProps) {
                     <p>{renderInterval(item.days)}</p>
                   </li>
                 ))}
+              </ul>
+            </article>
+          )}
+
+          {hasIntern && (
+            <article id="intern" className="rounded-2xl border border-border/60 bg-card p-5">
+              <h2 className="text-base font-semibold text-foreground">인턴</h2>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                {internUnits
+                  .flatMap((unit) => unit.steps ?? [])
+                  .slice(0, 12)
+                  .map((item, idx) => (
+                    <li key={`intern-${item.label}-${idx}`} className="rounded-lg border border-border/60 px-3 py-2">
+                      <p className="font-medium text-foreground">{item.label}</p>
+                      <p>{renderInterval(item.diffDays)}</p>
+                    </li>
+                  ))}
               </ul>
             </article>
           )}

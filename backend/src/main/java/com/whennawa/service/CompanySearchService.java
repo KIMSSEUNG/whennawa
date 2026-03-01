@@ -119,18 +119,25 @@ public class CompanySearchService {
     }
     public CompanyTimelineResponse getRepresentativeTimeline(String companyName) {
         if (companyName == null || companyName.isBlank()) {
-            return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
+            return new CompanyTimelineResponse(null, companyName, List.of(), List.of(), List.of());
         }
         Company company = resolveActiveCompany(companyName);
         if (company == null) {
-            return new CompanyTimelineResponse(null, companyName, List.of(), List.of());
+            return new CompanyTimelineResponse(null, companyName, List.of(), List.of(), List.of());
         }
-        List<CompanyUnitTimelineResponse> regularTimelines = buildRegularTimelines(company.getCompanyName());
+        List<CompanyUnitTimelineResponse> regularTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.REGULAR);
+        List<CompanyUnitTimelineResponse> internTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.INTERN);
         List<RollingStepStatsResponse> rollingSteps = buildRollingStats(company.getCompanyName());
-        return new CompanyTimelineResponse(company.getCompanyId(), company.getCompanyName(), regularTimelines, rollingSteps);
+        return new CompanyTimelineResponse(
+            company.getCompanyId(),
+            company.getCompanyName(),
+            regularTimelines,
+            internTimelines,
+            rollingSteps
+        );
     }
 
-    public KeywordLeadTimeResponse getKeywordLeadTime(String companyName, String keyword) {
+    public KeywordLeadTimeResponse getKeywordLeadTime(String companyName, String keyword, RecruitmentMode mode) {
         if (keyword == null || keyword.isBlank()) {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
@@ -147,10 +154,15 @@ public class CompanySearchService {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
 
+        RecruitmentMode resolvedMode = mode == null ? RecruitmentMode.REGULAR : mode;
+        if (resolvedMode == RecruitmentMode.ROLLING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lead time mode must be REGULAR or INTERN");
+        }
+
         List<Long> allDiffs = new ArrayList<>();
         List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
             company.getCompanyName(),
-            RecruitmentMode.REGULAR
+            resolvedMode
         );
         for (RollingStepLog log : logs) {
             if (log == null) {
@@ -181,10 +193,14 @@ public class CompanySearchService {
             return new KeywordLeadTimeResponse(keyword, null, null, null);
         }
         allDiffs.sort(Long::compareTo);
-        Long median = allDiffs.get(allDiffs.size() / 2);
+        long sum = 0L;
+        for (Long diff : allDiffs) {
+            sum += diff;
+        }
+        Long average = Math.round((double) sum / (double) allDiffs.size());
         Long min = allDiffs.get(0);
         Long max = allDiffs.get(allDiffs.size() - 1);
-        return new KeywordLeadTimeResponse(keyword, median, min, max);
+        return new KeywordLeadTimeResponse(keyword, average, min, max);
     }
 
     public RollingPredictionResponse predictRollingResult(String companyName,
@@ -318,7 +334,7 @@ public class CompanySearchService {
         return result;
     }
 
-    private List<CompanyUnitTimelineResponse> buildRegularTimelines(String companyName) {
+    private List<CompanyUnitTimelineResponse> buildTimelinesByMode(String companyName, RecruitmentMode mode) {
         if (companyName == null || companyName.isBlank()) {
             return List.of();
         }
@@ -328,7 +344,7 @@ public class CompanySearchService {
         }
         List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
             company.getCompanyName(),
-            RecruitmentMode.REGULAR
+            mode
         );
         if (logs.isEmpty()) {
             return List.of();

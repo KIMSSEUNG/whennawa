@@ -13,7 +13,7 @@ interface CompanyDetailPanelProps {
   keyword: string
   lastLeadTimeKeyword: string
   onKeywordChange: (value: string) => void
-  onKeywordSearch: (event: React.FormEvent, keywordOverride?: string) => void
+  onKeywordSearch: (event: React.FormEvent, keywordOverride?: string, modeOverride?: "REGULAR" | "INTERN") => void
   selectedCalendarDate: string | null
   onCalendarDateSelect: (dateStr: string) => void
   isCalendarVisible: boolean
@@ -21,7 +21,7 @@ interface CompanyDetailPanelProps {
   isLeadTimeLoading: boolean
   onQuickReport: (
     companyName: string,
-    mode: "REGULAR" | "ROLLING",
+    mode: "REGULAR" | "ROLLING" | "INTERN",
     options?: { todayAnnouncement?: boolean },
   ) => void
   showCompanyHeader?: boolean
@@ -123,16 +123,30 @@ function LeadTimeCalendar({
 
     const expectedDate = new Date(base)
     expectedDate.setDate(expectedDate.getDate() + expectedDays)
+    const hasRange =
+      leadTime?.minDays != null &&
+      leadTime?.maxDays != null &&
+      leadTime.minDays !== leadTime.maxDays
+    const minDays = hasRange ? leadTime.minDays : null
+    const maxDays = hasRange ? leadTime.maxDays : null
+    const minDate = minDays == null ? null : new Date(base)
+    const maxDate = maxDays == null ? null : new Date(base)
+    if (minDate && minDays != null) minDate.setDate(minDate.getDate() + minDays)
+    if (maxDate && maxDays != null) maxDate.setDate(maxDate.getDate() + maxDays)
 
     const toKey = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 
     return {
       expectedKey: toKey(expectedDate),
+      minKey: minDate ? toKey(minDate) : null,
+      maxKey: maxDate ? toKey(maxDate) : null,
       selectedDisplay: base.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }),
       expectedDisplay: expectedDate.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }),
+      minDisplay: minDate ? minDate.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }) : null,
+      maxDisplay: maxDate ? maxDate.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }) : null,
     }
-  }, [expectedDays, selectedDate])
+  }, [expectedDays, selectedDate, leadTime?.minDays, leadTime?.maxDays])
 
   const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
@@ -188,6 +202,8 @@ function LeadTimeCalendar({
             const dateStr = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
             const isSelected = selectedDate === dateStr
             const isExpectedDate = derivedDates?.expectedKey === dateStr
+            const isMinDate = derivedDates?.minKey === dateStr
+            const isMaxDate = derivedDates?.maxKey === dateStr
 
             return (
               <button
@@ -202,11 +218,23 @@ function LeadTimeCalendar({
                   "h-14 rounded-xl border border-transparent bg-card/60 px-1 py-1 text-xs shadow-[inset_0_0_0_1px_rgba(59,91,219,0.06)] transition-all",
                   "text-foreground hover:bg-accent/60",
                   isExpectedDate ? "border-primary/45 bg-primary/5" : "",
+                  isMinDate ? "ring-1 ring-emerald-400/40" : "",
+                  isMaxDate ? "ring-1 ring-rose-400/40" : "",
                   isSelected ? "border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-sm" : "",
                 )}
               >
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-[11px]">{day}</span>
+                  {isMinDate && (
+                    <span className="rounded bg-emerald-500/10 px-1 text-[10px] text-emerald-700 dark:text-emerald-300">
+                      최소
+                    </span>
+                  )}
+                  {isMaxDate && (
+                    <span className="rounded bg-rose-500/10 px-1 text-[10px] text-rose-700 dark:text-rose-300">
+                      최대
+                    </span>
+                  )}
                   {isExpectedDate && (
                     <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">
                       <span className="sm:hidden">예상</span>
@@ -231,6 +259,18 @@ function LeadTimeCalendar({
               <p className="text-[11px] text-muted-foreground">예상 발표일</p>
               <p className="mt-1 text-sm font-semibold text-primary">{derivedDates.expectedDisplay}</p>
             </div>
+            {derivedDates.minDisplay && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+                <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/90">최소</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">{derivedDates.minDisplay}</p>
+              </div>
+            )}
+            {derivedDates.maxDisplay && (
+              <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 px-3 py-2">
+                <p className="text-[11px] text-rose-700/80 dark:text-rose-300/90">최대</p>
+                <p className="mt-1 text-sm font-semibold text-rose-700 dark:text-rose-300">{derivedDates.maxDisplay}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -388,27 +428,42 @@ export function CompanyDetailPanel({
   const leadTimeSectionRef = useRef<HTMLElement | null>(null)
 
   const regularTimelines = timeline?.regularTimelines ?? []
+  const internTimelines = timeline?.internTimelines ?? []
   const rollingSteps = timeline?.rollingSteps ?? []
   const hasRegular = regularTimelines.length > 0
+  const hasIntern = internTimelines.length > 0
   const hasRolling = rollingSteps.length > 0
 
-  const [activeTab, setActiveTab] = useState<"REGULAR" | "ROLLING">("REGULAR")
+  const [activeTab, setActiveTab] = useState<"REGULAR" | "ROLLING" | "INTERN">("REGULAR")
   const [rollingStepName, setRollingStepName] = useState("")
   const [rollingPrevDate, setRollingPrevDate] = useState("")
+  const prevActiveTabRef = useRef<"REGULAR" | "ROLLING" | "INTERN">("REGULAR")
   useEffect(() => {
     if (hasRegular) {
       setActiveTab("REGULAR")
+    } else if (hasIntern) {
+      setActiveTab("INTERN")
     } else if (hasRolling) {
       setActiveTab("ROLLING")
     }
-  }, [hasRegular, hasRolling, timeline?.companyName])
+  }, [hasRegular, hasIntern, hasRolling, timeline?.companyName])
 
   useEffect(() => {
     setRollingStepName("")
     setRollingPrevDate("")
   }, [timeline?.companyName])
 
-  const timelineSuggestions = Array.from(
+  useEffect(() => {
+    if (prevActiveTabRef.current === activeTab) {
+      return
+    }
+    prevActiveTabRef.current = activeTab
+    onKeywordChange("")
+    setRollingStepName("")
+    setRollingPrevDate("")
+  }, [activeTab, onKeywordChange])
+
+  const regularSuggestions = Array.from(
     new Set(
       regularTimelines
         .flatMap((unit) => unit.steps)
@@ -417,10 +472,19 @@ export function CompanyDetailPanel({
     ),
   )
 
-  const handleRegularStepChange = (value: string) => {
+  const internSuggestions = Array.from(
+    new Set(
+      internTimelines
+        .flatMap((unit) => unit.steps)
+        .map((step) => step.label)
+        .filter((label): label is string => Boolean(label && label.trim())),
+    ),
+  )
+
+  const handleStepChange = (value: string, mode: "REGULAR" | "INTERN") => {
     onKeywordChange(value)
     if (!value.trim()) return
-    onKeywordSearch({ preventDefault() {} } as React.FormEvent, value)
+    onKeywordSearch({ preventDefault() {} } as React.FormEvent, value, mode)
     leadTimeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
@@ -431,7 +495,7 @@ export function CompanyDetailPanel({
           <div className="mb-4 rounded-2xl bg-muted px-6 py-4 inline-block">
             <span className="text-2xl font-bold text-muted-foreground">선택</span>
           </div>
-          <p className="text-sm font-medium text-foreground/80">회사를 선택하면 공채/수시 정보를 확인할 수 있어요.</p>
+          <p className="text-sm font-medium text-foreground/80">회사를 선택하면 공채/인턴/수시 정보를 확인할 수 있어요.</p>
         </div>
       </div>
     )
@@ -446,7 +510,7 @@ export function CompanyDetailPanel({
       )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {(hasRegular || hasRolling) && (
+        {(hasRegular || hasIntern || hasRolling) && (
           <div className="inline-flex rounded-xl border border-border/60 bg-background p-1">
             {hasRegular && (
               <button
@@ -455,6 +519,15 @@ export function CompanyDetailPanel({
                 className={cn("rounded-lg px-3 py-1.5 text-sm", activeTab === "REGULAR" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
               >
                 공채
+              </button>
+            )}
+            {hasIntern && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("INTERN")}
+                className={cn("rounded-lg px-3 py-1.5 text-sm", activeTab === "INTERN" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+              >
+                인턴
               </button>
             )}
             {hasRolling && (
@@ -475,9 +548,9 @@ export function CompanyDetailPanel({
               <PredictSection
                 title="전형 기간 검색"
                 description="전형을 선택하고 이전 전형 발표일을 선택해 예상 발표일을 확인하세요."
-                stepOptions={timelineSuggestions}
+                stepOptions={regularSuggestions}
                 selectedStep={keyword}
-                onStepChange={handleRegularStepChange}
+                onStepChange={(value) => handleStepChange(value, "REGULAR")}
                 leadTime={leadTime}
                 selectedDate={selectedCalendarDate}
                 onDateSelect={onCalendarDateSelect}
@@ -496,6 +569,38 @@ export function CompanyDetailPanel({
                 className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
               >
                 오늘 결과 발표가 났어요
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeTab === "INTERN" && hasIntern && (
+          <>
+            <div ref={leadTimeSectionRef}>
+              <PredictSection
+                title="전형 기간 검색"
+                description="전형을 선택하고 이전 전형 발표일을 선택해 예상 발표일을 확인하세요."
+                stepOptions={internSuggestions}
+                selectedStep={keyword}
+                onStepChange={(value) => handleStepChange(value, "INTERN")}
+                leadTime={leadTime}
+                selectedDate={selectedCalendarDate}
+                onDateSelect={onCalendarDateSelect}
+                showCalendar={isCalendarVisible}
+                noDataText={
+                  lastLeadTimeKeyword
+                    ? "해당 검색 결과가 없습니다."
+                    : "전형을 선택해 결과를 확인하세요."
+                }
+              />
+            </div>
+            <div className="flex">
+              <button
+                type="button"
+                onClick={() => onQuickReport(company.companyName, "INTERN")}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
+              >
+                인턴 제보하기
               </button>
             </div>
           </>
@@ -522,9 +627,9 @@ export function CompanyDetailPanel({
           </>
         )}
 
-        {!hasRegular && !hasRolling && (
+        {!hasRegular && !hasIntern && !hasRolling && (
           <section className="rounded-2xl border border-border/60 bg-card p-4">
-            <p className="text-sm font-medium text-foreground/85">공채/수시 데이터가 아직 없습니다.</p>
+            <p className="text-sm font-medium text-foreground/85">공채/인턴/수시 데이터가 아직 없습니다.</p>
             <p className="mt-1 text-xs text-muted-foreground">첫 제보를 남겨 데이터 생성을 시작할 수 있어요.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -533,6 +638,13 @@ export function CompanyDetailPanel({
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-primary/35 bg-primary/15 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/22"
               >
                 공채 제보하기
+              </button>
+              <button
+                type="button"
+                onClick={() => onQuickReport(company.companyName, "INTERN", { todayAnnouncement: false })}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-primary/35 bg-primary/15 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/22"
+              >
+                인턴 제보하기
               </button>
               <button
                 type="button"

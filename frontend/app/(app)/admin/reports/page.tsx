@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 import {
@@ -51,7 +51,7 @@ export default function AdminReportPage() {
       setReports(data ?? [])
     } catch (error) {
       console.error("Failed to load reports", error)
-      setMessage("리포트 목록을 불러오지 못했습니다.")
+      setMessage("由ы룷??紐⑸줉??遺덈윭?ㅼ? 紐삵뻽?듬땲??")
     } finally {
       setIsLoading(false)
     }
@@ -70,7 +70,7 @@ export default function AdminReportPage() {
       await loadReports()
     } catch (error) {
       console.error("Failed to process report", error)
-      setMessage("처리에 실패했습니다.")
+      setMessage("泥섎━???ㅽ뙣?덉뒿?덈떎.")
     }
   }
 
@@ -81,7 +81,7 @@ export default function AdminReportPage() {
       await loadReports()
     } catch (error) {
       console.error("Failed to discard report", error)
-      setMessage("폐기에 실패했습니다.")
+      setMessage("?먭린???ㅽ뙣?덉뒿?덈떎.")
     }
   }
 
@@ -111,25 +111,25 @@ export default function AdminReportPage() {
   const saveEdit = async () => {
     if (!editingId || !editForm) return
 
-    const isRegular = editForm.recruitmentMode === "REGULAR"
+    const isNonRolling = editForm.recruitmentMode !== "ROLLING"
     const currentStepName = editForm.currentStepName.trim()
 
     if (!currentStepName) {
-      setMessage("현재 전형명을 입력해 주세요.")
+      setMessage("?꾩옱 ?꾪삎紐낆쓣 ?낅젰??二쇱꽭??")
       return
     }
     if (!editForm.noResponse && !editForm.prevStepName.trim()) {
-      setMessage("이전 전형명을 입력해 주세요.")
+      setMessage("?댁쟾 ?꾪삎紐낆쓣 ?낅젰??二쇱꽭??")
       return
     }
 
     if (!editForm.noResponse) {
       if (!editForm.prevReportedDate || !editForm.reportedDate) {
-        setMessage("이전 발표일과 현재 발표일을 입력해 주세요.")
+        setMessage("?댁쟾 諛쒗몴?쇨낵 ?꾩옱 諛쒗몴?쇱쓣 ?낅젰??二쇱꽭??")
         return
       }
       if (new Date(editForm.prevReportedDate) >= new Date(editForm.reportedDate)) {
-        setMessage("이전 발표일은 현재 발표일보다 이전 날짜여야 합니다.")
+        setMessage("?댁쟾 諛쒗몴?쇱? ?꾩옱 諛쒗몴?쇰낫???댁쟾 ?좎쭨?ъ빞 ?⑸땲??")
         return
       }
     }
@@ -138,7 +138,7 @@ export default function AdminReportPage() {
       await updateAdminReport(editingId, {
         companyName: editForm.companyName.trim(),
         recruitmentMode: editForm.recruitmentMode,
-        rollingResultType: isRegular
+        rollingResultType: isNonRolling
           ? undefined
           : editForm.noResponse
             ? "NO_RESPONSE_REPORTED"
@@ -152,36 +152,37 @@ export default function AdminReportPage() {
       cancelEdit()
     } catch (error) {
       console.error("Failed to update report", error)
-      setMessage("수정에 실패했습니다.")
+      setMessage("?섏젙???ㅽ뙣?덉뒿?덈떎.")
     }
   }
 
   return (
     <div className="page-shell [--page-max:64rem] py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">리포트 처리</h1>
+        <h1 className="text-2xl font-semibold text-foreground">由ы룷??泥섎━</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          보류 상태(회색)는 필수 데이터가 부족해 자동 처리할 수 없는 리포트입니다.
+          蹂대쪟 ?곹깭(?뚯깋)???꾩닔 ?곗씠?곌? 遺議깊빐 ?먮룞 泥섎━?????녿뒗 由ы룷?몄엯?덈떎.
         </p>
       </div>
 
       {message && <p className="mb-4 text-sm text-muted-foreground">{message}</p>}
 
       {isLoading ? (
-        <div className="py-10 text-sm text-muted-foreground">불러오는 중...</div>
+        <div className="py-10 text-sm text-muted-foreground">遺덈윭?ㅻ뒗 以?..</div>
       ) : reports.length === 0 ? (
-        <div className="py-10 text-sm text-muted-foreground">리포트가 없습니다.</div>
+        <div className="py-10 text-sm text-muted-foreground">由ы룷?멸? ?놁뒿?덈떎.</div>
       ) : (
         <div className="space-y-4">
           {reports.map((report) => {
             const isEditing = editingId === report.reportId
             const isOnHold = report.onHold
             const isRegular = report.recruitmentMode === "REGULAR"
+            const isIntern = report.recruitmentMode === "INTERN"
             const isNoResponse =
               report.rollingResultType === "NO_RESPONSE_REPORTED" ||
               (!report.prevReportedDate && !report.reportedDate)
             const currentStepLabel = report.currentStepName ?? "-"
-            const modeLabel = isRegular ? "공채" : "수시"
+            const modeLabel = isRegular ? "공채" : isIntern ? "인턴" : "수시"
 
             return (
               <div
@@ -197,7 +198,7 @@ export default function AdminReportPage() {
                     <p className="text-sm text-muted-foreground">
                       {modeLabel} · {isNoResponse ? "결과 미수신" : "날짜 제보"}
                     </p>
-                    <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}회</p>
+                    <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}건</p>
                     <p className="text-sm text-muted-foreground">
                       이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} ·
                       현재 발표일: {report.reportedDate ? toDateInput(report.reportedDate) : "-"}
@@ -216,7 +217,7 @@ export default function AdminReportPage() {
                     </span>
                     {isOnHold && (
                       <span className="text-xs rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-700">
-                        보류
+                        蹂대쪟
                       </span>
                     )}
                   </div>
@@ -229,7 +230,7 @@ export default function AdminReportPage() {
                       onClick={() => handleProcess(report)}
                       disabled={isOnHold || report.status !== "PENDING"}
                     >
-                      처리
+                      泥섎━
                     </Button>
 
                     <Button
@@ -238,11 +239,11 @@ export default function AdminReportPage() {
                       onClick={() => handleDiscard(report.reportId)}
                       disabled={report.status !== "PENDING"}
                     >
-                      폐기
+                      ?먭린
                     </Button>
 
                     <Button type="button" variant="ghost" onClick={() => beginEdit(report)}>
-                      수정
+                      ?섏젙
                     </Button>
                   </div>
                 )}
@@ -258,7 +259,7 @@ export default function AdminReportPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">유형</label>
+                      <label className="text-sm font-medium">전형</label>
                       <Select
                         value={editForm.recruitmentMode}
                         onValueChange={(value) =>
@@ -267,10 +268,11 @@ export default function AdminReportPage() {
                         disabled
                       >
                         <SelectTrigger className="h-10">
-                          <SelectValue placeholder="유형 선택" />
+                          <SelectValue placeholder="전형 선택" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="REGULAR">공채</SelectItem>
+                          <SelectItem value="INTERN">인턴</SelectItem>
                           <SelectItem value="ROLLING">수시</SelectItem>
                         </SelectContent>
                       </Select>
@@ -334,7 +336,7 @@ export default function AdminReportPage() {
                       <Input
                         value={editForm.currentStepName}
                         onChange={(e) => setEditForm({ ...editForm, currentStepName: e.target.value })}
-                        placeholder="예: 1차면접"
+                        placeholder="예: 1차 면접 발표"
                       />
                     </div>
 
@@ -356,3 +358,5 @@ export default function AdminReportPage() {
     </div>
   )
 }
+
+
