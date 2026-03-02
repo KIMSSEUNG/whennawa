@@ -1193,7 +1193,7 @@ export async function loginWithGoogle(nextPath?: string): Promise<boolean> {
 
     if (typeof window !== "undefined") {
       const safeNext = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/"
-      window.location.assign(`${API_BASE_URL}/auth/login/google?force_consent=1&next=${encodeURIComponent(safeNext)}`)
+      window.location.assign(`${API_BASE_URL}/api/auth/login/google?force_consent=1&next=${encodeURIComponent(safeNext)}`)
       return false
     }
 

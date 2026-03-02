@@ -4,9 +4,11 @@ import com.whennawa.service.AuthCookieService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
+@RequestMapping("/api")
 public class OAuthLoginController {
     private final AuthCookieService authCookieService;
 
@@ -21,7 +23,7 @@ public class OAuthLoginController {
         String safeNext = sanitizeNext(next);
         authCookieService.setLoginNextCookie(response, safeNext);
         String consent = "1".equals(forceConsent) ? "&force_consent=1" : "";
-        return "redirect:/oauth2/authorization/google?source=login" + consent;
+        return "redirect:/api/oauth2/authorization/google?source=login" + consent;
     }
 
     private String sanitizeNext(String next) {

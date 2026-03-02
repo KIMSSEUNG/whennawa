@@ -65,8 +65,8 @@ public class SecurityConfig {
             .securityContext(sc -> sc.securityContextRepository(new NullSecurityContextRepository()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/h2-console/**", "/webhooks/**", "/oauth2/**", "/login/**",
-                    "/auth/login/**",
+                .requestMatchers("/h2-console/**", "/webhooks/**", "/oauth2/**", "/api/oauth2/**", "/login/**",
+                    "/api/auth/login/**",
                     "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/refresh").permitAll()
@@ -77,6 +77,7 @@ public class SecurityConfig {
             )
             .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(authorization -> authorization
+                    .baseUri("/api/oauth2/authorization")
                     .authorizationRequestResolver(authorizationRequestResolver))
                 .successHandler(successHandler)
                 .failureHandler(failureHandler)
@@ -128,7 +129,7 @@ public class SecurityConfig {
 
         DefaultOAuth2AuthorizationRequestResolver delegate =
                 new DefaultOAuth2AuthorizationRequestResolver(
-                        clientRegistrationRepository, "/oauth2/authorization"
+                        clientRegistrationRepository, "/api/oauth2/authorization"
                 );
 
         return new OAuth2AuthorizationRequestResolver() {
