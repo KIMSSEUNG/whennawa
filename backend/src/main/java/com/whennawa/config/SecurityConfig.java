@@ -66,6 +66,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**", "/webhooks/**", "/oauth2/**", "/api/oauth2/**", "/login/**",
+                    "/api/login/**",
                     "/api/auth/login/**",
                     "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -79,6 +80,8 @@ public class SecurityConfig {
                 .authorizationEndpoint(authorization -> authorization
                     .baseUri("/api/oauth2/authorization")
                     .authorizationRequestResolver(authorizationRequestResolver))
+                .redirectionEndpoint(redirection -> redirection
+                    .baseUri("/api/login/oauth2/code/*"))
                 .successHandler(successHandler)
                 .failureHandler(failureHandler)
             )
