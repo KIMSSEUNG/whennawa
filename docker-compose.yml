@@ -41,7 +41,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_BASE_URL: "https://whennawa.shop/api"
+        NEXT_PUBLIC_API_BASE_URL: "https://whennawa.shop"
         NEXT_PUBLIC_USE_MOCK_DATA: "false"
     container_name: whennawa-frontend
     restart: unless-stopped
