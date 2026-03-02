@@ -32,6 +32,14 @@ const toSocketBaseUrl = () => {
   return ""
 }
 
+const toSockJsEndpoint = (socketBaseUrl: string) => {
+  const normalized = socketBaseUrl.replace(/\/$/, "")
+  if (normalized.endsWith("/api")) {
+    return `${normalized}/ws-stomp`
+  }
+  return `${normalized}/api/ws-stomp`
+}
+
 export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [message, setMessage] = useState("")
@@ -62,10 +70,11 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
     if (!isJoined || !companyId || !topic) return
     const socketBaseUrl = toSocketBaseUrl()
     if (!socketBaseUrl) return
+    const sockJsEndpoint = toSockJsEndpoint(socketBaseUrl)
 
     const client = new Client({
       reconnectDelay: 3000,
-      webSocketFactory: () => new SockJS(`${socketBaseUrl}/ws-stomp`),
+      webSocketFactory: () => new SockJS(sockJsEndpoint),
       onConnect: () => {
         subscriptionRef.current = client.subscribe(topic, (frame: IMessage) => {
           const payload = JSON.parse(frame.body) as {
