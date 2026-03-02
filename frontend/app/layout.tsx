@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     default: siteTitle,
     template: `%s | ${siteName}`,
   },
-  description: "Check company hiring timelines and application flow in one place.",
+  description: "채용 공고 일정과 지원 흐름을 한 번에 확인하는 취업 타임라인 서비스.",
   alternates: {
     canonical: "/",
   },
@@ -28,16 +28,25 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName,
     title: siteTitle,
-    description: "Check company hiring timelines and application flow in one place.",
+    description: "채용 공고 일정과 지원 흐름을 한 번에 확인하는 취업 타임라인 서비스.",
     locale: "ko_KR",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "언제나와 채용 타임라인 링크 미리보기 이미지",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
-    description: "Check company hiring timelines and application flow in one place.",
+    description: "채용 공고 일정과 지원 흐름을 한 번에 확인하는 취업 타임라인 서비스.",
+    images: ["/twitter-image"],
   },
   generator: "v0.app",
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -46,10 +55,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/logo.png",
+        url: "/icon.png",
       },
     ],
-    apple: "/logo.png",
+    apple: "/apple-icon.png",
   },
 }
 
