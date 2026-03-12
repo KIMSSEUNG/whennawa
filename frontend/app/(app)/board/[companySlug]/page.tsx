@@ -1,9 +1,9 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { deleteBoardPost, fetchBoardPosts, getUser, searchBoardPosts, updateBoardPost } from "@/lib/api"
+import { blockUser, deleteBoardPost, fetchBoardPosts, getUser, searchBoardPosts, updateBoardPost } from "@/lib/api"
 import { fromCompanySlug } from "@/lib/company-slug"
 import type { BoardPost } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/empty-state"
 type SearchField = "title" | "content"
 
 const POST_PAGE_SIZE = 10
+const PAGE_GROUP_SIZE = 10
 
 function formatDate(value: Date) {
   return value.toLocaleString("ko-KR", {
@@ -36,6 +37,7 @@ export default function CompanyBoardPage() {
   const [posts, setPosts] = useState<BoardPost[]>([])
   const [page, setPage] = useState(0)
   const [hasNext, setHasNext] = useState(false)
+  const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -53,43 +55,55 @@ export default function CompanyBoardPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const loadPosts = async (reset: boolean) => {
-    const targetPage = reset ? 0 : page + 1
-    if (reset) setIsLoading(true)
+  const loadPosts = async (targetPage: number) => {
+    const isFirstPage = targetPage === 0
+    if (isFirstPage) setIsLoading(true)
     else setIsLoadingMore(true)
 
     try {
       const data = await fetchBoardPosts(companyName, targetPage, POST_PAGE_SIZE)
-      setPosts((prev) => (reset ? data.items : [...prev, ...data.items]))
+      setPosts(data.items)
       setPage(data.page)
       setHasNext(data.hasNext)
-      if (reset) setIsSearchMode(false)
+      const resolvedTotalPages = typeof data.totalPages === "number" && data.totalPages >= 0
+        ? data.totalPages
+        : data.hasNext
+          ? data.page + 2
+          : data.page + 1
+      setTotalPages(Math.max(resolvedTotalPages, 0))
+      if (isFirstPage) setIsSearchMode(false)
     } catch (error) {
-      const text = error instanceof Error ? error.message : "게시판 목록을 불러오지 못했습니다."
+      const text = error instanceof Error ? error.message : "게시글 목록을 불러오지 못했습니다."
       setMessage(text)
-      if (reset) setPosts([])
+      if (isFirstPage) setPosts([])
     } finally {
-      if (reset) setIsLoading(false)
+      if (isFirstPage) setIsLoading(false)
       else setIsLoadingMore(false)
     }
   }
 
-  const runSearch = async (reset: boolean) => {
+  const runSearch = async (targetPage: number) => {
     const normalizedQuery = searchQuery.trim()
     if (!normalizedQuery) {
-      await loadPosts(true)
+      await loadPosts(0)
       return
     }
 
-    const targetPage = reset ? 0 : page + 1
-    if (reset) setIsSearching(true)
+    const isFirstPage = targetPage === 0
+    if (isFirstPage) setIsSearching(true)
     else setIsLoadingMore(true)
 
     try {
       const data = await searchBoardPosts(companyName, normalizedQuery, searchField, targetPage, POST_PAGE_SIZE)
-      setPosts((prev) => (reset ? data.items : [...prev, ...data.items]))
+      setPosts(data.items)
       setPage(data.page)
       setHasNext(data.hasNext)
+      const resolvedTotalPages = typeof data.totalPages === "number" && data.totalPages >= 0
+        ? data.totalPages
+        : data.hasNext
+          ? data.page + 2
+          : data.page + 1
+      setTotalPages(Math.max(resolvedTotalPages, 0))
       setIsSearchMode(true)
     } catch (error) {
       const text = error instanceof Error ? error.message : "게시글 검색에 실패했습니다."
@@ -99,7 +113,7 @@ export default function CompanyBoardPage() {
         setMessage(text)
       }
     } finally {
-      if (reset) setIsSearching(false)
+      if (isFirstPage) setIsSearching(false)
       else setIsLoadingMore(false)
     }
   }
@@ -107,7 +121,8 @@ export default function CompanyBoardPage() {
   useEffect(() => {
     if (!companyName) return
     setMessage(null)
-    void loadPosts(true)
+    setTotalPages(0)
+    void loadPosts(0)
     void (async () => {
       const me = await getUser().catch(() => null)
       const parsed = me?.id ? Number(me.id) : NaN
@@ -120,15 +135,18 @@ export default function CompanyBoardPage() {
   const handleSearch = async (event: FormEvent) => {
     event.preventDefault()
     setMessage(null)
-    await runSearch(true)
+    await runSearch(0)
   }
 
-  const handleLoadMore = async () => {
-    if (!hasNext || isLoadingMore || isLoading || isSearching) return
-    if (isSearchMode) {
-      await runSearch(false)
+  const goToPage = async (targetPage: number) => {
+    if (targetPage < 0 || targetPage === page) return
+    if (targetPage >= totalPages) return
+    if (isLoading || isSearching || isLoadingMore) return
+    setMessage(null)
+    if (isSearchMode && searchQuery.trim()) {
+      await runSearch(targetPage)
     } else {
-      await loadPosts(false)
+      await loadPosts(targetPage)
     }
   }
 
@@ -146,9 +164,9 @@ export default function CompanyBoardPage() {
 
   const reloadCurrent = async () => {
     if (isSearchMode && searchQuery.trim()) {
-      await runSearch(true)
+      await runSearch(page)
     } else {
-      await loadPosts(true)
+      await loadPosts(page)
     }
   }
 
@@ -159,7 +177,7 @@ export default function CompanyBoardPage() {
     setMessage(null)
     try {
       await updateBoardPost(companyName, postId, editTitle, editContent)
-      setMessage("게시글이 수정되었습니다.")
+      setMessage("게시글을 수정했습니다.")
       cancelEdit()
       await reloadCurrent()
     } catch (error) {
@@ -177,7 +195,7 @@ export default function CompanyBoardPage() {
     setMessage(null)
     try {
       await deleteBoardPost(companyName, postId)
-      setMessage("게시글이 삭제되었습니다.")
+      setMessage("게시글을 삭제했습니다.")
       await reloadCurrent()
     } catch (error) {
       const text = error instanceof Error ? error.message : "게시글 삭제에 실패했습니다."
@@ -187,6 +205,27 @@ export default function CompanyBoardPage() {
     }
   }
 
+  const handleBlockAuthor = async (userId: number | null) => {
+    if (userId == null) return
+    try {
+      await blockUser(userId)
+      setMessage("해당 사용자를 차단했습니다.")
+      await reloadCurrent()
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "차단 처리에 실패했습니다."
+      setMessage(text)
+    }
+  }
+
+  const paginationBlockStart = Math.floor(page / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE
+  const paginationPages = Array.from({ length: PAGE_GROUP_SIZE }, (_, index) => paginationBlockStart + index).filter(
+    (value) => value < totalPages,
+  )
+  const canGoPrevPage = page > 0
+  const canGoNextPage = page < totalPages - 1
+  const canGoPrevBlock = paginationBlockStart > 0
+  const canGoNextBlock = paginationBlockStart + PAGE_GROUP_SIZE < totalPages
+
   return (
     <div className="page-shell [--page-max:1200px] space-y-6 py-6">
       <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-5 md:p-6">
@@ -194,7 +233,7 @@ export default function CompanyBoardPage() {
         <div className="relative">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Board Home</p>
           <h1 className="mt-2 text-2xl font-bold text-foreground md:text-3xl">{companyName}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">목록에서는 제목만 노출되며, 본문은 상세 페이지에서 확인합니다.</p>
+          <p className="mt-1 text-sm text-muted-foreground">목록에서는 제목만 노출되고, 본문은 상세 페이지에서 확인할 수 있습니다.</p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href={writeHref}>
@@ -212,9 +251,9 @@ export default function CompanyBoardPage() {
 
       <section className="rounded-2xl border border-border/60 bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-foreground">게시글 탐색</h2>
+          <h2 className="text-base font-semibold text-foreground">게시글 검색</h2>
           <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
-            {isSearchMode ? "검색 결과" : "전체 목록"}
+            {isSearchMode ? "검색결과" : "전체 목록"}
           </span>
         </div>
 
@@ -236,7 +275,15 @@ export default function CompanyBoardPage() {
           <Button type="submit" className="h-10" disabled={isSearching}>
             {isSearching ? "검색 중..." : "검색"}
           </Button>
-          <Button type="button" variant="outline" className="h-10" onClick={() => void loadPosts(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10"
+            onClick={() => {
+              setTotalPages(0)
+              void loadPosts(0)
+            }}
+          >
             전체 보기
           </Button>
         </form>
@@ -250,7 +297,7 @@ export default function CompanyBoardPage() {
         {isLoading ? (
           <div className="rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">불러오는 중...</div>
         ) : posts.length === 0 ? (
-          <EmptyState title="게시글이 없습니다" description="검색 조건을 바꾸거나 새 게시글을 작성해 보세요." />
+          <EmptyState title="게시글이 없습니다" description="검색 조건을 바꾸거나 첫 게시글을 작성해 보세요." />
         ) : (
           <>
             {posts.map((post) => {
@@ -278,7 +325,7 @@ export default function CompanyBoardPage() {
                       />
                       <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
                         <Button type="button" onClick={() => void handleUpdate(post.postId)} disabled={isEditing}>
-                          {isEditing ? "수정 중..." : "수정 저장"}
+                          {isEditing ? "수정 중..." : "수정 완료"}
                         </Button>
                         <Button type="button" variant="outline" onClick={cancelEdit}>취소</Button>
                       </div>
@@ -293,8 +340,20 @@ export default function CompanyBoardPage() {
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className="rounded-full bg-muted px-2 py-0.5">{post.authorName}</span>
-                        <span>•</span>
+                        <span>·</span>
                         <span>{formatDate(post.createdAt)}</span>
+                        {myUserId != null && post.authorUserId != null && myUserId !== post.authorUserId && (
+                          <button
+                            type="button"
+                            className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void handleBlockAuthor(post.authorUserId)
+                            }}
+                          >
+                            차단
+                          </button>
+                        )}
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
                         <Link href={`${boardHref}/posts/${post.postId}`} onClick={(event) => event.stopPropagation()}>
@@ -332,10 +391,51 @@ export default function CompanyBoardPage() {
               )
             })}
 
-            {hasNext && (
-              <div className="flex justify-center pt-2">
-                <Button type="button" variant="outline" onClick={() => void handleLoadMore()} disabled={isLoadingMore}>
-                  {isLoadingMore ? "불러오는 중..." : "더보기"}
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(Math.max(0, paginationBlockStart - PAGE_GROUP_SIZE))}
+                  disabled={!canGoPrevBlock || isLoadingMore || isLoading || isSearching}
+                >
+                  {"<<"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(page - 1)}
+                  disabled={!canGoPrevPage || isLoadingMore || isLoading || isSearching}
+                >
+                  {"<"}
+                </Button>
+                {paginationPages.map((pageNumber) => (
+                  <Button
+                    key={`page-${pageNumber}`}
+                    type="button"
+                    variant={pageNumber === page ? "default" : "outline"}
+                    onClick={() => void goToPage(pageNumber)}
+                    disabled={isLoadingMore || isLoading || isSearching}
+                    className="min-w-10"
+                  >
+                    {pageNumber + 1}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(page + 1)}
+                  disabled={!canGoNextPage || isLoadingMore || isLoading || isSearching}
+                >
+                  {">"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(Math.min(totalPages - 1, paginationBlockStart + PAGE_GROUP_SIZE))}
+                  disabled={!canGoNextBlock || isLoadingMore || isLoading || isSearching}
+                >
+                  {">>"}
                 </Button>
               </div>
             )}

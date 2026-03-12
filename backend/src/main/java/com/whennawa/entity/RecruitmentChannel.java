@@ -20,8 +20,8 @@ public class RecruitmentChannel {
     private Long channelId;
 
     @ManyToOne
-    @JoinColumn(name = "company_id", nullable = false)
-    private Company company;
+    @JoinColumn(name = "company_job_category_id", nullable = false)
+    private CompanyJobCategory companyJobCategory;
 
     @Column(name = "year", nullable = false)
     private int year;

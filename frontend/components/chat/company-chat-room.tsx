@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { fetchChatMessages, getUser, joinChatRoom } from "@/lib/api"
+import { blockUser, fetchBlockedUsers, fetchChatMessages, getUser, joinChatRoom } from "@/lib/api"
 import type { ChatMessage } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,6 +46,7 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
   const [isJoined, setIsJoined] = useState(false)
   const [isJoining, setIsJoining] = useState(false)
   const [nickname, setNickname] = useState<string | null>(null)
+  const [blockedUserIds, setBlockedUserIds] = useState<number[]>([])
   const clientRef = useRef<Client | null>(null)
   const subscriptionRef = useRef<StompSubscription | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -59,12 +60,14 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
     let cancelled = false
     ;(async () => {
       const recent = await fetchChatMessages(companyId, 30).catch(() => [])
-      if (!cancelled) setMessages(recent)
+      if (!cancelled) {
+        setMessages(recent.filter((item) => item.senderUserId == null || !blockedUserIds.includes(item.senderUserId)))
+      }
     })()
     return () => {
       cancelled = true
     }
-  }, [companyId, topic])
+  }, [companyId, topic, blockedUserIds])
 
   useEffect(() => {
     if (!isJoined || !companyId || !topic) return
@@ -79,14 +82,19 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
         subscriptionRef.current = client.subscribe(topic, (frame: IMessage) => {
           const payload = JSON.parse(frame.body) as {
             companyId: number
+            senderUserId: number | null
             senderNickname: string
             message: string
             timestamp: string
+          }
+          if (payload.senderUserId != null && blockedUserIds.includes(payload.senderUserId)) {
+            return
           }
           setMessages((prev) => [
             ...prev,
             {
               companyId: payload.companyId,
+              senderUserId: payload.senderUserId,
               senderNickname: payload.senderNickname,
               message: payload.message,
               timestamp: new Date(payload.timestamp),
@@ -105,7 +113,7 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
       clientRef.current?.deactivate()
       clientRef.current = null
     }
-  }, [isJoined, companyId, topic])
+  }, [isJoined, companyId, topic, blockedUserIds])
 
   useEffect(() => {
     if (!listRef.current) return
@@ -141,7 +149,18 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
     setIsJoining(false)
     if (!joined) return
     setNickname(joined.nickname ?? null)
+    const blocked = await fetchBlockedUsers().catch(() => [])
+    setBlockedUserIds((blocked ?? []).map((item) => item.userId))
     setIsJoined(true)
+  }
+
+  const handleBlockSender = async (senderUserId: number | null) => {
+    if (senderUserId == null) return
+    await blockUser(senderUserId).catch(() => null)
+    const blocked = await fetchBlockedUsers().catch(() => [])
+    const ids = (blocked ?? []).map((item) => item.userId)
+    setBlockedUserIds(ids)
+    setMessages((prev) => prev.filter((item) => item.senderUserId == null || !ids.includes(item.senderUserId)))
   }
 
   if (!companyId) return null
@@ -186,6 +205,17 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
                       <span className="text-[10px] text-muted-foreground">{formatTimestamp(item.timestamp)}</span>
                     </div>
                     <p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.message}</p>
+                    {!isMine && item.senderUserId != null && (
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => void handleBlockSender(item.senderUserId)}
+                          className="text-[11px] text-muted-foreground underline underline-offset-2"
+                        >
+                          차단
+                        </button>
+                      </div>
+                    )}
                   </article>
                 </div>
               )

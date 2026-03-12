@@ -32,6 +32,10 @@ public class RollingStepLog extends BaseEntity {
     @JoinColumn(name = "company_id")
     private Company company;
 
+    @ManyToOne
+    @JoinColumn(name = "rolling_job_id")
+    private RollingJob rollingJob;
+
     @Column(name = "company_name", length = 100, nullable = false)
     private String companyName;
 

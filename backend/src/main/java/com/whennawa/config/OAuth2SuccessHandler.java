@@ -66,6 +66,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         if (request.getSession(false) != null) {
             request.getSession(false).invalidate();
         }
+        //JSESSIONID를 삭제하라는 코드
         ResponseCookie jsession = ResponseCookie.from("JSESSIONID", "")
             .path("/")
             .maxAge(Duration.ZERO)

@@ -1,19 +1,27 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { deleteBoardPost, fetchBoardPosts, getUser, searchBoardPosts, updateBoardPost } from "@/lib/api"
+import {
+  blockUser,
+  deleteCareerBoardPost,
+  fetchCareerBoardPosts,
+  getUser,
+  searchCareerBoardPosts,
+  updateCareerBoardPost,
+} from "@/lib/api"
 import type { BoardPost } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { EmptyState } from "@/components/empty-state"
-import { CAREER_BOARD_COMPANY_NAME, CAREER_BOARD_PATH } from "@/lib/career-board"
+import { CAREER_BOARD_PATH } from "@/lib/career-board"
 
 type SearchField = "title" | "content"
 
 const POST_PAGE_SIZE = 10
+const PAGE_GROUP_SIZE = 10
 
 function formatDate(value: Date) {
   return value.toLocaleString("ko-KR", {
@@ -27,13 +35,13 @@ function formatDate(value: Date) {
 
 export default function CareerBoardPage() {
   const router = useRouter()
-  const companyName = CAREER_BOARD_COMPANY_NAME
   const boardHref = CAREER_BOARD_PATH
   const writeHref = `${boardHref}/write`
 
   const [posts, setPosts] = useState<BoardPost[]>([])
   const [page, setPage] = useState(0)
   const [hasNext, setHasNext] = useState(false)
+  const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -51,42 +59,55 @@ export default function CareerBoardPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const loadPosts = async (reset: boolean) => {
-    const targetPage = reset ? 0 : page + 1
-    if (reset) setIsLoading(true)
+  const loadPosts = async (targetPage: number) => {
+    const isFirstPage = targetPage === 0
+    if (isFirstPage) setIsLoading(true)
     else setIsLoadingMore(true)
 
     try {
-      const data = await fetchBoardPosts(companyName, targetPage, POST_PAGE_SIZE)
-      setPosts((prev) => (reset ? data.items : [...prev, ...data.items]))
+      const data = await fetchCareerBoardPosts(targetPage, POST_PAGE_SIZE)
+      setPosts(data.items)
       setPage(data.page)
       setHasNext(data.hasNext)
-      if (reset) setIsSearchMode(false)
+      const resolvedTotalPages = typeof data.totalPages === "number" && data.totalPages >= 0
+        ? data.totalPages
+        : data.hasNext
+          ? data.page + 2
+          : data.page + 1
+      setTotalPages(Math.max(resolvedTotalPages, 0))
+      if (isFirstPage) setIsSearchMode(false)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "게시글 목록을 불러오지 못했습니다.")
-      if (reset) setPosts([])
+      const text = error instanceof Error ? error.message : "게시글 목록을 불러오지 못했습니다."
+      setMessage(text)
+      if (isFirstPage) setPosts([])
     } finally {
-      if (reset) setIsLoading(false)
+      if (isFirstPage) setIsLoading(false)
       else setIsLoadingMore(false)
     }
   }
 
-  const runSearch = async (reset: boolean) => {
+  const runSearch = async (targetPage: number) => {
     const normalizedQuery = searchQuery.trim()
     if (!normalizedQuery) {
-      await loadPosts(true)
+      await loadPosts(0)
       return
     }
 
-    const targetPage = reset ? 0 : page + 1
-    if (reset) setIsSearching(true)
+    const isFirstPage = targetPage === 0
+    if (isFirstPage) setIsSearching(true)
     else setIsLoadingMore(true)
 
     try {
-      const data = await searchBoardPosts(companyName, normalizedQuery, searchField, targetPage, POST_PAGE_SIZE)
-      setPosts((prev) => (reset ? data.items : [...prev, ...data.items]))
+      const data = await searchCareerBoardPosts(normalizedQuery, searchField, targetPage, POST_PAGE_SIZE)
+      setPosts(data.items)
       setPage(data.page)
       setHasNext(data.hasNext)
+      const resolvedTotalPages = typeof data.totalPages === "number" && data.totalPages >= 0
+        ? data.totalPages
+        : data.hasNext
+          ? data.page + 2
+          : data.page + 1
+      setTotalPages(Math.max(resolvedTotalPages, 0))
       setIsSearchMode(true)
     } catch (error) {
       const text = error instanceof Error ? error.message : "게시글 검색에 실패했습니다."
@@ -96,14 +117,15 @@ export default function CareerBoardPage() {
         setMessage(text)
       }
     } finally {
-      if (reset) setIsSearching(false)
+      if (isFirstPage) setIsSearching(false)
       else setIsLoadingMore(false)
     }
   }
 
   useEffect(() => {
     setMessage(null)
-    void loadPosts(true)
+    setTotalPages(0)
+    void loadPosts(0)
     void (async () => {
       const me = await getUser().catch(() => null)
       const parsed = me?.id ? Number(me.id) : NaN
@@ -116,15 +138,18 @@ export default function CareerBoardPage() {
   const handleSearch = async (event: FormEvent) => {
     event.preventDefault()
     setMessage(null)
-    await runSearch(true)
+    await runSearch(0)
   }
 
-  const handleLoadMore = async () => {
-    if (!hasNext || isLoadingMore || isLoading || isSearching) return
-    if (isSearchMode) {
-      await runSearch(false)
+  const goToPage = async (targetPage: number) => {
+    if (targetPage < 0 || targetPage === page) return
+    if (targetPage >= totalPages) return
+    if (isLoading || isSearching || isLoadingMore) return
+    setMessage(null)
+    if (isSearchMode && searchQuery.trim()) {
+      await runSearch(targetPage)
     } else {
-      await loadPosts(false)
+      await loadPosts(targetPage)
     }
   }
 
@@ -142,9 +167,9 @@ export default function CareerBoardPage() {
 
   const reloadCurrent = async () => {
     if (isSearchMode && searchQuery.trim()) {
-      await runSearch(true)
+      await runSearch(page)
     } else {
-      await loadPosts(true)
+      await loadPosts(page)
     }
   }
 
@@ -154,7 +179,7 @@ export default function CareerBoardPage() {
     setIsEditing(true)
     setMessage(null)
     try {
-      await updateBoardPost(companyName, postId, editTitle, editContent)
+      await updateCareerBoardPost(postId, editTitle, editContent)
       setMessage("게시글을 수정했습니다.")
       cancelEdit()
       await reloadCurrent()
@@ -171,7 +196,7 @@ export default function CareerBoardPage() {
     setIsDeleting(true)
     setMessage(null)
     try {
-      await deleteBoardPost(companyName, postId)
+      await deleteCareerBoardPost(postId)
       setMessage("게시글을 삭제했습니다.")
       await reloadCurrent()
     } catch (error) {
@@ -180,6 +205,26 @@ export default function CareerBoardPage() {
       setIsDeleting(false)
     }
   }
+
+  const handleBlockAuthor = async (userId: number | null) => {
+    if (userId == null) return
+    try {
+      await blockUser(userId)
+      setMessage("해당 사용자를 차단했습니다.")
+      await reloadCurrent()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "차단 처리에 실패했습니다.")
+    }
+  }
+
+  const paginationBlockStart = Math.floor(page / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE
+  const paginationPages = Array.from({ length: PAGE_GROUP_SIZE }, (_, index) => paginationBlockStart + index).filter(
+    (value) => value < totalPages,
+  )
+  const canGoPrevPage = page > 0
+  const canGoNextPage = page < totalPages - 1
+  const canGoPrevBlock = paginationBlockStart > 0
+  const canGoNextBlock = paginationBlockStart + PAGE_GROUP_SIZE < totalPages
 
   return (
     <div className="page-shell [--page-max:1200px] space-y-6 py-6">
@@ -218,13 +263,21 @@ export default function CareerBoardPage() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="검색어를 입력해 주세요."
+            placeholder="검색어를 입력해 주세요"
             className="h-10 w-full min-w-0 flex-1"
           />
           <Button type="submit" className="h-10" disabled={isSearching}>
             {isSearching ? "검색 중..." : "검색"}
           </Button>
-          <Button type="button" variant="outline" className="h-10" onClick={() => void loadPosts(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10"
+            onClick={() => {
+              setTotalPages(0)
+              void loadPosts(0)
+            }}
+          >
             전체 보기
           </Button>
         </form>
@@ -266,7 +319,7 @@ export default function CareerBoardPage() {
                       />
                       <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
                         <Button type="button" onClick={() => void handleUpdate(post.postId)} disabled={isEditing}>
-                          {isEditing ? "수정 중..." : "수정 저장"}
+                          {isEditing ? "수정 중..." : "수정 완료"}
                         </Button>
                         <Button type="button" variant="outline" onClick={cancelEdit}>취소</Button>
                       </div>
@@ -283,6 +336,18 @@ export default function CareerBoardPage() {
                         <span className="rounded-full bg-muted px-2 py-0.5">{post.authorName}</span>
                         <span>·</span>
                         <span>{formatDate(post.createdAt)}</span>
+                        {myUserId != null && post.authorUserId != null && myUserId !== post.authorUserId && (
+                          <button
+                            type="button"
+                            className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void handleBlockAuthor(post.authorUserId)
+                            }}
+                          >
+                            차단
+                          </button>
+                        )}
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
                         <Link href={`${boardHref}/posts/${post.postId}`} onClick={(event) => event.stopPropagation()}>
@@ -320,10 +385,51 @@ export default function CareerBoardPage() {
               )
             })}
 
-            {hasNext && (
-              <div className="flex justify-center pt-2">
-                <Button type="button" variant="outline" onClick={() => void handleLoadMore()} disabled={isLoadingMore}>
-                  {isLoadingMore ? "불러오는 중..." : "더보기"}
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(Math.max(0, paginationBlockStart - PAGE_GROUP_SIZE))}
+                  disabled={!canGoPrevBlock || isLoadingMore || isLoading || isSearching}
+                >
+                  {"<<"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(page - 1)}
+                  disabled={!canGoPrevPage || isLoadingMore || isLoading || isSearching}
+                >
+                  {"<"}
+                </Button>
+                {paginationPages.map((pageNumber) => (
+                  <Button
+                    key={`page-${pageNumber}`}
+                    type="button"
+                    variant={pageNumber === page ? "default" : "outline"}
+                    onClick={() => void goToPage(pageNumber)}
+                    disabled={isLoadingMore || isLoading || isSearching}
+                    className="min-w-10"
+                  >
+                    {pageNumber + 1}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(page + 1)}
+                  disabled={!canGoNextPage || isLoadingMore || isLoading || isSearching}
+                >
+                  {">"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void goToPage(Math.min(totalPages - 1, paginationBlockStart + PAGE_GROUP_SIZE))}
+                  disabled={!canGoNextBlock || isLoadingMore || isLoading || isSearching}
+                >
+                  {">>"}
                 </Button>
               </div>
             )}

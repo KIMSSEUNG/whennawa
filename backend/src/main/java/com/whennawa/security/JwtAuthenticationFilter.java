@@ -95,7 +95,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * ?�더 or 쿠키?�서 accesstoken 추출
+     * 헤더 또는 쿠키에서 access token 추출
      */
     private String resolveAccessToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
@@ -145,3 +145,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }
+

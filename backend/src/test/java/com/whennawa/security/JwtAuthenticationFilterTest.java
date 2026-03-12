@@ -27,8 +27,9 @@ class JwtAuthenticationFilterTest {
     void tearDown() {
         SecurityContextHolder.clearContext();
     }
-    
-    // JWT ?�큰 만료 ???�터기반 ??발급 ?�스??    @Test
+
+    // JWT access token expiry should trigger refresh flow.
+    @Test
     void expiredAccessToken_triggersRefreshAndSetsNewTokens() throws Exception {
         JwtService jwtService = mock(JwtService.class);
         UserRepository userRepository = mock(UserRepository.class);

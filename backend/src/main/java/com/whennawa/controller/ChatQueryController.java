@@ -24,8 +24,10 @@ public class ChatQueryController {
 
     @GetMapping("/room/{companyId}/messages")
     public List<ChatMessageResponse> messages(@PathVariable("companyId") Long companyId,
-                                              @RequestParam(value = "limit", defaultValue = "200") int limit) {
-        return chatService.listRecentMessages(companyId, limit);
+                                              @RequestParam(value = "limit", defaultValue = "200") int limit,
+                                              Authentication authentication) {
+        UserPrincipal principal = extractPrincipal(authentication);
+        return chatService.listRecentMessages(companyId, limit, principal == null ? null : principal.getUserId());
     }
 
     @PostMapping("/room/{companyId}/join")
@@ -39,6 +41,13 @@ public class ChatQueryController {
     private UserPrincipal requirePrincipal(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal principal)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthenticated");
+        }
+        return principal;
+    }
+
+    private UserPrincipal extractPrincipal(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal principal)) {
+            return null;
         }
         return principal;
     }

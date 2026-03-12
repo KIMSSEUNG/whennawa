@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Getter @Setter
 public class AppProperties {
     private Jwt jwt = new Jwt();
-    private Timeline timeline = new Timeline();
+    private Status status = new Status();
     private Report report = new Report();
     private Chat chat = new Chat();
     private Auth auth = new Auth();
@@ -23,7 +23,7 @@ public class AppProperties {
     }
 
     @Getter @Setter
-    public static class Timeline {
+    public static class Status {
         private int officialScoreBoost = 5;
     }
 

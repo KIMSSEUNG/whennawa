@@ -1,7 +1,7 @@
 package com.whennawa.controller;
 
 import com.whennawa.dto.company.CompanySearchResponse;
-import com.whennawa.dto.company.CompanyTimelineResponse;
+import com.whennawa.dto.company.CompanyStatusResponse;
 import com.whennawa.dto.company.CompanyCreateRequest;
 import com.whennawa.dto.company.CompanyCreateResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.whennawa.security.UserPrincipal;
 
 @RestController
 @RequestMapping("/api/companies")
@@ -47,8 +49,15 @@ public class CompanySearchController {
     }
 
     @GetMapping("/{companyName}/timeline")
-    public CompanyTimelineResponse timeline(@PathVariable("companyName") String companyName) {
-        return companySearchService.getRepresentativeTimeline(companyName);
+    public CompanyStatusResponse timeline(@PathVariable("companyName") String companyName,
+                                          Authentication authentication) {
+        return companySearchService.getCompanyStatus(companyName, extractUserId(authentication));
+    }
+
+    @GetMapping("/{companyName}/status")
+    public CompanyStatusResponse status(@PathVariable("companyName") String companyName,
+                                        Authentication authentication) {
+        return companySearchService.getCompanyStatus(companyName, extractUserId(authentication));
     }
 
     @GetMapping("/{companyName}/lead-time")
@@ -63,6 +72,13 @@ public class CompanySearchController {
                                                     @RequestParam("stepName") String stepName,
                                                     @RequestParam("prevDate") LocalDate prevDate) {
         return companySearchService.predictRollingResult(companyName, stepName, prevDate);
+    }
+
+    private Long extractUserId(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal principal)) {
+            return null;
+        }
+        return principal.getUserId();
     }
 }
 

@@ -1,13 +1,13 @@
 ﻿"use client"
 
 import type React from "react"
-import type { CompanySearchItem, CompanyTimeline, KeywordLeadTime } from "@/lib/types"
+import type { CompanySearchItem, CompanyStatus, KeywordLeadTime } from "@/lib/types"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { CompanyDetailPanel } from "@/components/company-detail-panel"
 
 interface CompanyDetailSheetProps {
   company: CompanySearchItem | null
-  timeline: CompanyTimeline | null
+  status: CompanyStatus | null
   leadTime: KeywordLeadTime | null
   keyword: string
   lastLeadTimeKeyword: string
@@ -16,7 +16,7 @@ interface CompanyDetailSheetProps {
   selectedCalendarDate: string | null
   onCalendarDateSelect: (dateStr: string) => void
   isCalendarVisible: boolean
-  isTimelineLoading: boolean
+  isStatusLoading: boolean
   isLeadTimeLoading: boolean
   onQuickReport: (
     companyName: string,
@@ -29,7 +29,7 @@ interface CompanyDetailSheetProps {
 
 export function CompanyDetailSheet({
   company,
-  timeline,
+  status,
   leadTime,
   keyword,
   lastLeadTimeKeyword,
@@ -38,7 +38,7 @@ export function CompanyDetailSheet({
   selectedCalendarDate,
   onCalendarDateSelect,
   isCalendarVisible,
-  isTimelineLoading,
+  isStatusLoading,
   isLeadTimeLoading,
   onQuickReport,
   open,
@@ -54,7 +54,7 @@ export function CompanyDetailSheet({
         </SheetHeader>
         <CompanyDetailPanel
           company={company}
-          timeline={timeline}
+          status={status}
           leadTime={leadTime}
           keyword={keyword}
           lastLeadTimeKeyword={lastLeadTimeKeyword}
@@ -63,7 +63,7 @@ export function CompanyDetailSheet({
           selectedCalendarDate={selectedCalendarDate}
           onCalendarDateSelect={onCalendarDateSelect}
           isCalendarVisible={isCalendarVisible}
-          isTimelineLoading={isTimelineLoading}
+          isStatusLoading={isStatusLoading}
           isLeadTimeLoading={isLeadTimeLoading}
           onQuickReport={onQuickReport}
           showCompanyHeader={false}
@@ -73,4 +73,5 @@ export function CompanyDetailSheet({
     </Sheet>
   )
 }
+
 

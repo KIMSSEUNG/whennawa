@@ -14,6 +14,7 @@ import com.whennawa.repository.UserRepository;
 import com.whennawa.util.NicknameGenerator;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class ChatService {
     private final UserRepository userRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final UserBlockService userBlockService;
     private final ProfanityMasker profanityMasker;
     private final NicknameGenerator nicknameGenerator;
     private final ConcurrentMap<Long, Long> lastChatAtByUserId = new ConcurrentHashMap<>();
@@ -74,6 +76,7 @@ public class ChatService {
 
         return new ChatMessageResponse(
             company.getCompanyId(),
+            user.getId(),
             saved.getSenderNickname(),
             saved.getMessage(),
             saved.getCreatedAt()
@@ -81,23 +84,36 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChatMessageResponse> listRecentMessages(Long companyId, int limit) {
+    public List<ChatMessageResponse> listRecentMessages(Long companyId, int limit, Long currentUserId) {
         int maxFetch = Math.max(1, appProperties.getChat().getRecentFetchMax());
         int boundedLimit = Math.max(1, Math.min(limit, maxFetch));
+        Set<Long> blockedUserIds = userBlockService.findBlockedUserIds(currentUserId);
         List<ChatMessage> recent = chatMessageRepository.findByCompanyCompanyIdOrderByCreatedAtDesc(
             companyId,
             PageRequest.of(0, maxFetch)
         );
         return recent.stream()
+            .filter(message -> !isBlockedSender(message, blockedUserIds))
             .limit(boundedLimit)
             .sorted(Comparator.comparing(ChatMessage::getCreatedAt))
             .map(m -> new ChatMessageResponse(
                 m.getCompany().getCompanyId(),
+                m.getMember() == null || m.getMember().getUser() == null ? null : m.getMember().getUser().getId(),
                 m.getSenderNickname(),
                 profanityMasker.mask(m.getMessage()),
                 m.getCreatedAt()
             ))
             .toList();
+    }
+
+    private boolean isBlockedSender(ChatMessage message, Set<Long> blockedUserIds) {
+        if (message == null || blockedUserIds == null || blockedUserIds.isEmpty()) {
+            return false;
+        }
+        ChatRoomMember member = message.getMember();
+        User sender = member == null ? null : member.getUser();
+        Long senderId = sender == null ? null : sender.getId();
+        return senderId != null && blockedUserIds.contains(senderId);
     }
 
     private ChatRoomMember findOrCreateMember(Company company, User user) {

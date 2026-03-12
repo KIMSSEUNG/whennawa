@@ -4,6 +4,7 @@ import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.RollingReportType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,4 +23,9 @@ public class ReportUpdateRequest {
     private LocalDate prevReportedDate;
     private String prevStepName;
     private String currentStepName;
+    private Long jobCategoryId;
+    @Size(max = 100)
+    private String rollingJobName;
+    @Size(max = 20)
+    private String otherJobName;
 }

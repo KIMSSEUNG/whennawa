@@ -1,14 +1,15 @@
 ﻿"use client"
 
+import Link from "next/link"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { CompanySearchItem, CompanyTimeline, KeywordLeadTime } from "@/lib/types"
+import type { CompanySearchItem, CompanyStatus, KeywordLeadTime } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface CompanyDetailPanelProps {
   company: CompanySearchItem | null
-  timeline: CompanyTimeline | null
+  status: CompanyStatus | null
   leadTime: KeywordLeadTime | null
   keyword: string
   lastLeadTimeKeyword: string
@@ -17,7 +18,7 @@ interface CompanyDetailPanelProps {
   selectedCalendarDate: string | null
   onCalendarDateSelect: (dateStr: string) => void
   isCalendarVisible: boolean
-  isTimelineLoading: boolean
+  isStatusLoading: boolean
   isLeadTimeLoading: boolean
   onQuickReport: (
     companyName: string,
@@ -373,7 +374,7 @@ function RollingSection({
   prevDate,
   onPrevDateChange,
 }: {
-  steps: CompanyTimeline["rollingSteps"]
+  steps: CompanyStatus["rollingSteps"]
   stepName: string
   onStepNameChange: (value: string) => void
   prevDate: string
@@ -410,7 +411,7 @@ function RollingSection({
 
 export function CompanyDetailPanel({
   company,
-  timeline,
+  status,
   leadTime,
   keyword,
   lastLeadTimeKeyword,
@@ -419,7 +420,7 @@ export function CompanyDetailPanel({
   selectedCalendarDate,
   onCalendarDateSelect,
   isCalendarVisible,
-  isTimelineLoading,
+  isStatusLoading,
   isLeadTimeLoading,
   onQuickReport,
   showCompanyHeader = true,
@@ -427,9 +428,10 @@ export function CompanyDetailPanel({
 }: CompanyDetailPanelProps) {
   const leadTimeSectionRef = useRef<HTMLElement | null>(null)
 
-  const regularTimelines = timeline?.regularTimelines ?? []
-  const internTimelines = timeline?.internTimelines ?? []
-  const rollingSteps = timeline?.rollingSteps ?? []
+  const regularTimelines = status?.regularTimelines ?? []
+  const internTimelines = status?.internTimelines ?? []
+  const rollingSteps = status?.rollingSteps ?? []
+  const interviewReviews = status?.interviewReviews ?? []
   const hasRegular = regularTimelines.length > 0
   const hasIntern = internTimelines.length > 0
   const hasRolling = rollingSteps.length > 0
@@ -446,12 +448,12 @@ export function CompanyDetailPanel({
     } else if (hasRolling) {
       setActiveTab("ROLLING")
     }
-  }, [hasRegular, hasIntern, hasRolling, timeline?.companyName])
+  }, [hasRegular, hasIntern, hasRolling, status?.companyName])
 
   useEffect(() => {
     setRollingStepName("")
     setRollingPrevDate("")
-  }, [timeline?.companyName])
+  }, [status?.companyName])
 
   useEffect(() => {
     if (prevActiveTabRef.current === activeTab) {
@@ -488,6 +490,31 @@ export function CompanyDetailPanel({
     leadTimeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
+  const selectedInterviewStep = activeTab === "ROLLING" ? rollingStepName.trim() : keyword.trim()
+  const filteredInterviewReviews = useMemo(() => {
+    if (!selectedInterviewStep) return []
+    return interviewReviews
+      .filter((review) => review.recruitmentMode === activeTab)
+      .filter((review) => review.stepName?.trim() === selectedInterviewStep)
+      .slice(0, 3)
+  }, [activeTab, interviewReviews, selectedInterviewStep])
+
+  const quickReportButtonLabel =
+    activeTab === "REGULAR" ? "오늘 결과 발표가 났어요" : activeTab === "INTERN" ? "인턴 제보하기" : "수시 제보하기"
+
+  const handleQuickReportByTab = () => {
+    if (!company) return
+    if (activeTab === "REGULAR") {
+      onQuickReport(company.companyName, "REGULAR", { todayAnnouncement: true })
+      return
+    }
+    if (activeTab === "INTERN") {
+      onQuickReport(company.companyName, "INTERN")
+      return
+    }
+    onQuickReport(company.companyName, "ROLLING")
+  }
+
   if (!company) {
     return (
       <div className={cn("flex h-full min-h-[320px] items-center justify-center", className)}>
@@ -511,12 +538,15 @@ export function CompanyDetailPanel({
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {(hasRegular || hasIntern || hasRolling) && (
-          <div className="inline-flex rounded-xl border border-border/60 bg-background p-1">
+          <div className="inline-flex w-fit max-w-full rounded-xl border border-border/60 bg-background p-1">
             {hasRegular && (
               <button
                 type="button"
                 onClick={() => setActiveTab("REGULAR")}
-                className={cn("rounded-lg px-3 py-1.5 text-sm", activeTab === "REGULAR" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+                className={cn(
+                  "min-w-[2.75rem] rounded-md px-2 py-1 text-[11px] sm:min-w-[3.25rem] sm:rounded-lg sm:px-2.5 sm:py-1.5 sm:text-sm",
+                  activeTab === "REGULAR" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
               >
                 공채
               </button>
@@ -525,7 +555,10 @@ export function CompanyDetailPanel({
               <button
                 type="button"
                 onClick={() => setActiveTab("INTERN")}
-                className={cn("rounded-lg px-3 py-1.5 text-sm", activeTab === "INTERN" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+                className={cn(
+                  "min-w-[2.75rem] rounded-md px-2 py-1 text-[11px] sm:min-w-[3.25rem] sm:rounded-lg sm:px-2.5 sm:py-1.5 sm:text-sm",
+                  activeTab === "INTERN" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
               >
                 인턴
               </button>
@@ -534,7 +567,10 @@ export function CompanyDetailPanel({
               <button
                 type="button"
                 onClick={() => setActiveTab("ROLLING")}
-                className={cn("rounded-lg px-3 py-1.5 text-sm", activeTab === "ROLLING" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+                className={cn(
+                  "min-w-[2.75rem] rounded-md px-2 py-1 text-[11px] sm:min-w-[3.25rem] sm:rounded-lg sm:px-2.5 sm:py-1.5 sm:text-sm",
+                  activeTab === "ROLLING" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
               >
                 수시
               </button>
@@ -562,15 +598,6 @@ export function CompanyDetailPanel({
                 }
               />
             </div>
-            <div className="flex">
-              <button
-                type="button"
-                onClick={() => onQuickReport(company.companyName, "REGULAR", { todayAnnouncement: true })}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
-              >
-                오늘 결과 발표가 났어요
-              </button>
-            </div>
           </>
         )}
 
@@ -594,15 +621,6 @@ export function CompanyDetailPanel({
                 }
               />
             </div>
-            <div className="flex">
-              <button
-                type="button"
-                onClick={() => onQuickReport(company.companyName, "INTERN")}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
-              >
-                인턴 제보하기
-              </button>
-            </div>
           </>
         )}
 
@@ -615,16 +633,44 @@ export function CompanyDetailPanel({
               prevDate={rollingPrevDate}
               onPrevDateChange={setRollingPrevDate}
             />
-            <div className="flex">
-              <button
-                type="button"
-                onClick={() => onQuickReport(company.companyName, "ROLLING")}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
-              >
-                수시 제보하기
-              </button>
-            </div>
           </>
+        )}
+
+        {filteredInterviewReviews.length > 0 && (
+          <section className="rounded-2xl border border-border/60 bg-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">면접 후기</h3>
+              <Link
+                href={`/interview-reviews/${encodeURIComponent(company.companyName)}`}
+                className="text-xs text-primary hover:underline"
+              >
+                전체 보러가기
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {filteredInterviewReviews.map((review) => (
+                <article key={`review-${review.reviewId}`} className="rounded-lg border border-border/60 px-3 py-2">
+                  <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{review.stepName}</span>
+                    <span>{review.difficulty === "HARD" ? "어려움" : review.difficulty === "EASY" ? "쉬움" : "보통"}</span>
+                  </div>
+                  <p className="line-clamp-2 text-sm text-foreground">{review.content}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {(hasRegular || hasIntern || hasRolling) && (
+          <div className="flex">
+            <button
+              type="button"
+              onClick={handleQuickReportByTab}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/22 hover:shadow-md"
+            >
+              {quickReportButtonLabel}
+            </button>
+          </div>
         )}
 
         {!hasRegular && !hasIntern && !hasRolling && (
@@ -660,3 +706,4 @@ export function CompanyDetailPanel({
     </div>
   )
 }
+

@@ -6,7 +6,8 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public class CompanyUnitTimelineResponse {
+public class CompanyYearlyStatusResponse {
     private final int year;
-    private final List<CompanyTimelineStep> steps;
+    private final List<CompanyStatusStep> steps;
 }
+

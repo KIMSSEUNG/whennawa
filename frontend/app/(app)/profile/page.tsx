@@ -4,8 +4,8 @@ import { Suspense, useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { getUser, logout, withdraw } from "@/lib/api"
-import type { User } from "@/lib/types"
+import { fetchBlockedUsers, getUser, logout, unblockUser, withdraw } from "@/lib/api"
+import type { User, UserBlockItem } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AppCard } from "@/components/app-card"
@@ -27,6 +27,10 @@ function ProfilePageClient() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
+  const [blockedUsers, setBlockedUsers] = useState<UserBlockItem[]>([])
+  const [isLoadingBlocks, setIsLoadingBlocks] = useState(false)
+  const [unblockingUserId, setUnblockingUserId] = useState<number | null>(null)
+  const [blockMessage, setBlockMessage] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -60,6 +64,26 @@ function ProfilePageClient() {
     }
   }, [loginPath, router])
 
+  const loadBlockedUsers = async () => {
+    setIsLoadingBlocks(true)
+    try {
+      const data = await fetchBlockedUsers()
+      setBlockedUsers(data ?? [])
+      setBlockMessage(null)
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "차단 목록을 불러오지 못했습니다."
+      setBlockMessage(text)
+    } finally {
+      setIsLoadingBlocks(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!user) return
+    void loadBlockedUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
   const handleLogout = async () => {
     setIsLoggingOut(true)
     await logout()
@@ -70,6 +94,20 @@ function ProfilePageClient() {
     setIsWithdrawing(true)
     await withdraw()
     router.replace(loginPath)
+  }
+
+  const handleUnblock = async (targetUserId: number) => {
+    setUnblockingUserId(targetUserId)
+    try {
+      await unblockUser(targetUserId)
+      setBlockedUsers((prev) => prev.filter((item) => item.userId !== targetUserId))
+      setBlockMessage("차단을 해제했습니다.")
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "차단 해제에 실패했습니다."
+      setBlockMessage(text)
+    } finally {
+      setUnblockingUserId(null)
+    }
   }
 
   return (
@@ -126,6 +164,48 @@ function ProfilePageClient() {
       </AppCard>
 
       {/* Logout Button */}
+      <AppCard className="mb-4">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-foreground">차단한 사용자</p>
+              <p className="text-sm text-muted-foreground">게시판/채팅에서 숨김 처리된 사용자 목록입니다.</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => void loadBlockedUsers()} disabled={isLoadingBlocks}>
+              새로고침
+            </Button>
+          </div>
+
+          {blockMessage && <p className="text-sm text-muted-foreground">{blockMessage}</p>}
+
+          {isLoadingBlocks ? (
+            <p className="text-sm text-muted-foreground">차단 목록을 불러오는 중...</p>
+          ) : blockedUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">차단한 사용자가 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {blockedUsers.map((item) => (
+                <div key={`blocked-${item.userId}`} className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{item.nickname}</p>
+                    <p className="truncate text-xs text-muted-foreground">{item.email}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleUnblock(item.userId)}
+                    disabled={unblockingUserId === item.userId}
+                  >
+                    {unblockingUserId === item.userId ? "해제 중..." : "차단 해제"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </AppCard>
+
       <Button
         variant="outline"
         className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive bg-transparent"

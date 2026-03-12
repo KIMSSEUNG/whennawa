@@ -1,5 +1,6 @@
 package com.whennawa.service;
 
+import com.whennawa.config.CareerBoardConstants;
 import com.whennawa.dto.board.BoardCommentCreateRequest;
 import com.whennawa.dto.board.BoardCommentResponse;
 import com.whennawa.dto.board.BoardCommentUpdateRequest;
@@ -48,31 +49,44 @@ public class BoardService {
     private final BoardCommentLikeRepository boardCommentLikeRepository;
     private final UserRepository userRepository;
     private final ProfanityMasker profanityMasker;
+    private final UserBlockService userBlockService;
 
     @Transactional(readOnly = true)
-    public BoardPageResponse<BoardPostResponse> listPosts(String companyName, Integer page, Integer size) {
+    public BoardPageResponse<BoardPostResponse> listPosts(String companyName, Integer page, Integer size, Long currentUserId) {
         Company company = resolveCompany(companyName);
         int boundedPage = Math.max(0, page == null ? 0 : page);
         int boundedSize = clampPageSize(size, DEFAULT_POST_PAGE_SIZE, MAX_POST_PAGE_SIZE);
+        Set<Long> blockedUserIds = userBlockService.findBlockedUserIds(currentUserId);
 
         Page<BoardPost> result = boardPostRepository.findByCompanyCompanyIdOrderByCreatedAtDesc(
             company.getCompanyId(),
             PageRequest.of(boundedPage, boundedSize)
         );
 
+        List<BoardPostResponse> items = result.getContent().stream()
+            .filter(post -> !isBlockedAuthor(post == null ? null : post.getUser(), blockedUserIds))
+            .map(this::toPostResponse)
+            .toList();
+
         return new BoardPageResponse<>(
-            result.getContent().stream().map(this::toPostResponse).toList(),
+            items,
             boundedPage,
             boundedSize,
-            result.hasNext()
+            result.hasNext(),
+            result.getTotalPages(),
+            result.getTotalElements()
         );
     }
 
     @Transactional(readOnly = true)
-    public BoardPostResponse getPost(String companyName, Long postId) {
+    public BoardPostResponse getPost(String companyName, Long postId, Long currentUserId) {
         Company company = resolveCompany(companyName);
         BoardPost post = boardPostRepository.findByPostIdAndCompanyCompanyId(postId, company.getCompanyId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+        Set<Long> blockedUserIds = userBlockService.findBlockedUserIds(currentUserId);
+        if (isBlockedAuthor(post.getUser(), blockedUserIds)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+        }
         return toPostResponse(post);
     }
 
@@ -97,8 +111,10 @@ public class BoardService {
                                                             String query,
                                                             String field,
                                                             Integer page,
-                                                            Integer size) {
+                                                            Integer size,
+                                                            Long currentUserId) {
         Company company = resolveCompany(companyName);
+        Set<Long> blockedUserIds = userBlockService.findBlockedUserIds(currentUserId);
 
         String normalizedQuery = normalizeText(query, "Query is required", 100);
         int boundedPage = Math.max(0, page == null ? 0 : page);
@@ -111,11 +127,18 @@ public class BoardService {
             default -> boardPostRepository.searchByTitle(company.getCompanyId(), normalizedQuery, pageable);
         };
 
+        List<BoardPostResponse> items = result.getContent().stream()
+            .filter(post -> !isBlockedAuthor(post == null ? null : post.getUser(), blockedUserIds))
+            .map(this::toPostResponse)
+            .toList();
+
         return new BoardPageResponse<>(
-            result.getContent().stream().map(this::toPostResponse).toList(),
+            items,
             boundedPage,
             boundedSize,
-            result.hasNext()
+            result.hasNext(),
+            result.getTotalPages(),
+            result.getTotalElements()
         );
     }
 
@@ -167,7 +190,14 @@ public class BoardService {
 
         List<BoardComment> parents = topPage.getContent();
         if (parents.isEmpty()) {
-            return new BoardPageResponse<>(Collections.emptyList(), boundedPage, boundedSize, topPage.hasNext());
+            return new BoardPageResponse<>(
+                Collections.emptyList(),
+                boundedPage,
+                boundedSize,
+                topPage.hasNext(),
+                topPage.getTotalPages(),
+                topPage.getTotalElements()
+            );
         }
 
         List<Long> parentIds = parents.stream().map(BoardComment::getCommentId).toList();
@@ -193,17 +223,21 @@ public class BoardService {
             currentUserId,
             mergeCommentIds(parents, repliesLv1, repliesLv2)
         );
+        Set<Long> blockedUserIds = userBlockService.findBlockedUserIds(currentUserId);
 
         List<BoardCommentResponse> items = parents.stream()
+            .filter(parent -> !isBlockedAuthor(parent == null ? null : parent.getUser(), blockedUserIds))
             .map(parent -> {
                 List<BoardComment> childComments = repliesByParent.getOrDefault(parent.getCommentId(), Collections.emptyList());
                 List<BoardCommentResponse> childResponses = childComments.stream()
+                    .filter(reply -> !isBlockedAuthor(reply == null ? null : reply.getUser(), blockedUserIds))
                     .map(reply -> {
                         List<BoardComment> grandChildren = repliesByParent.getOrDefault(
                             reply.getCommentId(),
                             Collections.emptyList()
                         );
                         List<BoardCommentResponse> grandChildResponses = grandChildren.stream()
+                            .filter(grandChild -> !isBlockedAuthor(grandChild == null ? null : grandChild.getUser(), blockedUserIds))
                             .map(grandChild -> toCommentResponse(
                                 grandChild,
                                 likedIds.contains(grandChild.getCommentId()),
@@ -217,7 +251,14 @@ public class BoardService {
             })
             .toList();
 
-        return new BoardPageResponse<>(items, boundedPage, boundedSize, topPage.hasNext());
+        return new BoardPageResponse<>(
+            items,
+            boundedPage,
+            boundedSize,
+            topPage.hasNext(),
+            topPage.getTotalPages(),
+            topPage.getTotalElements()
+        );
     }
 
     @Transactional
@@ -333,6 +374,9 @@ public class BoardService {
     }
 
     private Company resolveCompany(String companyName) {
+        if (CareerBoardConstants.CAREER_BOARD_NAME.equalsIgnoreCase(companyName == null ? null : companyName.trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use /api/career-board for career board");
+        }
         Company company = companySearchService.resolveActiveCompany(companyName);
         if (company == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found");
@@ -438,6 +482,13 @@ public class BoardService {
             frontier = children.stream().map(BoardComment::getCommentId).toList();
         }
         return descendants;
+    }
+
+    private boolean isBlockedAuthor(User author, Set<Long> blockedUserIds) {
+        if (author == null || author.getId() == null || blockedUserIds == null || blockedUserIds.isEmpty()) {
+            return false;
+        }
+        return blockedUserIds.contains(author.getId());
     }
 
     private String resolveAuthorName(User user) {

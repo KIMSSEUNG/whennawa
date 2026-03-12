@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
+  blockUser,
   createBoardComment,
   deleteBoardComment,
   deleteBoardPost,
@@ -283,6 +284,19 @@ export default function BoardPostDetailPage() {
     return isAdmin || (myUserId != null && comment.authorUserId != null && myUserId === comment.authorUserId)
   }
 
+  const handleBlockAuthor = async (userId: number | null) => {
+    if (userId == null) return
+    try {
+      await blockUser(userId)
+      await loadPost()
+      await refreshComments()
+      setMessage("해당 사용자를 차단했습니다.")
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "차단 처리에 실패했습니다."
+      setMessage(text)
+    }
+  }
+
   const renderCommentNode = (comment: BoardComment, depth: number) => {
     const isEditingThis = editingCommentId === comment.commentId
     const canReply = depth < 2
@@ -296,6 +310,15 @@ export default function BoardPostDetailPage() {
           <span className="rounded-full bg-muted px-2 py-0.5">{comment.authorName}</span>
           <span>•</span>
           <span>{formatDate(comment.createdAt)}</span>
+          {myUserId != null && comment.authorUserId != null && myUserId !== comment.authorUserId && (
+            <button
+              type="button"
+              className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
+              onClick={() => void handleBlockAuthor(comment.authorUserId)}
+            >
+              차단
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void handleToggleLike(comment)}
@@ -428,6 +451,15 @@ export default function BoardPostDetailPage() {
                 <span className="rounded-full bg-muted px-2 py-0.5">{post.authorName}</span>
                 <span>•</span>
                 <span>{formatDate(post.createdAt)}</span>
+                {myUserId != null && post.authorUserId != null && myUserId !== post.authorUserId && (
+                  <button
+                    type="button"
+                    className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
+                    onClick={() => void handleBlockAuthor(post.authorUserId)}
+                  >
+                    차단
+                  </button>
+                )}
               </div>
               <div className="mt-5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-xl border border-border/60 bg-background p-4 text-sm leading-7 text-foreground/95">
                 {post.content}

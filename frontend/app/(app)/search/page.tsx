@@ -7,7 +7,7 @@ import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   searchCompanies,
-  fetchCompanyTimeline,
+  fetchCompanyStatus,
   fetchCompanyLeadTime,
   createCompany,
   getUser,
@@ -15,7 +15,7 @@ import {
 } from "@/lib/api"
 import type {
   CompanySearchItem,
-  CompanyTimeline,
+  CompanyStatus,
   KeywordLeadTime,
 } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -53,12 +53,12 @@ function SearchPageClient() {
   const [hasSearched, setHasSearched] = useState(false)
 
   const [selectedCompany, setSelectedCompany] = useState<CompanySearchItem | null>(null)
-  const [timeline, setTimeline] = useState<CompanyTimeline | null>(null)
+  const [status, setStatus] = useState<CompanyStatus | null>(null)
   const [leadTime, setLeadTime] = useState<KeywordLeadTime | null>(null)
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null)
   const [keyword, setKeyword] = useState("")
   const [lastLeadTimeKeyword, setLastLeadTimeKeyword] = useState("")
-  const [isTimelineLoading, setIsTimelineLoading] = useState(false)
+  const [isStatusLoading, setIsStatusLoading] = useState(false)
   const [isLeadTimeLoading, setIsLeadTimeLoading] = useState(false)
   const [isCalendarVisible, setIsCalendarVisible] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -109,7 +109,7 @@ function SearchPageClient() {
 
     // 검색할 때 디테일 초기화
     setSelectedCompany(null)
-    setTimeline(null)
+    setStatus(null)
     setLeadTime(null)
     setSelectedCalendarDate(null)
     setIsCalendarVisible(false)
@@ -137,23 +137,23 @@ function SearchPageClient() {
     openSheetOnMobile = true,
   ) => {
     setSelectedCompany(company)
-    setTimeline(null)
+    setStatus(null)
     setLeadTime(null)
     setSelectedCalendarDate(null)
     setIsCalendarVisible(false)
     setKeyword("")
     setLastLeadTimeKeyword("")
-    setIsTimelineLoading(true)
+    setIsStatusLoading(true)
 
     try {
-      const detail = await fetchCompanyTimeline(company.companyName)
-      setTimeline(detail)
+      const detail = await fetchCompanyStatus(company.companyName)
+      setStatus(detail)
       if (syncUrl) {
         const currentQ = (searchedQuery || normalizedQuery).trim()
         syncSearchUrl(currentQ || null, company.companyName)
       }
     } finally {
-      setIsTimelineLoading(false)
+      setIsStatusLoading(false)
     }
 
     if (!isDesktop && openSheetOnMobile) setSheetOpen(true)
@@ -279,6 +279,18 @@ function SearchPageClient() {
     params.set("reportNotify", todayAnnouncement ? "1" : "0")
     const qs = params.toString()
     router.replace(`${pathname ?? "/search"}${qs ? `?${qs}` : ""}`)
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("open_report_modal", {
+          detail: {
+            companyName: companyName?.trim() || undefined,
+            mode,
+            todayAnnouncement,
+          },
+        }),
+      )
+    }
   }
 
   const handleLeadTimeSearch = async (
@@ -562,7 +574,7 @@ function SearchPageClient() {
 
               {selectedCompany && (
                 <CompanyChatRoom
-                  companyId={timeline?.companyId ?? null}
+                  companyId={status?.companyId ?? null}
                   companyName={selectedCompany.companyName}
                 />
               )}
@@ -576,7 +588,7 @@ function SearchPageClient() {
             <div className="min-h-[400px] rounded-2xl border border-border/50 bg-card">
             <CompanyDetailPanel
               company={selectedCompany}
-              timeline={timeline}
+              status={status}
               leadTime={leadTime}
               keyword={keyword}
               lastLeadTimeKeyword={lastLeadTimeKeyword}
@@ -585,7 +597,7 @@ function SearchPageClient() {
               selectedCalendarDate={selectedCalendarDate}
               onCalendarDateSelect={handleCalendarDateSelect}
               isCalendarVisible={isCalendarVisible}
-              isTimelineLoading={isTimelineLoading}
+              isStatusLoading={isStatusLoading}
               isLeadTimeLoading={isLeadTimeLoading}
               onQuickReport={(companyName, mode, options) =>
                 openGlobalReport(companyName, mode, {
@@ -602,7 +614,7 @@ function SearchPageClient() {
       {/* Mobile: Bottom Sheet */}
       <CompanyDetailSheet
         company={selectedCompany}
-        timeline={timeline}
+        status={status}
         leadTime={leadTime}
         keyword={keyword}
         lastLeadTimeKeyword={lastLeadTimeKeyword}
@@ -611,7 +623,7 @@ function SearchPageClient() {
         selectedCalendarDate={selectedCalendarDate}
         onCalendarDateSelect={handleCalendarDateSelect}
         isCalendarVisible={isCalendarVisible}
-        isTimelineLoading={isTimelineLoading}
+        isStatusLoading={isStatusLoading}
         isLeadTimeLoading={isLeadTimeLoading}
         onQuickReport={(companyName, mode, options) =>
           openGlobalReport(companyName, mode, {
@@ -632,3 +644,4 @@ export default function SearchPage() {
     </Suspense>
   )
 }
+

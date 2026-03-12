@@ -20,10 +20,13 @@ type RollingStep = {
   avgDays?: number | null
 }
 
-type CompanyTimelineResponse = {
+type CompanyStatusResponse = {
   companyName: string
+  regularReports?: TimelineUnit[]
   regularTimelines?: TimelineUnit[]
+  internReports?: TimelineUnit[]
   internTimelines?: TimelineUnit[]
+  rollingReports?: RollingStep[]
   timelines?: TimelineUnit[]
   rollingSteps?: RollingStep[]
 }
@@ -32,7 +35,7 @@ type PageProps = {
   params: Promise<{ companySlug: string }>
 }
 
-async function fetchTimeline(companyName: string): Promise<CompanyTimelineResponse | null> {
+async function fetchCompanyStatus(companyName: string): Promise<CompanyStatusResponse | null> {
   const apiBaseUrl = (
     process.env.INTERNAL_API_BASE_URL ??
     process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -41,11 +44,11 @@ async function fetchTimeline(companyName: string): Promise<CompanyTimelineRespon
   if (!apiBaseUrl) return null
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/companies/${encodeURIComponent(companyName)}/timeline`, {
+    const response = await fetch(`${apiBaseUrl}/api/companies/${encodeURIComponent(companyName)}/status`, {
       cache: "no-store",
     })
     if (!response.ok) return null
-    return (await response.json()) as CompanyTimelineResponse
+    return (await response.json()) as CompanyStatusResponse
   } catch {
     return null
   }
@@ -58,13 +61,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const url = `${siteUrl}/company/${encodeURIComponent(companyName)}`
 
   return {
-    title: `${companyName} 채용 타임라인`,
+    title: `${companyName} 채용 현황`,
     description: `${companyName}의 공채/수시 채용 데이터 요약입니다.`,
     alternates: { canonical: url },
     openGraph: {
       type: "article",
       url,
-      title: `${companyName} 채용 타임라인`,
+      title: `${companyName} 채용 현황`,
       description: `${companyName}의 공채/수시 채용 데이터 요약입니다.`,
       locale: "ko_KR",
     },
@@ -74,10 +77,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function CompanyPublicPage({ params }: PageProps) {
   const { companySlug } = await params
   const companyName = fromCompanySlug(companySlug)
-  const timeline = await fetchTimeline(companyName)
-  const regularUnits = timeline?.regularTimelines ?? timeline?.timelines ?? []
-  const internUnits = timeline?.internTimelines ?? []
-  const rollingSteps = timeline?.rollingSteps ?? []
+  const status = await fetchCompanyStatus(companyName)
+  const regularUnits = status?.regularReports ?? status?.regularTimelines ?? status?.timelines ?? []
+  const internUnits = status?.internReports ?? status?.internTimelines ?? []
+  const rollingSteps = status?.rollingReports ?? status?.rollingSteps ?? []
   const hasRegular = regularUnits.length > 0
   const hasIntern = internUnits.length > 0
   const hasRolling = rollingSteps.length > 0
@@ -90,10 +93,10 @@ export default async function CompanyPublicPage({ params }: PageProps) {
     }))
 
   const renderInterval = (days: number | null | undefined) => {
-    if (days == null) return <span>기준 단계</span>
+    if (days == null) return <span>기간 통계 없음</span>
     return (
       <span>
-        이전 간격 약 <span className="font-semibold text-primary">{days}일</span>
+        이전 단계와 간격: <span className="font-semibold text-primary">{days}일</span>
       </span>
     )
   }
@@ -102,13 +105,13 @@ export default async function CompanyPublicPage({ params }: PageProps) {
     <main className="page-shell [--page-max:56rem] py-10">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">{companyName}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">공채/수시 데이터가 있는 항목만 노출됩니다.</p>
+        <p className="mt-2 text-sm text-muted-foreground">공채/수시 데이터가 있는 항목만 노출합니다.</p>
       </header>
 
       {!hasRegular && !hasIntern && !hasRolling ? (
         <section className="rounded-2xl border border-border/60 bg-card p-5">
           <h2 className="text-base font-semibold text-foreground">공개 데이터가 없습니다</h2>
-          <p className="mt-2 text-sm text-muted-foreground">나중에 다시 확인해 주세요.</p>
+          <p className="mt-2 text-sm text-muted-foreground">검색에서 다시 확인해 주세요.</p>
         </section>
       ) : (
         <section className="space-y-6">
@@ -167,4 +170,3 @@ export default async function CompanyPublicPage({ params }: PageProps) {
     </main>
   )
 }
-

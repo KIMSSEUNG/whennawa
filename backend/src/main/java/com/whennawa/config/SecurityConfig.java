@@ -159,7 +159,7 @@ public class SecurityConfig {
 
         additionalParameters.put("access_type", "offline");
 
-        // force_consent=1???뚮쭔 媛뺤젣 ?щ룞??
+        // force_consent=1 파라미터가 있으면 구글 동의 화면을 강제 표시
         if ("1".equals(httpRequest.getParameter("force_consent"))) {
             additionalParameters.put("prompt", "consent");
         }

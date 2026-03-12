@@ -1,18 +1,23 @@
 package com.whennawa.service;
 
+import com.whennawa.config.CareerBoardConstants;
 import com.whennawa.dto.company.CompanySearchResponse;
-import com.whennawa.dto.company.CompanyTimelineStep;
-import com.whennawa.dto.company.CompanyTimelineResponse;
-import com.whennawa.dto.company.CompanyUnitTimelineResponse;
+import com.whennawa.dto.company.CompanyStatusStep;
+import com.whennawa.dto.company.CompanyStatusResponse;
+import com.whennawa.dto.company.CompanyYearlyStatusResponse;
 import com.whennawa.dto.company.CompanyCreateResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
 import com.whennawa.dto.company.RollingPredictionResponse;
 import com.whennawa.dto.company.RollingStepStatsResponse;
+import com.whennawa.dto.interview.InterviewReviewItem;
+import com.whennawa.dto.interview.InterviewReviewSort;
 import com.whennawa.entity.Company;
+import com.whennawa.entity.RecruitmentStepLog;
 import com.whennawa.entity.RollingStepLog;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.repository.CompanyRepository;
+import com.whennawa.repository.RecruitmentStepLogRepository;
 import com.whennawa.repository.RollingStepLogRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,18 +36,24 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CompanySearchService {
     private final CompanyRepository companyRepository;
+    private final RecruitmentStepLogRepository recruitmentStepLogRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
     private final com.whennawa.config.AppProperties appProperties;
     private final ProfanityMasker profanityMasker;
+    private final InterviewReviewService interviewReviewService;
 
     public CompanySearchService(CompanyRepository companyRepository,
+                                RecruitmentStepLogRepository recruitmentStepLogRepository,
                                 RollingStepLogRepository rollingStepLogRepository,
                                 com.whennawa.config.AppProperties appProperties,
-                                ProfanityMasker profanityMasker) {
+                                ProfanityMasker profanityMasker,
+                                InterviewReviewService interviewReviewService) {
         this.companyRepository = companyRepository;
+        this.recruitmentStepLogRepository = recruitmentStepLogRepository;
         this.rollingStepLogRepository = rollingStepLogRepository;
         this.appProperties = appProperties;
         this.profanityMasker = profanityMasker;
+        this.interviewReviewService = interviewReviewService;
     }
 
     public List<CompanySearchResponse> searchCompanies(String query, Integer limit) {
@@ -57,12 +68,18 @@ public class CompanySearchService {
             if (row == null || row.getCompanyName() == null) {
                 continue;
             }
+            if (CareerBoardConstants.CAREER_BOARD_NAME.equalsIgnoreCase(row.getCompanyName().trim())) {
+                continue;
+            }
             merged.putIfAbsent(row.getCompanyName(), new CompanySearchResponse(row.getCompanyName(), row.getLastResultAt()));
         }
 
         if (!normalizedQuery.isBlank()) {
             for (Company company : companyRepository.findAll()) {
                 if (company == null || !company.isActive() || company.getCompanyName() == null) {
+                    continue;
+                }
+                if (CareerBoardConstants.CAREER_BOARD_NAME.equalsIgnoreCase(company.getCompanyName().trim())) {
                     continue;
                 }
                 String key = CompanyNameNormalizer.normalizeKey(company.getCompanyName());
@@ -85,7 +102,7 @@ public class CompanySearchService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Company name is required");
         }
         if (profanityMasker.containsProfanity(normalizedName)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "부적절한 회사명은 등록할 수 없습니다.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Inappropriate company name is not allowed.");
         }
 
         Company found = resolveActiveCompany(normalizedName);
@@ -98,7 +115,7 @@ public class CompanySearchService {
                 false,
                 false,
                 !found.getCompanyName().equals(original),
-                "해당 회사는 이미 등록되어 있습니다."
+                "Company already exists."
             );
         }
 
@@ -114,27 +131,38 @@ public class CompanySearchService {
             true,
             false,
             !saved.getCompanyName().equals(original),
-            "회사 추가가 완료되었습니다."
+            "Company has been created."
         );
     }
-    public CompanyTimelineResponse getRepresentativeTimeline(String companyName) {
+    public CompanyStatusResponse getCompanyStatus(String companyName, Long currentUserId) {
         if (companyName == null || companyName.isBlank()) {
-            return new CompanyTimelineResponse(null, companyName, List.of(), List.of(), List.of());
+            return new CompanyStatusResponse(null, companyName, List.of(), List.of(), List.of(), List.of());
         }
         Company company = resolveActiveCompany(companyName);
         if (company == null) {
-            return new CompanyTimelineResponse(null, companyName, List.of(), List.of(), List.of());
+            return new CompanyStatusResponse(null, companyName, List.of(), List.of(), List.of(), List.of());
         }
-        List<CompanyUnitTimelineResponse> regularTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.REGULAR);
-        List<CompanyUnitTimelineResponse> internTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.INTERN);
+        List<CompanyYearlyStatusResponse> regularTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.REGULAR);
+        List<CompanyYearlyStatusResponse> internTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.INTERN);
         List<RollingStepStatsResponse> rollingSteps = buildRollingStats(company.getCompanyName());
-        return new CompanyTimelineResponse(
+        List<InterviewReviewItem> interviewReviews = interviewReviewService.listTop(
+            company.getCompanyName(),
+            3,
+            InterviewReviewSort.LIKES,
+            currentUserId
+        );
+        return new CompanyStatusResponse(
             company.getCompanyId(),
             company.getCompanyName(),
             regularTimelines,
             internTimelines,
-            rollingSteps
+            rollingSteps,
+            interviewReviews
         );
+    }
+
+    public CompanyStatusResponse getRepresentativeTimeline(String companyName, Long currentUserId) {
+        return getCompanyStatus(companyName, currentUserId);
     }
 
     public KeywordLeadTimeResponse getKeywordLeadTime(String companyName, String keyword, RecruitmentMode mode) {
@@ -160,20 +188,20 @@ public class CompanySearchService {
         }
 
         List<Long> allDiffs = new ArrayList<>();
-        List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
+        List<RecruitmentStepLog> logs = recruitmentStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
             company.getCompanyName(),
             resolvedMode
         );
-        for (RollingStepLog log : logs) {
+        for (RecruitmentStepLog log : logs) {
             if (log == null) {
                 continue;
             }
             if (!normalizeKeyword(log.getCurrentStepName()).equals(normalizedKeyword)) {
                 continue;
             }
-            RollingReportType type = log.getRollingResultType() == null
+            RollingReportType type = log.getResultType() == null
                 ? RollingReportType.DATE_REPORTED
-                : log.getRollingResultType();
+                : log.getResultType();
             if (type != RollingReportType.DATE_REPORTED) {
                 continue;
             }
@@ -334,7 +362,7 @@ public class CompanySearchService {
         return result;
     }
 
-    private List<CompanyUnitTimelineResponse> buildTimelinesByMode(String companyName, RecruitmentMode mode) {
+    private List<CompanyYearlyStatusResponse> buildTimelinesByMode(String companyName, RecruitmentMode mode) {
         if (companyName == null || companyName.isBlank()) {
             return List.of();
         }
@@ -342,7 +370,7 @@ public class CompanySearchService {
         if (company == null) {
             return List.of();
         }
-        List<RollingStepLog> logs = rollingStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
+        List<RecruitmentStepLog> logs = recruitmentStepLogRepository.findByCompanyNameIgnoreCaseAndRecruitmentMode(
             company.getCompanyName(),
             mode
         );
@@ -350,8 +378,8 @@ public class CompanySearchService {
             return List.of();
         }
 
-        Map<Integer, List<CompanyTimelineStep>> byYear = new TreeMap<>(Comparator.reverseOrder());
-        for (RollingStepLog log : logs) {
+        Map<Integer, List<CompanyStatusStep>> byYear = new TreeMap<>(Comparator.reverseOrder());
+        for (RecruitmentStepLog log : logs) {
             if (log == null) {
                 continue;
             }
@@ -359,7 +387,7 @@ public class CompanySearchService {
             if (label == null || label.isBlank()) {
                 continue;
             }
-            if (log.getRollingResultType() == RollingReportType.NO_RESPONSE_REPORTED) {
+            if (log.getResultType() == RollingReportType.NO_RESPONSE_REPORTED) {
                 continue;
             }
             LocalDate reportedDate = log.getReportedDate();
@@ -372,7 +400,7 @@ public class CompanySearchService {
                 long diff = ChronoUnit.DAYS.between(log.getPrevReportedDate(), reportedDate);
                 diffDays = diff >= 0 ? diff : null;
             }
-            CompanyTimelineStep step = new CompanyTimelineStep("REPORTED", label.trim(), occurredAt, diffDays);
+            CompanyStatusStep step = new CompanyStatusStep("REPORTED", label.trim(), occurredAt, diffDays);
             byYear.computeIfAbsent(reportedDate.getYear(), key -> new ArrayList<>()).add(step);
         }
 
@@ -380,12 +408,12 @@ public class CompanySearchService {
             return List.of();
         }
 
-        List<CompanyUnitTimelineResponse> units = new ArrayList<>();
-        for (Map.Entry<Integer, List<CompanyTimelineStep>> entry : byYear.entrySet()) {
-            List<CompanyTimelineStep> steps = entry.getValue().stream()
-                .sorted(Comparator.comparing(CompanyTimelineStep::getOccurredAt).reversed())
+        List<CompanyYearlyStatusResponse> units = new ArrayList<>();
+        for (Map.Entry<Integer, List<CompanyStatusStep>> entry : byYear.entrySet()) {
+            List<CompanyStatusStep> steps = entry.getValue().stream()
+                .sorted(Comparator.comparing(CompanyStatusStep::getOccurredAt).reversed())
                 .toList();
-            units.add(new CompanyUnitTimelineResponse(entry.getKey(), steps));
+            units.add(new CompanyYearlyStatusResponse(entry.getKey(), steps));
         }
         return units;
     }
@@ -396,6 +424,9 @@ public class CompanySearchService {
         }
         Company exact = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName.trim()).orElse(null);
         if (exact != null) {
+            if (CareerBoardConstants.CAREER_BOARD_NAME.equalsIgnoreCase(exact.getCompanyName().trim())) {
+                return null;
+            }
             return exact;
         }
 
@@ -406,9 +437,11 @@ public class CompanySearchService {
         return companyRepository.findAll().stream()
             .filter(Company::isActive)
             .filter(c -> c.getCompanyName() != null)
+            .filter(c -> !CareerBoardConstants.CAREER_BOARD_NAME.equalsIgnoreCase(c.getCompanyName().trim()))
             .filter(c -> CompanyNameNormalizer.normalizeKey(c.getCompanyName()).equals(normalizedTarget))
             .findFirst()
             .orElse(null);
     }
 }
+
 

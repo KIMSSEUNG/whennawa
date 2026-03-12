@@ -10,7 +10,7 @@ export interface CompanyTimelineStep {
   diffDays: number | null
 }
 
-export interface CompanyTimeline {
+export interface CompanyStatus {
   companyId: number | null
   companyName: string
   regularTimelines: Array<{
@@ -22,7 +22,10 @@ export interface CompanyTimeline {
     steps: CompanyTimelineStep[]
   }>
   rollingSteps: RollingStepStat[]
+  interviewReviews?: InterviewReview[]
 }
+
+export type CompanyTimeline = CompanyStatus
 
 export interface KeywordLeadTime {
   keyword: string
@@ -53,6 +56,11 @@ export interface ReportItem {
   currentStepName: string | null
   reportedDate: Date | null
   status: ReportStatus
+  jobCategoryId: number | null
+  jobCategoryName: string | null
+  otherJobName: string | null
+  interviewReviewContent: string | null
+  interviewDifficulty: InterviewDifficulty | null
   onHold: boolean
 }
 
@@ -84,6 +92,7 @@ export interface User {
 
 export interface ChatMessage {
   companyId: number
+  senderUserId: number | null
   senderNickname: string
   message: string
   timestamp: Date
@@ -144,6 +153,8 @@ export interface PagedResult<T> {
   page: number
   size: number
   hasNext: boolean
+  totalPages?: number
+  totalElements?: number
 }
 
 export interface NotificationSubscription {
@@ -165,4 +176,26 @@ export interface UserNotification {
   read: boolean
   createdAt: Date
   updatedAt: Date
+}
+
+export type InterviewDifficulty = "EASY" | "MEDIUM" | "HARD"
+export type InterviewReviewSort = "LIKES" | "LATEST"
+
+export interface InterviewReview {
+  reviewId: number
+  companyId: number | null
+  companyName: string | null
+  recruitmentMode: RecruitmentMode
+  stepName: string
+  difficulty: InterviewDifficulty
+  content: string
+  likeCount: number
+  likedByMe: boolean
+  createdAt: Date
+}
+
+export interface UserBlockItem {
+  userId: number
+  email: string
+  nickname: string
 }

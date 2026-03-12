@@ -2,7 +2,10 @@ package com.whennawa.controller;
 
 import com.whennawa.dto.report.ReportCreateRequest;
 import com.whennawa.dto.report.ReportCreateResponse;
+import com.whennawa.dto.report.CategoryJobItem;
+import com.whennawa.dto.report.JobCategoryItem;
 import com.whennawa.dto.report.ReportStepResponse;
+import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.service.ReportService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,14 +39,36 @@ public class ReportController {
     }
 
     @GetMapping("/steps")
-    public List<ReportStepResponse> steps(@RequestParam("companyName") String companyName) {
-        return reportService.findStepsForCompany(companyName);
+    public List<ReportStepResponse> steps(@RequestParam("companyName") String companyName,
+                                          @RequestParam(value = "jobCategoryId", required = false) Long jobCategoryId) {
+        return reportService.findStepsForCompany(companyName, jobCategoryId);
     }
 
     @GetMapping("/rolling-steps")
     public List<String> rollingSteps(@RequestParam(value = "companyName", required = false) String companyName,
-                                     @RequestParam(value = "q", required = false) String query) {
-        return reportService.findRollingStepNameSuggestions(companyName, query);
+                                     @RequestParam(value = "q", required = false) String query,
+                                     @RequestParam(value = "mode", required = false) RecruitmentMode mode,
+                                     @RequestParam(value = "jobCategoryId", required = false) Long jobCategoryId,
+                                     @RequestParam(value = "kind", required = false) String kind) {
+        return reportService.findRollingStepNameSuggestions(companyName, query, mode, jobCategoryId, kind);
+    }
+
+    @GetMapping("/rolling-step-pair")
+    public String rollingStepPair(@RequestParam(value = "companyName", required = false) String companyName,
+                                  @RequestParam(value = "jobCategoryId", required = false) Long jobCategoryId,
+                                  @RequestParam("direction") String direction,
+                                  @RequestParam("stepName") String stepName) {
+        return reportService.resolveRollingStepPair(companyName, jobCategoryId, direction, stepName);
+    }
+
+    @GetMapping("/job-categories")
+    public List<JobCategoryItem> jobCategories() {
+        return reportService.findActiveJobCategories();
+    }
+
+    @GetMapping("/category-jobs")
+    public List<CategoryJobItem> categoryJobs(@RequestParam("companyName") String companyName) {
+        return reportService.findCategoryJobs(companyName);
     }
 
     private String resolveClientIp(HttpServletRequest request) {

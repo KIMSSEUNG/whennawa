@@ -4,6 +4,7 @@ import com.whennawa.config.AppProperties;
 import com.whennawa.entity.enums.ReportStatus;
 import com.whennawa.repository.ChatMessageRepository;
 import com.whennawa.repository.CompanyNotificationRepository;
+import com.whennawa.repository.RollingReportRepository;
 import com.whennawa.repository.StepDateReportRepository;
 import com.whennawa.repository.UserRefreshTokenRepository;
 import com.whennawa.service.BoardService;
@@ -24,6 +25,7 @@ public class UnifiedCleanupScheduler {
     private final ChatMessageRepository chatMessageRepository;
     private final UserRefreshTokenRepository userRefreshTokenRepository;
     private final StepDateReportRepository stepDateReportRepository;
+    private final RollingReportRepository rollingReportRepository;
     private final CompanyNotificationRepository companyNotificationRepository;
     private final AppProperties appProperties;
 
@@ -49,7 +51,13 @@ public class UnifiedCleanupScheduler {
         int deletedRefreshTokens = userRefreshTokenRepository.deleteExpiredOrRevokedBefore(nowUtc, refreshCutoffUtc);
 
         // 4) 처리 완료/폐기된 제보 정리
-        long deletedReports = stepDateReportRepository.deleteByStatusIn(List.of(ReportStatus.DISCARDED, ReportStatus.PROCESSED));
+        long deletedRegularReports = stepDateReportRepository.deleteByStatusInWithoutInterviewReviews(
+            List.of(ReportStatus.DISCARDED, ReportStatus.PROCESSED)
+        );
+        long deletedRollingReports = rollingReportRepository.deleteByStatusInWithoutInterviewReviews(
+            List.of(ReportStatus.DISCARDED, ReportStatus.PROCESSED)
+        );
+        long deletedReports = deletedRegularReports + deletedRollingReports;
 
         // 5) 오래된 알림 정리
         long notificationRetentionDays = scheduler.getNotificationRetentionDays();

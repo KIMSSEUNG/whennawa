@@ -4,23 +4,24 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
-  createBoardComment,
-  deleteBoardComment,
-  deleteBoardPost,
-  fetchBoardComments,
-  fetchBoardPost,
+  blockUser,
+  createCareerBoardComment,
+  deleteCareerBoardComment,
+  deleteCareerBoardPost,
+  fetchCareerBoardComments,
+  fetchCareerBoardPost,
   getUser,
-  likeBoardComment,
-  unlikeBoardComment,
-  updateBoardComment,
-  updateBoardPost,
+  likeCareerBoardComment,
+  unlikeCareerBoardComment,
+  updateCareerBoardComment,
+  updateCareerBoardPost,
 } from "@/lib/api"
 import type { BoardComment, BoardPost } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { EmptyState } from "@/components/empty-state"
-import { CAREER_BOARD_COMPANY_NAME, CAREER_BOARD_PATH } from "@/lib/career-board"
+import { CAREER_BOARD_PATH } from "@/lib/career-board"
 
 const COMMENT_PAGE_SIZE = 10
 const COMMENT_COLLAPSE_LIMIT = 500
@@ -62,7 +63,6 @@ export default function CareerBoardPostDetailPage() {
   const params = useParams<{ postId: string }>()
   const router = useRouter()
 
-  const companyName = CAREER_BOARD_COMPANY_NAME
   const postId = useMemo(() => Number(params?.postId ?? NaN), [params?.postId])
   const boardHref = CAREER_BOARD_PATH
 
@@ -105,7 +105,7 @@ export default function CareerBoardPostDetailPage() {
     if (!Number.isFinite(postId)) return
     setIsLoadingPost(true)
     try {
-      const data = await fetchBoardPost(companyName, postId)
+      const data = await fetchCareerBoardPost(postId)
       setPost(data)
       setEditTitle(data.title)
       setEditContent(data.content)
@@ -125,7 +125,7 @@ export default function CareerBoardPostDetailPage() {
     else setIsLoadingMoreComments(true)
 
     try {
-      const data = await fetchBoardComments(companyName, postId, targetPage, COMMENT_PAGE_SIZE)
+      const data = await fetchCareerBoardComments(postId, targetPage, COMMENT_PAGE_SIZE)
       setComments((prev) => (reset ? data.items : [...prev, ...data.items]))
       setCommentPage(data.page)
       setCommentHasNext(data.hasNext)
@@ -160,7 +160,7 @@ export default function CareerBoardPostDetailPage() {
     setIsSubmittingPost(true)
     setMessage(null)
     try {
-      const updated = await updateBoardPost(companyName, post.postId, editTitle, editContent)
+      const updated = await updateCareerBoardPost(post.postId, editTitle, editContent)
       setPost(updated)
       setIsEditingPost(false)
       setMessage("게시글을 수정했습니다.")
@@ -176,7 +176,7 @@ export default function CareerBoardPostDetailPage() {
     setIsDeletingPost(true)
     setMessage(null)
     try {
-      await deleteBoardPost(companyName, post.postId)
+      await deleteCareerBoardPost(post.postId)
       router.push(boardHref)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "게시글 삭제에 실패했습니다.")
@@ -189,7 +189,7 @@ export default function CareerBoardPostDetailPage() {
     setIsCreatingComment(true)
     setMessage(null)
     try {
-      await createBoardComment(companyName, postId, newCommentContent, undefined, {
+      await createCareerBoardComment(postId, newCommentContent, undefined, {
         anonymous: newCommentAnonymous,
       })
       setNewCommentContent("")
@@ -207,7 +207,7 @@ export default function CareerBoardPostDetailPage() {
     setIsCreatingReply(true)
     setMessage(null)
     try {
-      await createBoardComment(companyName, postId, replyContent, replyTargetId, {
+      await createCareerBoardComment(postId, replyContent, replyTargetId, {
         anonymous: replyAnonymous,
       })
       setReplyTargetId(null)
@@ -231,7 +231,7 @@ export default function CareerBoardPostDetailPage() {
     setIsSavingComment(true)
     setMessage(null)
     try {
-      await updateBoardComment(companyName, postId, commentId, editingCommentContent)
+      await updateCareerBoardComment(postId, commentId, editingCommentContent)
       setEditingCommentId(null)
       setEditingCommentContent("")
       await refreshComments()
@@ -247,7 +247,7 @@ export default function CareerBoardPostDetailPage() {
     setIsDeletingComment(true)
     setMessage(null)
     try {
-      await deleteBoardComment(companyName, postId, commentId)
+      await deleteCareerBoardComment(postId, commentId)
       await refreshComments()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "댓글 삭제에 실패했습니다.")
@@ -259,9 +259,9 @@ export default function CareerBoardPostDetailPage() {
   const handleToggleLike = async (comment: BoardComment) => {
     try {
       if (comment.likedByMe) {
-        await unlikeBoardComment(companyName, postId, comment.commentId)
+        await unlikeCareerBoardComment(postId, comment.commentId)
       } else {
-        await likeBoardComment(companyName, postId, comment.commentId)
+        await likeCareerBoardComment(postId, comment.commentId)
       }
       await refreshComments()
     } catch (error) {
@@ -271,6 +271,18 @@ export default function CareerBoardPostDetailPage() {
 
   const canEditComment = (comment: BoardComment) => {
     return isAdmin || (myUserId != null && comment.authorUserId != null && myUserId === comment.authorUserId)
+  }
+
+  const handleBlockAuthor = async (userId: number | null) => {
+    if (userId == null) return
+    try {
+      await blockUser(userId)
+      await loadPost()
+      await refreshComments()
+      setMessage("해당 사용자를 차단했습니다.")
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "차단 처리에 실패했습니다.")
+    }
   }
 
   const renderCommentNode = (comment: BoardComment, depth: number) => {
@@ -286,6 +298,15 @@ export default function CareerBoardPostDetailPage() {
           <span className="rounded-full bg-muted px-2 py-0.5">{comment.authorName}</span>
           <span>·</span>
           <span>{formatDate(comment.createdAt)}</span>
+          {myUserId != null && comment.authorUserId != null && myUserId !== comment.authorUserId && (
+            <button
+              type="button"
+              className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
+              onClick={() => void handleBlockAuthor(comment.authorUserId)}
+            >
+              차단
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void handleToggleLike(comment)}
@@ -418,6 +439,15 @@ export default function CareerBoardPostDetailPage() {
                 <span className="rounded-full bg-muted px-2 py-0.5">{post.authorName}</span>
                 <span>·</span>
                 <span>{formatDate(post.createdAt)}</span>
+                {myUserId != null && post.authorUserId != null && myUserId !== post.authorUserId && (
+                  <button
+                    type="button"
+                    className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
+                    onClick={() => void handleBlockAuthor(post.authorUserId)}
+                  >
+                    차단
+                  </button>
+                )}
               </div>
               <div className="mt-5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-xl border border-border/60 bg-background p-4 text-sm leading-7 text-foreground/95">
                 {post.content}

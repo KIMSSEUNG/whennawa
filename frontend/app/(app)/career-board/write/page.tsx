@@ -3,16 +3,15 @@
 import { useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { createBoardPost } from "@/lib/api"
+import { createCareerBoardPost } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { CAREER_BOARD_COMPANY_NAME, CAREER_BOARD_PATH } from "@/lib/career-board"
+import { CAREER_BOARD_PATH } from "@/lib/career-board"
 
 export default function CareerBoardWritePage() {
   const router = useRouter()
-  const companyName = CAREER_BOARD_COMPANY_NAME
   const boardHref = CAREER_BOARD_PATH
 
   const [title, setTitle] = useState("")
@@ -28,7 +27,7 @@ export default function CareerBoardWritePage() {
     setIsSubmitting(true)
     setMessage(null)
     try {
-      await createBoardPost(companyName, title, content, { anonymous: isAnonymous })
+      await createCareerBoardPost(title, content, { anonymous: isAnonymous })
       router.push(boardHref)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "게시글 등록에 실패했습니다.")

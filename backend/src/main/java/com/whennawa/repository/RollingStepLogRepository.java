@@ -1,6 +1,7 @@
 package com.whennawa.repository;
 
 import com.whennawa.entity.RollingStepLog;
+import com.whennawa.entity.RollingJob;
 import com.whennawa.entity.enums.LogSourceType;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.RollingReportType;
@@ -39,6 +40,27 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
 
     Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceType(
         String companyName,
+        RecruitmentMode recruitmentMode,
+        String currentStepName,
+        RollingReportType rollingResultType,
+        LogSourceType sourceType
+    );
+
+    Optional<RollingStepLog> findFirstByCompanyNameAndRollingJobAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+        String companyName,
+        RollingJob rollingJob,
+        RecruitmentMode recruitmentMode,
+        String currentStepName,
+        String prevStepName,
+        RollingReportType rollingResultType,
+        LogSourceType sourceType,
+        LocalDate prevReportedDate,
+        LocalDate reportedDate
+    );
+
+    Optional<RollingStepLog> findFirstByCompanyNameAndRollingJobAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceType(
+        String companyName,
+        RollingJob rollingJob,
         RecruitmentMode recruitmentMode,
         String currentStepName,
         RollingReportType rollingResultType,

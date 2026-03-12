@@ -1,6 +1,7 @@
 package com.whennawa.entity;
 
 import com.whennawa.entity.enums.ReportStatus;
+import com.whennawa.entity.enums.JobReviewStatus;
 import com.whennawa.entity.enums.RollingReportType;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.converter.RollingReportTypeConverter;
@@ -19,9 +20,11 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "step_date_report")
+@Table(name = "recruitment_report")
 @Getter @Setter
 public class StepDateReport extends BaseEntity {
     @Id
@@ -31,6 +34,10 @@ public class StepDateReport extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "company_id")
     private Company company;
+
+    @ManyToOne
+    @JoinColumn(name = "job_category_id", nullable = false)
+    private JobCategory jobCategory;
 
     @Column(name = "company_name", length = 100, nullable = false)
     private String companyName;
@@ -57,6 +64,17 @@ public class StepDateReport extends BaseEntity {
 
     @Column(name = "report_count", nullable = false)
     private Integer reportCount = 1;
+
+    @Column(name = "other_job_name", length = 20)
+    private String otherJobName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_review_status", length = 16, nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    private JobReviewStatus jobReviewStatus = JobReviewStatus.PENDING;
+
+    @Column(name = "job_reviewed_at")
+    private LocalDateTime jobReviewedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 16, nullable = false)

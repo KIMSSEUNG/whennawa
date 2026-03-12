@@ -1,6 +1,5 @@
 package com.whennawa.entity;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -23,6 +22,11 @@ public class RecruitmentStep {
     @JoinColumn(name = "channel_id", nullable = false)
     private RecruitmentChannel channel;
 
-    @Column(name = "step_name", length = 100, nullable = false)
-    private String stepName;
+    @ManyToOne
+    @JoinColumn(name = "step_master_id", nullable = false)
+    private RecruitmentStepMaster stepMaster;
+
+    public String getStepName() {
+        return stepMaster == null ? null : stepMaster.getStepName();
+    }
 }

@@ -1,4 +1,4 @@
-﻿package com.whennawa.support;
+package com.whennawa.support;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -32,7 +32,7 @@ public abstract class MySqlContainerBaseTest {
     }
 
     /*
-        而⑦뀒?대꼫?ㅽ뻾???먮룞?쇰줈 ?대떦?섎뒗 媛믪쓣 ?숈옉?섍쾶 ?쒕떎.
+        컨테이너 실행 시 자동으로 해당 값을 등록한다.
      */
     @DynamicPropertySource
     static void registerDataSourceProperties(DynamicPropertyRegistry registry) {
@@ -67,5 +67,6 @@ public abstract class MySqlContainerBaseTest {
         return (value == null || value.isBlank()) ? null : value;
     }
 }
+
 
 

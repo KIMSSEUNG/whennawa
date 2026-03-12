@@ -34,14 +34,18 @@ public class BoardController {
     @GetMapping("/{companyName}/posts")
     public BoardPageResponse<BoardPostResponse> posts(@PathVariable("companyName") String companyName,
                                                       @RequestParam(value = "page", defaultValue = "0") Integer page,
-                                                      @RequestParam(value = "size", defaultValue = "20") Integer size) {
-        return boardService.listPosts(companyName, page, size);
+                                                      @RequestParam(value = "size", defaultValue = "20") Integer size,
+                                                      Authentication authentication) {
+        UserPrincipal principal = extractPrincipal(authentication);
+        return boardService.listPosts(companyName, page, size, principal == null ? null : principal.getUserId());
     }
 
     @GetMapping("/{companyName}/posts/{postId}")
     public BoardPostResponse post(@PathVariable("companyName") String companyName,
-                                  @PathVariable("postId") Long postId) {
-        return boardService.getPost(companyName, postId);
+                                  @PathVariable("postId") Long postId,
+                                  Authentication authentication) {
+        UserPrincipal principal = extractPrincipal(authentication);
+        return boardService.getPost(companyName, postId, principal == null ? null : principal.getUserId());
     }
 
     @GetMapping("/{companyName}/posts/search")
@@ -49,8 +53,10 @@ public class BoardController {
                                                             @RequestParam("q") String query,
                                                             @RequestParam(value = "field", defaultValue = "title") String field,
                                                             @RequestParam(value = "page", defaultValue = "0") Integer page,
-                                                            @RequestParam(value = "size", defaultValue = "20") Integer size) {
-        return boardService.searchPosts(companyName, query, field, page, size);
+                                                            @RequestParam(value = "size", defaultValue = "20") Integer size,
+                                                            Authentication authentication) {
+        UserPrincipal principal = extractPrincipal(authentication);
+        return boardService.searchPosts(companyName, query, field, page, size, principal == null ? null : principal.getUserId());
     }
 
     @PostMapping("/{companyName}/posts")

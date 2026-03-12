@@ -2,13 +2,13 @@ package com.whennawa.dto.company;
 
 import java.time.LocalDateTime;
 
-public class CompanyTimelineStep {
+public class CompanyStatusStep {
     private final String eventType;
     private final String label;
     private final LocalDateTime occurredAt;
     private final Long diffDays;
 
-    public CompanyTimelineStep(String eventType, String label, LocalDateTime occurredAt, Long diffDays) {
+    public CompanyStatusStep(String eventType, String label, LocalDateTime occurredAt, Long diffDays) {
         this.eventType = eventType;
         this.label = label;
         this.occurredAt = occurredAt;

@@ -1,11 +1,11 @@
 ﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
-import type { CompanyTimeline } from "@/lib/types"
+import type { CompanyStatus, CompanyTimeline } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 type Props = {
-  timeline: CompanyTimeline | null
+  status: CompanyStatus | null
 }
 
 type Marker = {
@@ -17,8 +17,8 @@ function toDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
-export function TimelineProjectionCalendar({ timeline }: Props) {
-  const units = timeline?.regularTimelines ?? []
+export function StatusProjectionCalendar({ status }: Props) {
+  const units = status?.regularTimelines ?? []
   const [selectedUnitIndex, setSelectedUnitIndex] = useState("0")
   const [deadlineDate, setDeadlineDate] = useState("")
   const [month, setMonth] = useState(() => {
@@ -29,7 +29,7 @@ export function TimelineProjectionCalendar({ timeline }: Props) {
 
   useEffect(() => {
     setSelectedUnitIndex("0")
-  }, [timeline?.companyName, units.length])
+  }, [status?.companyName, units.length])
 
   const selectedUnit = useMemo(() => {
     const idx = Number(selectedUnitIndex)
@@ -182,5 +182,9 @@ export function TimelineProjectionCalendar({ timeline }: Props) {
       )}
     </div>
   )
+}
+
+export function TimelineProjectionCalendar({ timeline }: { timeline: CompanyTimeline | null }) {
+  return <StatusProjectionCalendar status={timeline} />
 }
 
