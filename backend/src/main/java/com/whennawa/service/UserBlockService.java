@@ -51,7 +51,7 @@ public class UserBlockService {
         return userBlockRepository.findByBlocker_IdAndIsActiveTrueOrderByBlockIdDesc(blockerUserId).stream()
             .map(UserBlock::getBlocked)
             .filter(user -> user != null && !user.isDeleted())
-            .map(user -> new UserBlockItem(user.getId(), user.getEmail(), user.getNickname()))
+            .map(user -> new UserBlockItem(user.getId(), user.getNickname()))
             .toList();
     }
 

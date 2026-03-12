@@ -290,20 +290,20 @@ FROM tmp_num tn
 JOIN tmp_chat_members tcm ON tcm.rn = MOD(tn.n - 1, @chat_member_cnt) + 1
 WHERE tn.n <= 100;
 
-/* 12) board posts company board (100) */
+/* 12) board posts company board (100 per company) */
 INSERT INTO board_post (company_id, user_id, title, content, is_anonymous, created_at, updated_at)
 SELECT
   tc.company_id,
   tu.user_id,
-  CONCAT('Company bulk post #', tn.n),
-  CONCAT('Company board bulk content #', tn.n, ' for board testing.'),
+  CONCAT(tc.company_name, ' bulk post #', tn.n),
+  CONCAT('Company board bulk content #', tn.n, ' for ', tc.company_name, ' board testing.'),
   CASE WHEN MOD(tn.n, 2) = 0 THEN TRUE ELSE FALSE END,
-  DATE_ADD(NOW(), INTERVAL -tn.n HOUR),
-  DATE_ADD(NOW(), INTERVAL -tn.n HOUR)
-FROM tmp_num tn
-JOIN tmp_companies tc ON @company_cnt > 0 AND tc.rn = MOD(tn.n - 1, @company_cnt) + 1
-JOIN tmp_users tu ON tu.rn = MOD(tn.n - 1, @user_cnt) + 1
-WHERE tn.n <= 100;
+  DATE_ADD(NOW(), INTERVAL -((tc.rn - 1) * 100 + tn.n) HOUR),
+  DATE_ADD(NOW(), INTERVAL -((tc.rn - 1) * 100 + tn.n) HOUR)
+FROM tmp_companies tc
+JOIN tmp_num tn ON tn.n <= 200
+JOIN tmp_users tu ON tu.rn = MOD(((tc.rn - 1) * 100 + tn.n) - 1, @user_cnt) + 1
+WHERE tn.n <= 200;
 
 /* 12-1) career board posts (100) */
 INSERT INTO career_board_post (user_id, title, content, is_anonymous, created_at, updated_at)
@@ -326,8 +326,8 @@ CREATE TEMPORARY TABLE tmp_posts_company (
 INSERT INTO tmp_posts_company (post_id)
 SELECT bp.post_id
 FROM board_post bp
-ORDER BY bp.post_id DESC
-LIMIT 100;
+WHERE bp.title LIKE '% bulk post #%'
+ORDER BY bp.post_id DESC;
 SET @post_company_cnt = (SELECT COUNT(*) FROM tmp_posts_company);
 
 DROP TEMPORARY TABLE IF EXISTS tmp_career_posts;
@@ -342,21 +342,20 @@ ORDER BY cbp.post_id DESC
 LIMIT 100;
 SET @post_career_cnt = (SELECT COUNT(*) FROM tmp_career_posts);
 
-/* 13) board comments company board (100) */
+/* 13) board comments company board (100 per company) */
 INSERT INTO board_comment (post_id, parent_comment_id, user_id, content, is_anonymous, like_count, created_at, updated_at)
 SELECT
   tpc.post_id,
   NULL,
   tu.user_id,
-  CONCAT('Company bulk comment #', tn.n),
+  CONCAT('Company bulk comment #', tpc.rn),
   CASE WHEN MOD(tn.n, 3) = 0 THEN TRUE ELSE FALSE END,
   MOD(tn.n, 5),
-  DATE_ADD(NOW(), INTERVAL -tn.n MINUTE),
-  DATE_ADD(NOW(), INTERVAL -tn.n MINUTE)
-FROM tmp_num tn
-JOIN tmp_posts_company tpc ON @post_company_cnt > 0 AND tpc.rn = MOD(tn.n - 1, @post_company_cnt) + 1
-JOIN tmp_users tu ON tu.rn = MOD(tn.n - 1, @user_cnt) + 1
-WHERE tn.n <= 100;
+  DATE_ADD(NOW(), INTERVAL -tpc.rn MINUTE),
+  DATE_ADD(NOW(), INTERVAL -tpc.rn MINUTE)
+FROM tmp_posts_company tpc
+JOIN tmp_num tn ON tn.n = MOD(tpc.rn - 1, 100) + 1
+JOIN tmp_users tu ON tu.rn = MOD(tpc.rn - 1, @user_cnt) + 1;
 
 /* 13-1) career board comments (100) */
 INSERT INTO career_board_comment (post_id, parent_comment_id, user_id, content, is_anonymous, like_count, created_at, updated_at)
@@ -374,7 +373,7 @@ JOIN tmp_career_posts tpc ON @post_career_cnt > 0 AND tpc.rn = MOD(tn.n - 1, @po
 JOIN tmp_users tu ON tu.rn = MOD(tn.n - 1, @user_cnt) + 1
 WHERE tn.n <= 100;
 
-/* 14) board comment likes company board (100) */
+/* 14) board comment likes company board (1 per bulk comment) */
 INSERT IGNORE INTO board_comment_like (comment_id, user_id, created_at, updated_at)
 SELECT
   bc.comment_id,
@@ -384,8 +383,8 @@ SELECT
 FROM (
   SELECT bc.comment_id
   FROM board_comment bc
+  WHERE bc.content LIKE 'Company bulk comment #%'
   ORDER BY bc.comment_id DESC
-  LIMIT 100
 ) bc
 JOIN tmp_users tu ON tu.rn = MOD(bc.comment_id - 1, @user_cnt) + 1;
 

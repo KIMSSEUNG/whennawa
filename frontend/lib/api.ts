@@ -173,7 +173,6 @@ type ChatJoinResponseInput = {
 
 type UserBlockItemInput = {
   userId: number
-  email: string
   nickname: string
 }
 
@@ -331,8 +330,7 @@ const normalizeChatMessage = (item: ChatMessageInput): ChatMessage => ({
 
 const normalizeUserBlockItem = (item: UserBlockItemInput): UserBlockItem => ({
   userId: item.userId,
-  email: item.email,
-  nickname: item.nickname,
+  nickname: item.nickname?.trim() || "Unknown user",
 })
 
 const normalizeCompanyCreateResult = (item: CompanyCreateResultInput): CompanyCreateResult => ({

@@ -65,6 +65,7 @@ export function GlobalReportModal() {
   const [isModeLocked, setIsModeLocked] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [isTodayAnnouncement, setIsTodayAnnouncement] = useState(false)
 
   const [companyName, setCompanyName] = useState("")
   const [companySuggestions, setCompanySuggestions] = useState<CompanySearchItem[]>([])
@@ -110,6 +111,11 @@ export function GlobalReportModal() {
         setIsModeLocked(true)
       } else {
         setIsModeLocked(false)
+      }
+      setIsTodayAnnouncement(Boolean(payload.todayAnnouncement))
+      if (payload.todayAnnouncement) {
+        setReportedDate(toDateInput(getKoreaToday()))
+        setNoResponse(false)
       }
       setMessage(null)
       setIsOpen(true)
@@ -297,6 +303,13 @@ export function GlobalReportModal() {
         setMessage("이전 발표일은 현재 발표일보다 이전이어야 합니다.")
         return
       }
+      if (isTodayAnnouncement) {
+        const today = toDateInput(getKoreaToday())
+        if (reportedDate !== today) {
+          setMessage("오늘 결과 발표 제보는 현재 발표일이 오늘이어야 합니다.")
+          return
+        }
+      }
     }
 
     setIsSubmitting(true)
@@ -313,6 +326,7 @@ export function GlobalReportModal() {
         prevStepName: noResponse ? undefined : prevStepName.trim(),
         currentStepName: currentStepName.trim(),
         reportedDate: noResponse ? undefined : reportedDate,
+        todayAnnouncement: mode === "REGULAR" && isTodayAnnouncement,
         interviewReviewContent: interviewReviewContent.trim() ? interviewReviewContent.trim() : undefined,
         interviewDifficulty: interviewReviewContent.trim() ? interviewDifficulty : undefined,
       })
@@ -529,11 +543,15 @@ export function GlobalReportModal() {
 
             <button
               type="button"
-              onClick={() => setNoResponse((prev) => !prev)}
+              onClick={() => {
+                if (isTodayAnnouncement) return
+                setNoResponse((prev) => !prev)
+              }}
               className={cn(
                 "inline-flex h-10 items-center rounded-lg border px-3 text-sm transition-colors",
                 noResponse ? "border-primary/40 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:bg-muted/40",
               )}
+              disabled={isTodayAnnouncement}
             >
               결과 발표 메일을 받지 못했습니다
             </button>
@@ -589,14 +607,22 @@ export function GlobalReportModal() {
                   <div className="flex items-center gap-2">
                     <Input
                       value={reportedDate}
-                      onChange={(e) => setReportedDate(e.target.value)}
-                      onBlur={() => setReportedDate((prev) => normalizeDateInput(prev))}
+                      onChange={(e) => {
+                        if (isTodayAnnouncement) return
+                        setReportedDate(e.target.value)
+                      }}
+                      onBlur={() => {
+                        if (isTodayAnnouncement) return
+                        setReportedDate((prev) => normalizeDateInput(prev))
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.preventDefault()
                       }}
                       placeholder="YYYY-MM-DD"
                       inputMode="numeric"
                       required
+                      readOnly={isTodayAnnouncement}
+                      disabled={isTodayAnnouncement}
                     />
                     <Popover open={isReportedDateOpen} onOpenChange={setIsReportedDateOpen}>
                       <PopoverTrigger asChild>
@@ -606,6 +632,7 @@ export function GlobalReportModal() {
                           variant="outline"
                           className="h-10 w-10 shrink-0 border-border/70 bg-background hover:bg-accent/40"
                           aria-label={`현재 발표일 달력 열기 (${toDisplayDate(reportedDate)})`}
+                          disabled={isTodayAnnouncement}
                         >
                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                         </Button>

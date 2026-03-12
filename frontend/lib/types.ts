@@ -196,6 +196,5 @@ export interface InterviewReview {
 
 export interface UserBlockItem {
   userId: number
-  email: string
   nickname: string
 }
