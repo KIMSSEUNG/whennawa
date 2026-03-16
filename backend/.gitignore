@@ -49,3 +49,9 @@ service-account*.json
 *.h2.db
 data/
 dump/
+
+# Local dummy migrations
+src/main/resources/db/migration/V3__dummy_data.sql
+src/main/resources/db/migration/V4__bulk_dummy_data.sql
+src/test/resources/db/migration-baseline/V3__dummy_data.sql
+src/test/resources/db/migration-baseline/V4__bulk_dummy_data.sql

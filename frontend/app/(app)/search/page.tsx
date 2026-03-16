@@ -546,19 +546,12 @@ function SearchPageClient() {
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <h3 className="min-w-0 truncate font-semibold text-foreground">{company.companyName}</h3>
                       <span className="text-xs text-muted-foreground transition-colors group-hover:text-foreground">
-                        상세 보기
+                        선택
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">저장된 타임라인 보기</p>
+                    <p className="text-xs text-muted-foreground">검색 화면에서 타임라인과 채팅을 확인합니다.</p>
                     <div className="mt-2">
                       <div className="flex items-center gap-3">
-                        <Link
-                          href={`/company/${toCompanySlug(company.companyName)}`}
-                          onClick={(event) => event.stopPropagation()}
-                          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                        >
-                          공개 페이지
-                        </Link>
                         <Link
                           href={`/board/${toCompanySlug(company.companyName)}`}
                           onClick={(event) => event.stopPropagation()}

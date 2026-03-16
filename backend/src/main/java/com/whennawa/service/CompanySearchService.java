@@ -32,9 +32,13 @@ import com.whennawa.util.CompanyNameNormalizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class CompanySearchService {
+    private static final Logger log = LoggerFactory.getLogger(CompanySearchService.class);
+
     private final CompanyRepository companyRepository;
     private final RecruitmentStepLogRepository recruitmentStepLogRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
@@ -145,12 +149,18 @@ public class CompanySearchService {
         List<CompanyYearlyStatusResponse> regularTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.REGULAR);
         List<CompanyYearlyStatusResponse> internTimelines = buildTimelinesByMode(company.getCompanyName(), RecruitmentMode.INTERN);
         List<RollingStepStatsResponse> rollingSteps = buildRollingStats(company.getCompanyName());
-        List<InterviewReviewItem> interviewReviews = interviewReviewService.listTop(
-            company.getCompanyName(),
-            3,
-            InterviewReviewSort.LIKES,
-            currentUserId
-        );
+        List<InterviewReviewItem> interviewReviews;
+        try {
+            interviewReviews = interviewReviewService.listTop(
+                company.getCompanyName(),
+                3,
+                InterviewReviewSort.LIKES,
+                currentUserId
+            );
+        } catch (RuntimeException ex) {
+            log.warn("Failed to load interview reviews for company status: {}", company.getCompanyName(), ex);
+            interviewReviews = List.of();
+        }
         return new CompanyStatusResponse(
             company.getCompanyId(),
             company.getCompanyName(),
