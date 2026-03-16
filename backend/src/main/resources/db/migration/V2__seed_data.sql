@@ -3,15 +3,15 @@
 */
 
 INSERT IGNORE INTO job_category (name, is_active, created_at, updated_at) VALUES
-('경영사무', TRUE, NOW(), NOW()),
-('마케팅광고홍보', TRUE, NOW(), NOW()),
+('경영/사무', TRUE, NOW(), NOW()),
+('마케팅/광고홍보', TRUE, NOW(), NOW()),
 ('무역유통', TRUE, NOW(), NOW()),
-('IT인터넷', TRUE, NOW(), NOW()),
-('생산제조', TRUE, NOW(), NOW()),
-('영업고객상담', TRUE, NOW(), NOW()),
+('IT/인터넷', TRUE, NOW(), NOW()),
+('생산/제조', TRUE, NOW(), NOW()),
+('영업/고객상담', TRUE, NOW(), NOW()),
 ('건설', TRUE, NOW(), NOW()),
 ('금융', TRUE, NOW(), NOW()),
-('연구개발설계', TRUE, NOW(), NOW()),
+('연구개발/설계', TRUE, NOW(), NOW()),
 ('디자인', TRUE, NOW(), NOW()),
 ('미디어', TRUE, NOW(), NOW()),
 ('전문특수직', TRUE, NOW(), NOW()),
