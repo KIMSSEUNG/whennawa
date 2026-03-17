@@ -37,6 +37,24 @@ function formatDate(value: Date | null | undefined) {
   return value.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })
 }
 
+const notificationTheme = {
+  heroSection:
+    "relative overflow-hidden rounded-[28px] border border-[#dfe6fb] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5 shadow-[0_18px_40px_rgba(76,104,168,0.08)] md:p-6",
+  heroTopLine:
+    "absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,#4d84ff_0%,#7fa4ff_50%,#dce8ff_100%)]",
+  heroGlowRight:
+    "absolute -right-16 -top-12 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(102,144,242,0.16)_0%,rgba(102,144,242,0)_72%)]",
+  heroGlowLeft:
+    "absolute -left-12 bottom-0 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(191,213,255,0.16)_0%,rgba(191,213,255,0)_72%)]",
+  heroEyebrow: "text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7387ba]",
+  heroTitle: "mt-3 text-[30px] font-black tracking-tight text-[#24427c] md:text-[38px]",
+  heroDescription: "mt-3 text-base font-semibold text-[#5f76a8] md:text-lg",
+  field: "border-[#dbe3f7] focus-visible:border-[#8ea7ee] focus-visible:ring-[#8ea7ee]/30",
+  solidButton: "bg-[#86a2f4] text-white hover:bg-[#7593ea]",
+  outlineButton: "border-[#d8e2f8] bg-white text-[#31508f] hover:bg-[#f5f8ff]",
+  card: "border-[#e1e7f7] bg-white",
+}
+
 function NotificationsPageClient() {
   const router = useRouter()
   const pathname = usePathname()
@@ -324,9 +342,13 @@ function NotificationsPageClient() {
   })()
 
   return (
-    <div className="page-shell [--page-max:1520px] space-y-6 py-6">
-      <section className="rounded-3xl border border-border/60 bg-card p-5 md:p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Notifications</p>
+    <div className="page-shell [--page-max:1280px] space-y-6 py-6">
+      <section className={notificationTheme.heroSection}>
+        <div className={notificationTheme.heroTopLine} />
+        <div className={notificationTheme.heroGlowRight} />
+        <div className={notificationTheme.heroGlowLeft} />
+        <div className="relative">
+        <p className={notificationTheme.heroEyebrow}>Notifications</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground md:text-3xl">회사 발표 알림</h1>
         <p className="mt-1 text-base font-semibold text-muted-foreground md:text-lg">
           누군가 등록 회사의 <span className="font-extrabold text-primary">오늘 결과 발표가 났어요</span> 버튼으로 제보 시 알림이 와요.
@@ -338,13 +360,19 @@ function NotificationsPageClient() {
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value)
-                setShowSuggestions(true)
+                if (isAuthenticated) {
+                  setShowSuggestions(true)
+                }
               }}
-              onFocus={() => setShowSuggestions(true)}
+              onFocus={() => {
+                if (isAuthenticated) {
+                  setShowSuggestions(true)
+                }
+              }}
               placeholder="알림 받을 회사명"
-              className="h-12 rounded-xl"
+              className={`h-12 rounded-xl bg-white ${notificationTheme.field}`}
             />
-            {showSuggestions && trimmedQuery && suggestions.length > 0 && (
+            {isAuthenticated && showSuggestions && trimmedQuery && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-2xl border border-border/70 bg-card p-2 shadow-lg">
                 {suggestions.map((item) => (
                   <button
@@ -352,7 +380,7 @@ function NotificationsPageClient() {
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => void handleAdd(item.companyName)}
-                    className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-accent/60"
+                    className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[#f3f7ff]"
                   >
                     {item.companyName}
                   </button>
@@ -362,31 +390,34 @@ function NotificationsPageClient() {
           </div>
           <Button
             type="submit"
-            className="h-12 px-6"
+            className={`h-12 px-6 ${notificationTheme.solidButton}`}
             disabled={isAdding || !trimmedQuery || !isAuthenticated}
           >
             {isAdding ? "등록 중..." : "알림 등록"}
           </Button>
-          <Button type="button" variant="outline" className="h-12 px-6" onClick={() => setIsAddCompanyOpen(true)}>
+          <Button type="button" variant="outline" className={`h-12 px-6 ${notificationTheme.outlineButton}`} onClick={() => setIsAddCompanyOpen(true)}>
             회사 추가
           </Button>
         </form>
         {actionMessage && <p className="mt-3 text-sm text-muted-foreground">{actionMessage}</p>}
+        </div>
       </section>
 
-      <div className={cn("relative", !isAuthenticated && isAuthChecked ? "overflow-hidden" : "") }>
+      <div className="relative min-h-[520px]">
         {!isAuthenticated && isAuthChecked && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-[2px] touch-none select-none">
-            <div className="mx-4 w-full max-w-xl border border-border/70 bg-card p-5 text-center shadow-lg">
+          <div className="absolute -inset-px z-20 bg-background/78 backdrop-blur-[3px]">
+            <div className="flex min-h-full items-center justify-center px-4 py-10 md:px-6">
+            <div className="w-full max-w-2xl rounded-[28px] border border-[#dfe6fb] bg-white/96 p-6 text-center shadow-[0_24px_60px_rgba(76,104,168,0.14)] md:p-8">
               <h3 className="text-base font-semibold text-foreground">로그인 후 이용해 주세요.</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 알림 등록과 수신 확인은 로그인 사용자만 가능합니다.
               </p>
-              <div className="mt-4 flex items-center justify-center gap-2">
-                <Button type="button" onClick={() => router.push(loginPath)}>
+              <div className="mt-5 flex items-center justify-center">
+                <Button type="button" className={`h-11 px-6 ${notificationTheme.solidButton}`} onClick={() => router.push(loginPath)}>
                   로그인하러 가기
                 </Button>
               </div>
+            </div>
             </div>
           </div>
         )}
@@ -399,6 +430,7 @@ function NotificationsPageClient() {
                 type="button"
                 variant="outline"
                 size="sm"
+                className={notificationTheme.outlineButton}
                 onClick={() => void handleClearAllNotifications()}
                 disabled={!isAuthenticated || isClearingAllNotifications}
               >
@@ -410,7 +442,7 @@ function NotificationsPageClient() {
                     type="button"
                     onClick={() => setSubscriptionSlide((prev) => Math.max(0, prev - 1))}
                     disabled={subscriptionSlide === 0}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-xs text-foreground disabled:opacity-40"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#d8e2f8] text-xs text-[#31508f] disabled:opacity-40"
                     aria-label="이전 카드"
                   >
                     ←
@@ -419,7 +451,7 @@ function NotificationsPageClient() {
                     type="button"
                     onClick={() => setSubscriptionSlide((prev) => Math.min(maxSubscriptionSlide, prev + 1))}
                     disabled={subscriptionSlide >= maxSubscriptionSlide}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-xs text-foreground disabled:opacity-40"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#d8e2f8] text-xs text-[#31508f] disabled:opacity-40"
                     aria-label="다음 카드"
                   >
                     →
@@ -430,7 +462,7 @@ function NotificationsPageClient() {
             </div>
           </div>
           {sortedSubscriptions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/60 bg-card p-6 text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-dashed border-[#d8e2f8] bg-white p-6 text-sm text-muted-foreground">
               등록한 회사가 없습니다.
             </div>
           ) : (
@@ -444,12 +476,12 @@ function NotificationsPageClient() {
                     "group w-full min-h-[172px] rounded-2xl border-4 p-5 text-left transition-all",
                     "hover:-translate-y-0.5 hover:shadow-md",
                     (item.companyId != null && (notificationsByCompanyId.get(item.companyId)?.length ?? 0) > 0)
-                      ? "border-emerald-400/80 bg-card hover:border-emerald-500/90"
-                      : "border-slate-300/80 bg-card hover:border-slate-400/80",
+                      ? "border-[#7fa4ff] bg-white hover:border-[#5f8ff8]"
+                      : "border-[#d8e2f8] bg-white hover:border-[#b9cbed]",
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-base font-bold text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#eef4ff] text-base font-bold text-[#456ecf]">
                       {item.companyName.charAt(0)}
                     </div>
                     <button
@@ -465,7 +497,7 @@ function NotificationsPageClient() {
                   </div>
                   <p className="mt-3 break-words font-semibold text-foreground">{item.companyName}</p>
                   <p className="mt-1 text-xs text-muted-foreground">등록일 {formatDate(item.createdAt)}</p>
-                  <p className="mt-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  <p className="mt-2 inline-flex rounded-full bg-[#f3f7ff] px-2 py-0.5 text-xs font-medium text-[#5f76a8]">
                     {(item.companyId != null && (notificationsByCompanyId.get(item.companyId)?.length ?? 0) > 0)
                       ? `알림 ${(notificationsByCompanyId.get(item.companyId)?.length ?? 0)}건`
                       : "알림 없음"}
@@ -478,6 +510,7 @@ function NotificationsPageClient() {
             <Button
               type="button"
               variant="outline"
+              className={notificationTheme.outlineButton}
               onClick={() => void loadSubscriptions(subscriptionPage + 1, true)}
               disabled={isSubscriptionLoading}
             >
@@ -500,6 +533,7 @@ function NotificationsPageClient() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  className={notificationTheme.outlineButton}
                   onClick={() => void handleClearAllSelectedCompanyNotifications()}
                   disabled={isClearingAll}
                   className="h-8 whitespace-nowrap"
@@ -511,13 +545,13 @@ function NotificationsPageClient() {
           </DialogHeader>
 
           {selectedCompanyNotifications.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-5 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-[#d8e2f8] bg-[#f8fbff] p-5 text-sm text-muted-foreground">
               아직 받은 알림이 없습니다.
             </div>
           ) : (
             <div className="max-h-[52vh] space-y-3 overflow-auto pr-1">
               {selectedCompanyNotifications.map((item) => (
-                <div key={item.notificationId} className="rounded-xl border border-border/60 bg-card p-3">
+                <div key={item.notificationId} className={`rounded-xl ${notificationTheme.card} p-3`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="break-words text-sm font-semibold text-foreground">{item.summaryText}</p>
@@ -535,7 +569,7 @@ function NotificationsPageClient() {
                               <button
                                 type="button"
                                 onClick={() => toggleMessageExpanded(item.notificationId)}
-                                className="mt-1 text-xs font-semibold text-primary hover:underline"
+                                className="mt-1 text-xs font-semibold text-[#4d84ff] hover:underline"
                               >
                                 {isExpanded ? "접기" : "더보기"}
                               </button>
@@ -564,6 +598,7 @@ function NotificationsPageClient() {
             <Button
               type="button"
               variant="outline"
+              className={notificationTheme.outlineButton}
               onClick={() => void loadNotifications(notificationPage + 1, true)}
               disabled={isNotificationLoading}
             >
@@ -618,7 +653,7 @@ export default function NotificationsPage() {
   return (
     <Suspense
       fallback={
-        <div className="page-shell [--page-max:1520px] py-6 text-sm text-muted-foreground">
+        <div className="page-shell [--page-max:1280px] py-6 text-sm text-muted-foreground">
           불러오는 중...
         </div>
       }

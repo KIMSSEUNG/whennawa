@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { toCompanySlug } from "@/lib/company-slug"
+import { boardTheme } from "@/lib/board-theme"
 
 export default function BoardPage() {
   const router = useRouter()
@@ -82,9 +83,7 @@ export default function BoardPage() {
         setAddMessage(`회사 추가가 완료되었습니다.${normalizedNotice ? ` ${normalizedNotice}` : ""}`)
       }
       setQuery(result.companyName)
-      if (!result.pending) {
-        await runSearch(result.companyName)
-      }
+      if (!result.pending) await runSearch(result.companyName)
     } catch (error) {
       const message = error instanceof Error ? error.message : "회사 추가에 실패했습니다."
       setAddMessage(message)
@@ -113,13 +112,15 @@ export default function BoardPage() {
   }, [normalizedQuery])
 
   return (
-    <div className="page-shell [--page-max:1200px] space-y-6 py-6">
-      <section className="relative overflow-visible rounded-3xl border border-border/60 bg-card p-5 md:p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(80,120,255,0.2),transparent_55%)]" />
+    <div className="page-shell [--page-max:1280px] space-y-6 py-6">
+      <section className={boardTheme.heroSection}>
+        <div className={boardTheme.heroTopLine} />
+        <div className={boardTheme.heroGlowRight} />
+        <div className={boardTheme.heroGlowLeft} />
         <div className="relative">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Community Board</p>
-          <h1 className="mt-2 text-2xl font-bold text-foreground md:text-3xl">회사 게시판 찾기</h1>
-          <p className="mt-1 text-sm text-muted-foreground">회사명을 검색해 게시판으로 이동하고, 없으면 회사 추가 요청을 보낼 수 있습니다.</p>
+          <p className={boardTheme.heroEyebrow}>Community Board</p>
+          <h1 className={boardTheme.heroTitle}>회사 게시판 찾기</h1>
+          <p className={boardTheme.heroDescription}>회사명을 검색해 게시판으로 이동하고, 없으면 회사 추가 요청까지 바로 보낼 수 있습니다.</p>
 
           <form
             className="mt-5 flex flex-wrap gap-2"
@@ -138,11 +139,11 @@ export default function BoardPage() {
                 }}
                 onFocus={() => setShowRelatedSuggestions(true)}
                 placeholder="회사명을 입력해 주세요."
-                className="h-12 rounded-xl border-border/70 bg-background/80"
+                className={`h-12 rounded-[18px] bg-white shadow-none ${boardTheme.field}`}
               />
               {showRelatedSuggestions && !isCompanyRequestPopupOpen && normalizedQuery && relatedResults.length > 0 && !exactMatch && (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[100] rounded-2xl border border-border/70 bg-card p-2 shadow-lg">
-                  <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">연관 검색어</p>
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[100] rounded-2xl border border-[#dbe3f7] bg-white p-2 shadow-lg">
+                  <p className="px-2 pb-1 text-xs font-medium text-[#7586b3]">연관 검색어</p>
                   <div className="max-h-64 overflow-auto">
                     {relatedResults.map((company) => (
                       <button
@@ -153,7 +154,7 @@ export default function BoardPage() {
                           setShowRelatedSuggestions(false)
                           void runSearch(company.companyName)
                         }}
-                        className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/60"
+                        className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-[#f5f8ff]"
                       >
                         {company.companyName}
                       </button>
@@ -162,26 +163,22 @@ export default function BoardPage() {
                 </div>
               )}
             </div>
-            <Button type="submit" className="h-12 px-6" disabled={isSearching || !query.trim()}>
+            <Button type="submit" className={`h-12 rounded-[18px] px-6 ${boardTheme.solidButton}`} disabled={isSearching || !query.trim()}>
               {isSearching ? "검색 중..." : "게시판 검색"}
             </Button>
-            <Button type="button" variant="outline" className="h-12 px-6" onClick={() => setIsAddOpen(true)}>
+            <Button type="button" variant="outline" className={`h-12 rounded-[18px] px-6 ${boardTheme.outlineButton}`} onClick={() => setIsAddOpen(true)}>
               회사 추가
             </Button>
           </form>
 
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            {!!searched && (
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-700 dark:text-amber-300">
-                최근 검색: {searched}
-              </span>
-            )}
+            {!!searched && <span className={boardTheme.messageChip}>최근 검색: {searched}</span>}
           </div>
         </div>
       </section>
 
       {isSearching ? (
-        <div className="rounded-2xl border border-border/60 bg-card p-8 text-sm text-muted-foreground">검색 중입니다...</div>
+        <div className={`${boardTheme.card} p-8 text-sm ${boardTheme.metaText}`}>검색 중입니다...</div>
       ) : !searched ? (
         <EmptyState title="회사 게시판 검색" description="회사명을 검색하면 해당 회사 게시판으로 이동할 수 있습니다." />
       ) : results.length === 0 ? (
@@ -193,16 +190,14 @@ export default function BoardPage() {
               key={company.companyName}
               type="button"
               onClick={() => router.push(`/board/${toCompanySlug(company.companyName)}`)}
-              className="group rounded-2xl border border-border/60 bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+              className={`group ${boardTheme.card} p-4 text-left ${boardTheme.hoverCard}`}
             >
               <div className="flex items-start justify-between gap-3">
-                <p className="text-base font-semibold text-foreground">{company.companyName}</p>
-                <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                  입장
-                </span>
+                <p className={`text-base font-semibold ${boardTheme.titleText}`}>{company.companyName}</p>
+                <span className={`shrink-0 font-medium ${boardTheme.tag}`}>입장</span>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">게시글 확인, 글 작성 페이지 이동</p>
-              <p className="mt-3 text-[11px] text-muted-foreground/80 group-hover:text-muted-foreground">클릭하면 회사 게시판으로 이동합니다.</p>
+              <p className={`mt-2 text-xs ${boardTheme.metaText}`}>게시글 확인, 글 작성 페이지로 이동</p>
+              <p className="mt-3 text-[11px] text-[#6b7280] group-hover:text-[#4b5563]">클릭하면 회사 게시판으로 이동합니다.</p>
             </button>
           ))}
         </section>
@@ -215,12 +210,7 @@ export default function BoardPage() {
             <DialogDescription>공백과 (주), ㈜ 같은 표현은 제거되어 정규화된 이름으로 저장됩니다.</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleAddCompany}>
-            <Input
-              value={newCompanyName}
-              onChange={(e) => setNewCompanyName(e.target.value)}
-              placeholder="회사명을 입력해 주세요."
-              required
-            />
+            <Input value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="회사명을 입력해 주세요." required className={boardTheme.field} />
             {newCompanyName.trim() && normalizedPreview && normalizedPreview !== newCompanyName.trim() && (
               <p className="text-xs text-muted-foreground">
                 정규화 저장 이름: <span className="font-medium text-foreground">{normalizedPreview}</span>

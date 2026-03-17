@@ -14,13 +14,6 @@ import {
 } from "@/lib/api"
 import type { HomeHotCompanyItem, HomeLatestReportItem, NotificationSubscription, UserNotification } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import buildingIcon from "@/design-previews/icon/image-Photoroom (1).png"
-import searchIcon from "@/design-previews/icon/image-Photoroom (2).png"
-import chatIcon from "@/design-previews/icon/image-Photoroom (3).png"
-import bellIcon from "@/design-previews/icon/image-Photoroom (5).png"
-import heroBackground from "@/design-previews/icon/background.png"
-import panelShape from "@/design-previews/icon/whennawa_asset_2_panel_shape.png"
-import mascots from "@/design-previews/icon/whennawa_asset_3_mascots.png"
 
 const statChips = [
   { label: "최근 제보", value: "56건", tone: "warm" },
@@ -35,25 +28,25 @@ const reportBoards = [
     href: "/board",
     title: "회사 정보 게시판",
     description: "기업별 정보와 후기를 확인하세요",
-    icon: buildingIcon,
+    icon: "/design-previews/icon/board-company.png",
   },
   {
     href: "/career-board",
     title: "취업 고민 게시판",
     description: "고민과 경험을 함께 나누세요",
-    icon: chatIcon,
+    icon: "/design-previews/icon/board-career.png",
   },
   {
     href: "/search",
     title: "발표일 탐색",
     description: "원하는 회사의 발표 흐름을 빠르게 확인하세요",
-    icon: searchIcon,
+    icon: "/design-previews/icon/search-company.png",
   },
   {
     href: "/notifications",
     title: "알림 관리",
     description: "관심 회사 발표만 선택해서 받아보세요",
-    icon: bellIcon,
+    icon: "/design-previews/icon/notifications.png",
   },
 ]
 
@@ -147,12 +140,12 @@ export default function HomePage() {
       <div className="page-shell [--page-max:1280px] pb-8 pt-4 md:pt-8">
         <div className="mx-auto flex w-full flex-col gap-5 md:gap-6">
           <section className="relative overflow-hidden rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-5 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] md:px-8 md:pb-8 md:pt-9">
-            <Image src={heroBackground} alt="" fill priority className="object-cover object-center" />
+            <Image src="/design-previews/icon/hero-background.png" alt="" fill priority className="object-cover object-center" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(34,76,192,0.12)_0%,rgba(34,76,192,0.2)_62%,rgba(78,183,210,0.16)_100%)]" />
             <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(223,246,255,0.34)_0%,rgba(223,246,255,0)_72%)]" />
             <div className="absolute -left-10 bottom-6 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(207,239,255,0.24)_0%,rgba(207,239,255,0)_74%)]" />
             <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_100%)]" />
-            <Image src={mascots} alt="" width={124} height={82} className="absolute right-4 top-4 hidden opacity-95 md:block" />
+            <Image src="/design-previews/icon/hero-mascots.png" alt="" width={124} height={82} className="absolute right-4 top-4 hidden opacity-95 md:block" />
 
             <div className="relative z-10 mx-auto flex max-w-[860px] flex-col items-center text-center text-white">
               <p className="text-[11px] font-semibold tracking-[0.22em] text-white/70">HIRING SIGNAL DASHBOARD</p>
@@ -349,7 +342,7 @@ export default function HomePage() {
           </section>
 
           <section className="relative overflow-hidden rounded-[24px] border border-[#dfe6ff] bg-white/95 p-5 shadow-[0_18px_40px_rgba(97,118,177,0.1)]">
-            <Image src={panelShape} alt="" fill className="object-cover opacity-55" />
+            <Image src="/design-previews/icon/panel-shape.png" alt="" fill className="object-cover opacity-55" />
             <div className="relative z-10">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>

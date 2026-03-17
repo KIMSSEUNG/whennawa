@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState, type FormEvent } from "react"
 import Link from "next/link"
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { EmptyState } from "@/components/empty-state"
 import { CAREER_BOARD_PATH } from "@/lib/career-board"
+import { careerBoardTheme } from "@/lib/career-board-theme"
 
 type SearchField = "title" | "content"
 
@@ -40,17 +41,14 @@ export default function CareerBoardPage() {
 
   const [posts, setPosts] = useState<BoardPost[]>([])
   const [page, setPage] = useState(0)
-  const [hasNext, setHasNext] = useState(false)
   const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-
   const [searchField, setSearchField] = useState<SearchField>("title")
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [isSearchMode, setIsSearchMode] = useState(false)
-
   const [myUserId, setMyUserId] = useState<number | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [editingPostId, setEditingPostId] = useState<number | null>(null)
@@ -68,12 +66,8 @@ export default function CareerBoardPage() {
       const data = await fetchCareerBoardPosts(targetPage, POST_PAGE_SIZE)
       setPosts(data.items)
       setPage(data.page)
-      setHasNext(data.hasNext)
-      const resolvedTotalPages = typeof data.totalPages === "number" && data.totalPages >= 0
-        ? data.totalPages
-        : data.hasNext
-          ? data.page + 2
-          : data.page + 1
+      const resolvedTotalPages =
+        typeof data.totalPages === "number" && data.totalPages >= 0 ? data.totalPages : data.hasNext ? data.page + 2 : data.page + 1
       setTotalPages(Math.max(resolvedTotalPages, 0))
       if (isFirstPage) setIsSearchMode(false)
     } catch (error) {
@@ -101,12 +95,8 @@ export default function CareerBoardPage() {
       const data = await searchCareerBoardPosts(normalizedQuery, searchField, targetPage, POST_PAGE_SIZE)
       setPosts(data.items)
       setPage(data.page)
-      setHasNext(data.hasNext)
-      const resolvedTotalPages = typeof data.totalPages === "number" && data.totalPages >= 0
-        ? data.totalPages
-        : data.hasNext
-          ? data.page + 2
-          : data.page + 1
+      const resolvedTotalPages =
+        typeof data.totalPages === "number" && data.totalPages >= 0 ? data.totalPages : data.hasNext ? data.page + 2 : data.page + 1
       setTotalPages(Math.max(resolvedTotalPages, 0))
       setIsSearchMode(true)
     } catch (error) {
@@ -132,7 +122,6 @@ export default function CareerBoardPage() {
       setMyUserId(Number.isFinite(parsed) ? parsed : null)
       setIsAdmin(me?.role === "ADMIN")
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSearch = async (event: FormEvent) => {
@@ -146,11 +135,8 @@ export default function CareerBoardPage() {
     if (targetPage >= totalPages) return
     if (isLoading || isSearching || isLoadingMore) return
     setMessage(null)
-    if (isSearchMode && searchQuery.trim()) {
-      await runSearch(targetPage)
-    } else {
-      await loadPosts(targetPage)
-    }
+    if (isSearchMode && searchQuery.trim()) await runSearch(targetPage)
+    else await loadPosts(targetPage)
   }
 
   const startEdit = (post: BoardPost) => {
@@ -166,16 +152,12 @@ export default function CareerBoardPage() {
   }
 
   const reloadCurrent = async () => {
-    if (isSearchMode && searchQuery.trim()) {
-      await runSearch(page)
-    } else {
-      await loadPosts(page)
-    }
+    if (isSearchMode && searchQuery.trim()) await runSearch(page)
+    else await loadPosts(page)
   }
 
   const handleUpdate = async (postId: number) => {
     if (!editTitle.trim() || !editContent.trim()) return
-
     setIsEditing(true)
     setMessage(null)
     try {
@@ -192,7 +174,6 @@ export default function CareerBoardPage() {
 
   const handleDelete = async (postId: number) => {
     if (isDeleting) return
-
     setIsDeleting(true)
     setMessage(null)
     try {
@@ -218,61 +199,50 @@ export default function CareerBoardPage() {
   }
 
   const paginationBlockStart = Math.floor(page / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE
-  const paginationPages = Array.from({ length: PAGE_GROUP_SIZE }, (_, index) => paginationBlockStart + index).filter(
-    (value) => value < totalPages,
-  )
+  const paginationPages = Array.from({ length: PAGE_GROUP_SIZE }, (_, index) => paginationBlockStart + index).filter((value) => value < totalPages)
   const canGoPrevPage = page > 0
   const canGoNextPage = page < totalPages - 1
   const canGoPrevBlock = paginationBlockStart > 0
   const canGoNextBlock = paginationBlockStart + PAGE_GROUP_SIZE < totalPages
 
   return (
-    <div className="page-shell [--page-max:1200px] space-y-6 py-6">
-      <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-5 md:p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_55%)]" />
+    <div className="page-shell [--page-max:1280px] space-y-6 py-6">
+      <section className={careerBoardTheme.heroSection}>
+        <div className={careerBoardTheme.heroTopLine} />
+        <div className={careerBoardTheme.heroGlowRight} />
+        <div className={careerBoardTheme.heroGlowLeft} />
         <div className="relative">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Board Home</p>
-          <h1 className="mt-2 text-2xl font-bold text-foreground md:text-3xl">취업 고민 게시판</h1>
-          <p className="mt-1 text-sm text-muted-foreground">연관 검색어 없이, 취업 고민을 자유롭게 공유하는 공간입니다.</p>
+          <p className={careerBoardTheme.heroEyebrow}>Board Home</p>
+          <h1 className={careerBoardTheme.heroTitle}>취업 고민 게시판</h1>
+          <p className={careerBoardTheme.heroDescription}>연관 검색어 없이, 취업 고민을 자유롭게 공유하는 공간입니다.</p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href={writeHref}>
-              <Button type="button" className="h-10">게시글 작성하기</Button>
+              <Button type="button" className={`h-10 ${careerBoardTheme.solidButton}`}>게시글 작성하기</Button>
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border/60 bg-card p-4">
+      <section className={`${careerBoardTheme.card} p-4`}>
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-foreground">게시글 검색</h2>
-          <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
-            {isSearchMode ? "검색결과" : "전체 목록"}
-          </span>
+          <span className={careerBoardTheme.tag}>{isSearchMode ? "검색결과" : "전체 목록"}</span>
         </div>
 
         <form className="flex flex-wrap gap-2" onSubmit={handleSearch}>
-          <select
-            value={searchField}
-            onChange={(e) => setSearchField(e.target.value as SearchField)}
-            className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-          >
+          <select value={searchField} onChange={(e) => setSearchField(e.target.value as SearchField)} className={careerBoardTheme.fieldSelect}>
             <option value="title">제목</option>
             <option value="content">내용</option>
           </select>
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="검색어를 입력해 주세요"
-            className="h-10 w-full min-w-0 flex-1"
-          />
-          <Button type="submit" className="h-10" disabled={isSearching}>
+          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="검색어를 입력해 주세요" className={`h-10 w-full min-w-0 flex-1 ${careerBoardTheme.field}`} />
+          <Button type="submit" className={`h-10 ${careerBoardTheme.solidButton}`} disabled={isSearching}>
             {isSearching ? "검색 중..." : "검색"}
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="h-10"
+            className={`h-10 ${careerBoardTheme.outlineButton}`}
             onClick={() => {
               setTotalPages(0)
               void loadPosts(0)
@@ -283,13 +253,11 @@ export default function CareerBoardPage() {
         </form>
       </section>
 
-      {message && (
-        <div className="rounded-xl border border-border/60 bg-card px-3 py-2 text-sm text-muted-foreground">{message}</div>
-      )}
+      {message && <div className={`${careerBoardTheme.card} px-3 py-2 text-sm text-muted-foreground`}>{message}</div>}
 
       <section className="space-y-3">
         {isLoading ? (
-          <div className="rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">불러오는 중...</div>
+          <div className={`${careerBoardTheme.card} p-6 text-sm text-muted-foreground`}>불러오는 중...</div>
         ) : posts.length === 0 ? (
           <EmptyState title="게시글이 없습니다" description="검색 조건을 바꾸거나 첫 게시글을 작성해 보세요." />
         ) : (
@@ -302,35 +270,26 @@ export default function CareerBoardPage() {
                 <article
                   key={post.postId}
                   onClick={() => {
-                    if (!isEditingPost) {
-                      router.push(`${boardHref}/posts/${post.postId}`)
-                    }
+                    if (!isEditingPost) router.push(`${boardHref}/posts/${post.postId}`)
                   }}
-                  className="cursor-pointer rounded-2xl border border-border/60 bg-card p-4 transition-shadow hover:shadow-sm"
+                  className={`cursor-pointer ${careerBoardTheme.card} p-4 transition-shadow hover:shadow-sm`}
                 >
                   {isEditingPost ? (
                     <div className="space-y-3">
-                      <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} maxLength={120} />
-                      <Textarea
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        className="min-h-[140px]"
-                        maxLength={3000}
-                      />
+                      <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} maxLength={120} className={careerBoardTheme.field} />
+                      <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className={`min-h-[140px] ${careerBoardTheme.field}`} maxLength={3000} />
                       <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
-                        <Button type="button" onClick={() => void handleUpdate(post.postId)} disabled={isEditing}>
+                        <Button type="button" onClick={() => void handleUpdate(post.postId)} disabled={isEditing} className={careerBoardTheme.solidButton}>
                           {isEditing ? "수정 중..." : "수정 완료"}
                         </Button>
-                        <Button type="button" variant="outline" onClick={cancelEdit}>취소</Button>
+                        <Button type="button" variant="outline" className={careerBoardTheme.outlineButton} onClick={cancelEdit}>취소</Button>
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <h3 className="text-lg font-semibold text-foreground">{post.title}</h3>
-                        <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground">
-                          #{post.postId}
-                        </span>
+                        <span className={careerBoardTheme.tag}>#{post.postId}</span>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className="rounded-full bg-muted px-2 py-0.5">{post.authorName}</span>
@@ -351,23 +310,17 @@ export default function CareerBoardPage() {
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
                         <Link href={`${boardHref}/posts/${post.postId}`} onClick={(event) => event.stopPropagation()}>
-                          <Button type="button" variant="outline">자세히 보기</Button>
+                          <Button type="button" variant="outline" className={careerBoardTheme.outlineButton}>자세히 보기</Button>
                         </Link>
                         {canEdit && (
                           <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                startEdit(post)
-                              }}
-                            >
+                            <Button type="button" variant="outline" className={careerBoardTheme.outlineButton} onClick={(event) => { event.stopPropagation(); startEdit(post) }}>
                               수정
                             </Button>
                             <Button
                               type="button"
                               variant="outline"
+                              className={careerBoardTheme.outlineButton}
                               onClick={(event) => {
                                 event.stopPropagation()
                                 void handleDelete(post.postId)
@@ -387,20 +340,10 @@ export default function CareerBoardPage() {
 
             {totalPages > 1 && (
               <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void goToPage(Math.max(0, paginationBlockStart - PAGE_GROUP_SIZE))}
-                  disabled={!canGoPrevBlock || isLoadingMore || isLoading || isSearching}
-                >
+                <Button type="button" variant="outline" className={careerBoardTheme.outlineButton} onClick={() => void goToPage(Math.max(0, paginationBlockStart - PAGE_GROUP_SIZE))} disabled={!canGoPrevBlock || isLoadingMore || isLoading || isSearching}>
                   {"<<"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void goToPage(page - 1)}
-                  disabled={!canGoPrevPage || isLoadingMore || isLoading || isSearching}
-                >
+                <Button type="button" variant="outline" className={careerBoardTheme.outlineButton} onClick={() => void goToPage(page - 1)} disabled={!canGoPrevPage || isLoadingMore || isLoading || isSearching}>
                   {"<"}
                 </Button>
                 {paginationPages.map((pageNumber) => (
@@ -410,25 +353,15 @@ export default function CareerBoardPage() {
                     variant={pageNumber === page ? "default" : "outline"}
                     onClick={() => void goToPage(pageNumber)}
                     disabled={isLoadingMore || isLoading || isSearching}
-                    className="min-w-10"
+                    className={pageNumber === page ? `min-w-10 ${careerBoardTheme.solidButton}` : `min-w-10 ${careerBoardTheme.outlineButton}`}
                   >
                     {pageNumber + 1}
                   </Button>
                 ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void goToPage(page + 1)}
-                  disabled={!canGoNextPage || isLoadingMore || isLoading || isSearching}
-                >
+                <Button type="button" variant="outline" className={careerBoardTheme.outlineButton} onClick={() => void goToPage(page + 1)} disabled={!canGoNextPage || isLoadingMore || isLoading || isSearching}>
                   {">"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void goToPage(Math.min(totalPages - 1, paginationBlockStart + PAGE_GROUP_SIZE))}
-                  disabled={!canGoNextBlock || isLoadingMore || isLoading || isSearching}
-                >
+                <Button type="button" variant="outline" className={careerBoardTheme.outlineButton} onClick={() => void goToPage(Math.min(totalPages - 1, paginationBlockStart + PAGE_GROUP_SIZE))} disabled={!canGoNextBlock || isLoadingMore || isLoading || isSearching}>
                   {">>"}
                 </Button>
               </div>

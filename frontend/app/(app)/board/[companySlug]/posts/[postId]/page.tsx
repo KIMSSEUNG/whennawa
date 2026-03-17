@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { EmptyState } from "@/components/empty-state"
+import { boardTheme } from "@/lib/board-theme"
 
 const COMMENT_PAGE_SIZE = 10
 const COMMENT_COLLAPSE_LIMIT = 500
@@ -43,15 +44,9 @@ function CommentContent({ content }: { content: string }) {
 
   return (
     <div>
-      <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm leading-6 text-foreground/95">
-        {display}
-      </p>
+      <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm leading-6 text-foreground/95">{display}</p>
       {long && (
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="mt-1 text-xs text-muted-foreground underline underline-offset-2"
-        >
+        <button type="button" onClick={() => setExpanded((prev) => !prev)} className={`mt-1 text-xs ${boardTheme.metaText} underline underline-offset-2`}>
           {expanded ? "접기" : "더보기"}
         </button>
       )}
@@ -62,7 +57,6 @@ function CommentContent({ content }: { content: string }) {
 export default function BoardPostDetailPage() {
   const params = useParams<{ companySlug: string; postId: string }>()
   const router = useRouter()
-
   const companySlug = params?.companySlug ?? ""
   const companyName = useMemo(() => fromCompanySlug(companySlug), [companySlug])
   const postId = useMemo(() => Number(params?.postId ?? NaN), [params?.postId])
@@ -70,32 +64,26 @@ export default function BoardPostDetailPage() {
 
   const [post, setPost] = useState<BoardPost | null>(null)
   const [isLoadingPost, setIsLoadingPost] = useState(true)
-
   const [comments, setComments] = useState<BoardComment[]>([])
   const [commentPage, setCommentPage] = useState(0)
   const [commentHasNext, setCommentHasNext] = useState(false)
   const [isLoadingComments, setIsLoadingComments] = useState(true)
   const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false)
-
   const [message, setMessage] = useState<string | null>(null)
   const [myUserId, setMyUserId] = useState<number | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
-
   const [isEditingPost, setIsEditingPost] = useState(false)
   const [editTitle, setEditTitle] = useState("")
   const [editContent, setEditContent] = useState("")
   const [isSubmittingPost, setIsSubmittingPost] = useState(false)
   const [isDeletingPost, setIsDeletingPost] = useState(false)
-
   const [newCommentContent, setNewCommentContent] = useState("")
   const [newCommentAnonymous, setNewCommentAnonymous] = useState(false)
   const [isCreatingComment, setIsCreatingComment] = useState(false)
-
   const [replyTargetId, setReplyTargetId] = useState<number | null>(null)
   const [replyContent, setReplyContent] = useState("")
   const [replyAnonymous, setReplyAnonymous] = useState(false)
   const [isCreatingReply, setIsCreatingReply] = useState(false)
-
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentContent, setEditingCommentContent] = useState("")
   const [isSavingComment, setIsSavingComment] = useState(false)
@@ -123,10 +111,8 @@ export default function BoardPostDetailPage() {
   const loadComments = async (reset: boolean) => {
     if (!companyName || !Number.isFinite(postId)) return
     const targetPage = reset ? 0 : commentPage + 1
-
     if (reset) setIsLoadingComments(true)
     else setIsLoadingMoreComments(true)
-
     try {
       const data = await fetchBoardComments(companyName, postId, targetPage, COMMENT_PAGE_SIZE)
       setComments((prev) => (reset ? data.items : [...prev, ...data.items]))
@@ -152,7 +138,6 @@ export default function BoardPostDetailPage() {
       setMyUserId(Number.isFinite(parsed) ? parsed : null)
       setIsAdmin(me?.role === "ADMIN")
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyName, postId])
 
   const refreshComments = async () => {
@@ -167,7 +152,7 @@ export default function BoardPostDetailPage() {
       const updated = await updateBoardPost(companyName, post.postId, editTitle, editContent)
       setPost(updated)
       setIsEditingPost(false)
-      setMessage("게시글이 수정되었습니다.")
+      setMessage("게시글을 수정했습니다.")
     } catch (error) {
       const text = error instanceof Error ? error.message : "게시글 수정에 실패했습니다."
       setMessage(text)
@@ -195,9 +180,7 @@ export default function BoardPostDetailPage() {
     setIsCreatingComment(true)
     setMessage(null)
     try {
-      await createBoardComment(companyName, postId, newCommentContent, undefined, {
-        anonymous: newCommentAnonymous,
-      })
+      await createBoardComment(companyName, postId, newCommentContent, undefined, { anonymous: newCommentAnonymous })
       setNewCommentContent("")
       setNewCommentAnonymous(false)
       await refreshComments()
@@ -214,9 +197,7 @@ export default function BoardPostDetailPage() {
     setIsCreatingReply(true)
     setMessage(null)
     try {
-      await createBoardComment(companyName, postId, replyContent, replyTargetId, {
-        anonymous: replyAnonymous,
-      })
+      await createBoardComment(companyName, postId, replyContent, replyTargetId, { anonymous: replyAnonymous })
       setReplyTargetId(null)
       setReplyContent("")
       setReplyAnonymous(false)
@@ -268,11 +249,8 @@ export default function BoardPostDetailPage() {
 
   const handleToggleLike = async (comment: BoardComment) => {
     try {
-      if (comment.likedByMe) {
-        await unlikeBoardComment(companyName, postId, comment.commentId)
-      } else {
-        await likeBoardComment(companyName, postId, comment.commentId)
-      }
+      if (comment.likedByMe) await unlikeBoardComment(companyName, postId, comment.commentId)
+      else await likeBoardComment(companyName, postId, comment.commentId)
       await refreshComments()
     } catch (error) {
       const text = error instanceof Error ? error.message : "좋아요 처리에 실패했습니다."
@@ -302,45 +280,29 @@ export default function BoardPostDetailPage() {
     const canReply = depth < 2
 
     return (
-      <div
-        key={comment.commentId}
-        className={depth === 0 ? "rounded-xl border border-border/60 bg-background p-3" : "rounded-lg border border-border/60 bg-card p-3"}
-      >
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-muted px-2 py-0.5">{comment.authorName}</span>
-          <span>•</span>
+      <div key={comment.commentId} className={depth === 0 ? `${boardTheme.subtlePanel} p-3` : `${boardTheme.card} p-3`}>
+        <div className={`flex flex-wrap items-center gap-2 text-xs ${boardTheme.metaText}`}>
+          <span className={boardTheme.authorChip}>{comment.authorName}</span>
+          <span>·</span>
           <span>{formatDate(comment.createdAt)}</span>
           {myUserId != null && comment.authorUserId != null && myUserId !== comment.authorUserId && (
-            <button
-              type="button"
-              className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
-              onClick={() => void handleBlockAuthor(comment.authorUserId)}
-            >
+            <button type="button" className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff]" onClick={() => void handleBlockAuthor(comment.authorUserId)}>
               차단
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => void handleToggleLike(comment)}
-            className="ml-auto rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
-          >
+          <button type="button" onClick={() => void handleToggleLike(comment)} className="ml-auto rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff]">
             {comment.likedByMe ? "좋아요 취소" : "좋아요"} ({comment.likeCount})
           </button>
         </div>
 
         {isEditingThis ? (
           <div className="mt-2 space-y-2">
-            <Textarea
-              value={editingCommentContent}
-              onChange={(e) => setEditingCommentContent(e.target.value)}
-              className="min-h-[90px]"
-              maxLength={3000}
-            />
+            <Textarea value={editingCommentContent} onChange={(e) => setEditingCommentContent(e.target.value)} className={`min-h-[90px] ${boardTheme.field}`} maxLength={3000} />
             <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={() => void handleSaveComment(comment.commentId)} disabled={isSavingComment}>
+              <Button type="button" onClick={() => void handleSaveComment(comment.commentId)} disabled={isSavingComment} className={boardTheme.solidButton}>
                 {isSavingComment ? "저장 중..." : "저장"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setEditingCommentId(null)}>취소</Button>
+              <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => setEditingCommentId(null)}>취소</Button>
             </div>
           </div>
         ) : (
@@ -352,6 +314,7 @@ export default function BoardPostDetailPage() {
             <Button
               type="button"
               variant="outline"
+              className={boardTheme.outlineButton}
               onClick={() => {
                 setReplyTargetId((prev) => (prev === comment.commentId ? null : comment.commentId))
                 setReplyContent("")
@@ -363,8 +326,8 @@ export default function BoardPostDetailPage() {
           )}
           {canEditComment(comment) && (
             <>
-              <Button type="button" variant="outline" onClick={() => openCommentEdit(comment)}>수정</Button>
-              <Button type="button" variant="outline" onClick={() => void handleDeleteComment(comment.commentId)} disabled={isDeletingComment}>
+              <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => openCommentEdit(comment)}>수정</Button>
+              <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => void handleDeleteComment(comment.commentId)} disabled={isDeletingComment}>
                 {isDeletingComment ? "삭제 중..." : "삭제"}
               </Button>
             </>
@@ -372,103 +335,85 @@ export default function BoardPostDetailPage() {
         </div>
 
         {replyTargetId === comment.commentId && canReply && (
-          <div className="mt-3 rounded-lg border border-border/60 bg-card p-3">
-            <Textarea
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              placeholder="답글을 입력해 주세요"
-              className="min-h-[90px]"
-              maxLength={3000}
-            />
-            <label className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={replyAnonymous}
-                onChange={(e) => setReplyAnonymous(e.target.checked)}
-                className="h-4 w-4"
-              />
+          <div className={`mt-3 ${boardTheme.card} p-3`}>
+            <Textarea value={replyContent} onChange={(e) => setReplyContent(e.target.value)} placeholder="답글을 입력해 주세요." className={`min-h-[90px] ${boardTheme.field}`} maxLength={3000} />
+            <label className={`mt-2 inline-flex items-center gap-2 text-xs ${boardTheme.metaText}`}>
+              <input type="checkbox" checked={replyAnonymous} onChange={(e) => setReplyAnonymous(e.target.checked)} className="h-4 w-4" />
               <span>익명으로 답글 달기</span>
             </label>
             <div className="mt-2 flex gap-2">
-              <Button type="button" onClick={() => void handleCreateReply()} disabled={isCreatingReply || !replyContent.trim()}>
+              <Button type="button" onClick={() => void handleCreateReply()} disabled={isCreatingReply || !replyContent.trim()} className={boardTheme.solidButton}>
                 {isCreatingReply ? "등록 중..." : "답글 등록"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setReplyTargetId(null)}>취소</Button>
+              <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => setReplyTargetId(null)}>취소</Button>
             </div>
           </div>
         )}
 
-        {comment.replies.length > 0 && (
-          <div className="mt-3 space-y-2 border-l border-border/60 pl-3">
-            {comment.replies.map((child) => renderCommentNode(child, depth + 1))}
-          </div>
-        )}
+        {comment.replies.length > 0 && <div className="mt-3 space-y-2 border-l border-[#dbe3f7] pl-3">{comment.replies.map((child) => renderCommentNode(child, depth + 1))}</div>}
       </div>
     )
   }
 
   return (
-    <div className="page-shell [--page-max:1000px] space-y-6 py-6">
-      <section className="rounded-3xl border border-border/60 bg-card p-5 md:p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Post Detail</p>
-        <h1 className="mt-2 text-2xl font-bold text-foreground">게시글 상세</h1>
+    <div className="page-shell [--page-max:1280px] space-y-6 py-6">
+      <section className={boardTheme.heroSection}>
+        <div className={boardTheme.heroTopLine} />
+        <p className={boardTheme.heroEyebrow}>Post Detail</p>
+        <h1 className={boardTheme.heroTitle}>게시글 상세</h1>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href={boardHref}>
-            <Button type="button" variant="outline">목록으로 돌아가기</Button>
+            <Button type="button" variant="outline" className={boardTheme.outlineButton}>목록으로 돌아가기</Button>
           </Link>
           <Link href={`${boardHref}/write`}>
-            <Button type="button">새 글 작성</Button>
+            <Button type="button" className={boardTheme.solidButton}>글쓰기</Button>
           </Link>
         </div>
       </section>
 
-      {message && <div className="rounded-xl border border-border/60 bg-card px-3 py-2 text-sm text-muted-foreground">{message}</div>}
+      {message && <div className={`${boardTheme.card} px-3 py-2 text-sm ${boardTheme.metaText}`}>{message}</div>}
 
       {isLoadingPost ? (
-        <div className="rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">게시글 불러오는 중...</div>
+        <div className={`${boardTheme.card} p-6 text-sm ${boardTheme.metaText}`}>게시글을 불러오는 중...</div>
       ) : !post ? (
         <EmptyState title="게시글을 찾지 못했습니다" description="삭제되었거나 접근할 수 없는 게시글입니다." />
       ) : (
-        <article className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
+        <article className={`${boardTheme.card} p-4 md:p-5`}>
           {isEditingPost ? (
             <div className="space-y-3">
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} maxLength={120} />
-              <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="min-h-[280px]" maxLength={3000} />
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} maxLength={120} className={boardTheme.field} />
+              <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className={`min-h-[280px] ${boardTheme.field}`} maxLength={3000} />
               <div className="flex flex-wrap gap-2">
-                <Button type="button" onClick={() => void handleSavePost()} disabled={isSubmittingPost}>
+                <Button type="button" onClick={() => void handleSavePost()} disabled={isSubmittingPost} className={boardTheme.solidButton}>
                   {isSubmittingPost ? "저장 중..." : "수정 저장"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setIsEditingPost(false)}>취소</Button>
+                <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => setIsEditingPost(false)}>취소</Button>
               </div>
             </div>
           ) : (
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <h2 className="text-xl font-semibold text-foreground">{post.title}</h2>
-                <span className="rounded-full border border-border/70 px-2 py-0.5 text-xs text-muted-foreground">#{post.postId}</span>
+                <h2 className={`text-xl font-semibold ${boardTheme.titleText}`}>{post.title}</h2>
+                <span className={boardTheme.tag}>#{post.postId}</span>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span className="rounded-full bg-muted px-2 py-0.5">{post.authorName}</span>
-                <span>•</span>
+              <div className={`mt-3 flex flex-wrap items-center gap-2 text-xs ${boardTheme.metaText}`}>
+                <span className={boardTheme.authorChip}>{post.authorName}</span>
+                <span>·</span>
                 <span>{formatDate(post.createdAt)}</span>
                 {myUserId != null && post.authorUserId != null && myUserId !== post.authorUserId && (
-                  <button
-                    type="button"
-                    className="rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent/60"
-                    onClick={() => void handleBlockAuthor(post.authorUserId)}
-                  >
+                  <button type="button" className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff]" onClick={() => void handleBlockAuthor(post.authorUserId)}>
                     차단
                   </button>
                 )}
               </div>
-              <div className="mt-5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-xl border border-border/60 bg-background p-4 text-sm leading-7 text-foreground/95">
+              <div className={`mt-5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${boardTheme.subtlePanel} p-4 text-sm leading-7 ${boardTheme.bodyText}`}>
                 {post.content}
               </div>
 
               {canEditPost && (
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsEditingPost(true)}>수정</Button>
-                  <Button type="button" variant="outline" onClick={() => void handleDeletePost()} disabled={isDeletingPost}>
+                  <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => setIsEditingPost(true)}>수정</Button>
+                  <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => void handleDeletePost()} disabled={isDeletingPost}>
                     {isDeletingPost ? "삭제 중..." : "삭제"}
                   </Button>
                 </div>
@@ -478,27 +423,16 @@ export default function BoardPostDetailPage() {
         </article>
       )}
 
-      <section className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
-        <h3 className="text-lg font-semibold text-foreground">댓글</h3>
+      <section className={`${boardTheme.card} p-4 md:p-5`}>
+        <h3 className="text-lg font-semibold text-[#24427c]">댓글</h3>
         <div className="mt-3 space-y-2">
-          <Textarea
-            value={newCommentContent}
-            onChange={(e) => setNewCommentContent(e.target.value)}
-            placeholder="댓글을 입력해 주세요"
-            className="min-h-[110px]"
-            maxLength={3000}
-          />
+          <Textarea value={newCommentContent} onChange={(e) => setNewCommentContent(e.target.value)} placeholder="댓글을 입력해 주세요." className={`min-h-[110px] ${boardTheme.field}`} maxLength={3000} />
           <div className="flex flex-col items-start gap-2">
-            <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={newCommentAnonymous}
-                onChange={(e) => setNewCommentAnonymous(e.target.checked)}
-                className="h-4 w-4"
-              />
+            <label className={`inline-flex items-center gap-2 text-xs ${boardTheme.metaText}`}>
+              <input type="checkbox" checked={newCommentAnonymous} onChange={(e) => setNewCommentAnonymous(e.target.checked)} className="h-4 w-4" />
               <span>익명으로 댓글 달기</span>
             </label>
-            <Button type="button" onClick={() => void handleCreateComment()} disabled={isCreatingComment || !newCommentContent.trim()}>
+            <Button type="button" onClick={() => void handleCreateComment()} disabled={isCreatingComment || !newCommentContent.trim()} className={boardTheme.solidButton}>
               {isCreatingComment ? "등록 중..." : "댓글 등록"}
             </Button>
           </div>
@@ -506,16 +440,15 @@ export default function BoardPostDetailPage() {
 
         <div className="mt-6 space-y-3">
           {isLoadingComments ? (
-            <div className="text-sm text-muted-foreground">댓글을 불러오는 중...</div>
+            <div className={`text-sm ${boardTheme.metaText}`}>댓글을 불러오는 중...</div>
           ) : comments.length === 0 ? (
             <EmptyState title="댓글이 없습니다" description="첫 댓글을 남겨 보세요." />
           ) : (
             <>
               {comments.map((comment) => renderCommentNode(comment, 0))}
-
               {commentHasNext && (
                 <div className="flex justify-center pt-2">
-                  <Button type="button" variant="outline" onClick={() => void loadComments(false)} disabled={isLoadingMoreComments}>
+                  <Button type="button" variant="outline" className={boardTheme.outlineButton} onClick={() => void loadComments(false)} disabled={isLoadingMoreComments}>
                     {isLoadingMoreComments ? "불러오는 중..." : "댓글 더보기"}
                   </Button>
                 </div>

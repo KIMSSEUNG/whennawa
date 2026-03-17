@@ -89,54 +89,60 @@ export function TopNav() {
   const loginHref = `/login?next=${encodeURIComponent(`${pathname ?? "/"}${qs ? `?${qs}` : ""}`)}`
 
   return (
-    <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm px-6">
-      <div className="flex items-center gap-8">
-        <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
-          <Image src="/logo.png" alt="언제나와 로고" width={28} height={28} className="rounded-md" priority />
-          <span>언제나와</span>
-        </Link>
-        <nav className="flex items-center gap-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "px-3 py-2 text-sm rounded-lg transition-colors",
-                  isActive
-                    ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                )}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
-      <div className="flex items-center gap-3">
-        {isAuthenticated ? (
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className={cn(
-              "text-sm px-3 py-1.5 rounded-lg border border-border/60",
-              "text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50",
-            )}
-          >
-            {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
-          </button>
-        ) : (
-          <Link
-            href={loginHref}
-            className="text-sm px-3 py-1.5 rounded-lg border border-border/60 text-foreground hover:bg-muted/50 transition-colors"
-          >
-            로그인
+    <header className="fixed left-0 right-0 top-0 z-50 hidden border-b border-[#dfe6ff] bg-[rgba(248,250,255,0.84)] backdrop-blur-xl md:block">
+      <div className="flex h-16 items-center justify-between gap-6 px-6 xl:px-10">
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-3 text-lg font-bold text-foreground">
+            <Image src="/logo.png" alt="언제나와 로고" width={32} height={32} className="rounded-xl" priority />
+            <div className="flex flex-col">
+              <span className="text-[17px] font-black tracking-tight text-[#21386f]">언제나와</span>
+              <span className="text-[11px] font-medium text-[#7a8fbf]">Hiring signal dashboard</span>
+            </div>
           </Link>
-        )}
-        <ThemeToggle />
+          <nav className="flex items-center gap-1">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-muted font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+        <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className={cn(
+                "rounded-full border border-[#dce4ff] bg-white/80 px-4 py-2 text-sm font-semibold text-[#2a4078] shadow-[0_8px_16px_rgba(112,136,198,0.08)] transition-colors hover:bg-[#f4f7ff] disabled:opacity-50",
+              )}
+            >
+              {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
+            </button>
+          ) : (
+            <Link
+              href={loginHref}
+              className="rounded-full border border-[#dce4ff] bg-white/80 px-4 py-2 text-sm font-semibold text-[#2a4078] shadow-[0_8px_16px_rgba(112,136,198,0.08)] transition-colors hover:bg-[#f4f7ff]"
+            >
+              로그인
+            </Link>
+          )}
+          <div className="rounded-full border border-[#dce4ff] bg-white/80 p-1 shadow-[0_8px_16px_rgba(112,136,198,0.08)]">
+            <ThemeToggle />
+          </div>
+        </div>
       </div>
     </header>
   )
