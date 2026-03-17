@@ -3,6 +3,20 @@ export interface CompanySearchItem {
   lastResultAt: Date | null
 }
 
+export interface HomeLatestReportItem {
+  companyName: string
+  stepName: string
+  recruitmentMode: RecruitmentMode
+  updatedAt: Date | null
+}
+
+export interface HomeHotCompanyItem {
+  companyName: string
+  latestStepName: string
+  activityCount: number
+  updatedAt: Date | null
+}
+
 export interface CompanyTimelineStep {
   eventType: string
   label: string

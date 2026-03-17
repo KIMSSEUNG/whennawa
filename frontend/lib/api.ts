@@ -7,6 +7,8 @@ import type {
   BoardPost,
   CompanyCreateResult,
   CompanySearchItem,
+  HomeHotCompanyItem,
+  HomeLatestReportItem,
   CompanyStatus,
   CompanyTimeline,
   InterviewDifficulty,
@@ -31,6 +33,20 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 type CompanySearchItemInput = {
   companyName: string
   lastResultAt: Date | string | null
+}
+
+type HomeLatestReportItemInput = {
+  companyName: string
+  stepName: string
+  recruitmentMode: RecruitmentMode
+  updatedAt: Date | string | null
+}
+
+type HomeHotCompanyItemInput = {
+  companyName: string
+  latestStepName: string
+  activityCount: number
+  updatedAt: Date | string | null
 }
 
 type CompanyStatusInput = {
@@ -289,6 +305,16 @@ const normalizeSearchCompany = (company: CompanySearchItemInput): CompanySearchI
   lastResultAt: toDateOrNull(company.lastResultAt),
 })
 
+const normalizeHomeLatestReport = (item: HomeLatestReportItemInput): HomeLatestReportItem => ({
+  ...item,
+  updatedAt: toDateOrNull(item.updatedAt),
+})
+
+const normalizeHomeHotCompany = (item: HomeHotCompanyItemInput): HomeHotCompanyItem => ({
+  ...item,
+  updatedAt: toDateOrNull(item.updatedAt),
+})
+
 const normalizeCompanyStatus = (status: CompanyStatusInput): CompanyStatus => ({
   companyId: status.companyId,
   companyName: status.companyName,
@@ -469,6 +495,76 @@ export async function searchCompanies(query: string, limit?: number): Promise<Co
     return data.map(normalizeSearchCompany)
   } catch (error) {
     console.error("Failed to search companies", error)
+    return []
+  }
+}
+
+export async function fetchHomeLatestReports(limit = 3): Promise<HomeLatestReportItem[]> {
+  try {
+    if (USE_MOCK) {
+      await delay(200)
+      return [
+        {
+          companyName: "SK하이닉스",
+          stepName: "서류 발표",
+          recruitmentMode: "REGULAR",
+          updatedAt: new Date(),
+        },
+        {
+          companyName: "삼성전자",
+          stepName: "공채 일정 갱신",
+          recruitmentMode: "REGULAR",
+          updatedAt: new Date(Date.now() - 1000 * 60 * 18),
+        },
+        {
+          companyName: "LG전자",
+          stepName: "인턴 1차 면접 발표",
+          recruitmentMode: "INTERN",
+          updatedAt: new Date(Date.now() - 1000 * 60 * 57),
+        },
+      ].slice(0, Math.max(1, limit))
+    }
+
+    const params = new URLSearchParams({ limit: String(limit) })
+    const data = await request<HomeLatestReportItemInput[]>(`/api/home/latest-reports?${params.toString()}`)
+    return (data ?? []).map(normalizeHomeLatestReport)
+  } catch (error) {
+    console.error("Failed to fetch home latest reports", error)
+    return []
+  }
+}
+
+export async function fetchHomeHotCompanies(limit = 3): Promise<HomeHotCompanyItem[]> {
+  try {
+    if (USE_MOCK) {
+      await delay(180)
+      return [
+        {
+          companyName: "SK하이닉스",
+          latestStepName: "서류 발표",
+          activityCount: 194,
+          updatedAt: new Date(),
+        },
+        {
+          companyName: "삼성전자",
+          latestStepName: "공채 일정 갱신",
+          activityCount: 164,
+          updatedAt: new Date(Date.now() - 1000 * 60 * 25),
+        },
+        {
+          companyName: "LG전자",
+          latestStepName: "인턴 1차 면접 발표",
+          activityCount: 137,
+          updatedAt: new Date(Date.now() - 1000 * 60 * 58),
+        },
+      ].slice(0, Math.max(1, limit))
+    }
+
+    const params = new URLSearchParams({ limit: String(limit) })
+    const data = await request<HomeHotCompanyItemInput[]>(`/api/home/hot-companies?${params.toString()}`)
+    return (data ?? []).map(normalizeHomeHotCompany)
+  } catch (error) {
+    console.error("Failed to fetch home hot companies", error)
     return []
   }
 }
