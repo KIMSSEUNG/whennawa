@@ -3,7 +3,7 @@
 import Link from "next/link"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { CompanySearchItem, CompanyStatus, KeywordLeadTime } from "@/lib/types"
+import type { CompanySearchItem, CompanyStatus, InterviewReview, KeywordLeadTime } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -25,6 +25,7 @@ interface CompanyDetailPanelProps {
     mode: "REGULAR" | "ROLLING" | "INTERN",
     options?: { todayAnnouncement?: boolean },
   ) => void
+  onInterviewReviewSelect?: (review: InterviewReview) => void
   showCompanyHeader?: boolean
   className?: string
 }
@@ -423,6 +424,7 @@ export function CompanyDetailPanel({
   isStatusLoading,
   isLeadTimeLoading,
   onQuickReport,
+  onInterviewReviewSelect,
   showCompanyHeader = true,
   className,
 }: CompanyDetailPanelProps) {
@@ -491,13 +493,39 @@ export function CompanyDetailPanel({
   }
 
   const selectedInterviewStep = activeTab === "ROLLING" ? rollingStepName.trim() : keyword.trim()
+  const modeInterviewReviews = useMemo(
+    () => interviewReviews.filter((review) => review.recruitmentMode === activeTab),
+    [activeTab, interviewReviews],
+  )
   const filteredInterviewReviews = useMemo(() => {
-    if (!selectedInterviewStep) return []
-    return interviewReviews
-      .filter((review) => review.recruitmentMode === activeTab)
-      .filter((review) => review.stepName?.trim() === selectedInterviewStep)
-      .slice(0, 3)
-  }, [activeTab, interviewReviews, selectedInterviewStep])
+    if (modeInterviewReviews.length === 0) return []
+    if (!selectedInterviewStep) return modeInterviewReviews.slice(0, 3)
+
+    const normalizedSelectedStep = selectedInterviewStep.trim().toLowerCase()
+    const matchedReviews = modeInterviewReviews.filter((review) => {
+      const reviewStepName = review.stepName?.trim().toLowerCase() ?? ""
+      if (!reviewStepName) return false
+      return (
+        reviewStepName === normalizedSelectedStep ||
+        normalizedSelectedStep.includes(reviewStepName) ||
+        reviewStepName.includes(normalizedSelectedStep)
+      )
+    })
+
+    return (matchedReviews.length > 0 ? matchedReviews : modeInterviewReviews).slice(0, 3)
+  }, [modeInterviewReviews, selectedInterviewStep])
+  const isInterviewReviewFallback =
+    Boolean(selectedInterviewStep) &&
+    filteredInterviewReviews.length > 0 &&
+    !filteredInterviewReviews.some((review) => {
+      const reviewStepName = review.stepName?.trim().toLowerCase() ?? ""
+      const normalizedSelectedStep = selectedInterviewStep.trim().toLowerCase()
+      return (
+        reviewStepName === normalizedSelectedStep ||
+        normalizedSelectedStep.includes(reviewStepName) ||
+        reviewStepName.includes(normalizedSelectedStep)
+      )
+    })
 
   const quickReportButtonLabel =
     activeTab === "REGULAR" ? "오늘 결과 발표가 났어요" : activeTab === "INTERN" ? "인턴 제보하기" : "수시 제보하기"
@@ -639,7 +667,12 @@ export function CompanyDetailPanel({
         {filteredInterviewReviews.length > 0 && (
           <section className="rounded-2xl border border-border/60 bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">면접 후기</h3>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">면접 후기</h3>
+                {isInterviewReviewFallback && (
+                  <p className="mt-1 text-xs text-muted-foreground">선택한 전형과 정확히 일치하는 후기가 없어 현재 전형의 최근 후기를 보여주고 있어요.</p>
+                )}
+              </div>
               <Link
                 href={`/interview-reviews/${encodeURIComponent(company.companyName)}`}
                 className="text-xs text-primary hover:underline"
@@ -647,12 +680,20 @@ export function CompanyDetailPanel({
                 전체 보러가기
               </Link>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {filteredInterviewReviews.map((review) => (
-                <article key={`review-${review.reviewId}`} className="rounded-lg border border-border/60 px-3 py-2">
-                  <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{review.stepName}</span>
-                    <span>{review.difficulty === "HARD" ? "어려움" : review.difficulty === "EASY" ? "쉬움" : "보통"}</span>
+                <article
+                  key={`review-${review.reviewId}`}
+                  className="cursor-pointer rounded-lg border border-[#d8e2fb] px-3 py-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)] transition-colors hover:bg-[#fbfcff]"
+                  onClick={() => onInterviewReviewSelect?.(review)}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2 text-xs text-[#6f83b3]">
+                    <span className="inline-flex min-w-0 max-w-full items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.92)]">
+                      <span className="truncate">{review.stepName}</span>
+                    </span>
+                    <span className="inline-flex shrink-0 items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.92)]">
+                      {review.difficulty === "HARD" ? "어려움" : review.difficulty === "EASY" ? "쉬움" : "보통"}
+                    </span>
                   </div>
                   <p className="line-clamp-2 text-sm text-foreground">{review.content}</p>
                 </article>

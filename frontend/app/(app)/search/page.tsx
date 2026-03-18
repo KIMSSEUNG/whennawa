@@ -17,6 +17,7 @@ import {
 import type {
   CompanySearchItem,
   CompanyStatus,
+  InterviewReview,
   KeywordLeadTime,
 } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -63,6 +64,7 @@ function SearchPageClient() {
   const [isLeadTimeLoading, setIsLeadTimeLoading] = useState(false)
   const [isCalendarVisible, setIsCalendarVisible] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [selectedInterviewReview, setSelectedInterviewReview] = useState<InterviewReview | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -640,6 +642,7 @@ function SearchPageClient() {
               isCalendarVisible={isCalendarVisible}
               isStatusLoading={isStatusLoading}
               isLeadTimeLoading={isLeadTimeLoading}
+              onInterviewReviewSelect={setSelectedInterviewReview}
               onQuickReport={(companyName, mode, options) =>
                 openGlobalReport(companyName, mode, {
                   todayAnnouncement: Boolean(options?.todayAnnouncement),
@@ -666,6 +669,7 @@ function SearchPageClient() {
         isCalendarVisible={isCalendarVisible}
         isStatusLoading={isStatusLoading}
         isLeadTimeLoading={isLeadTimeLoading}
+        onInterviewReviewSelect={setSelectedInterviewReview}
         onQuickReport={(companyName, mode, options) =>
           openGlobalReport(companyName, mode, {
             todayAnnouncement: Boolean(options?.todayAnnouncement),
@@ -674,6 +678,38 @@ function SearchPageClient() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />
+
+      <Dialog open={selectedInterviewReview != null} onOpenChange={(open) => !open && setSelectedInterviewReview(null)}>
+        <DialogContent className="max-h-[85vh] max-w-2xl !overflow-hidden border-[#d8e2fb] bg-white shadow-[0_20px_60px_rgba(98,120,177,0.18)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {selectedInterviewReview && (
+            <div className="flex max-h-[calc(85vh-2rem)] flex-col gap-3 overflow-hidden">
+              <DialogHeader>
+                <div className="mb-1 flex items-center justify-between gap-2 pr-8 text-xs text-[#6f83b3]">
+                  <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
+                    {selectedInterviewReview.stepName}
+                  </span>
+                  <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
+                    {selectedInterviewReview.difficulty === "HARD" ? "어려움" : selectedInterviewReview.difficulty === "EASY" ? "쉬움" : "보통"}
+                  </span>
+                </div>
+                <DialogTitle className="text-left text-base text-foreground">면접 후기 상세</DialogTitle>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <div className="nawa-scrollbar h-full overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="rounded-xl border border-[#d8e2fb] bg-[#fbfcff] px-4 py-4 text-sm leading-7 text-foreground whitespace-pre-wrap break-words shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
+                    {selectedInterviewReview.content}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {selectedInterviewReview.createdAt.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

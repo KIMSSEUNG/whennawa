@@ -349,6 +349,69 @@ const normalizeReportItem = (item: ReportItemInput): ReportItem => ({
   reportedDate: toDateOrNull(item.reportedDate),
 })
 
+const MOCK_REPORT_JOB_CATEGORY_NAMES: Record<number, string> = {
+  1: "개발",
+  2: "프론트엔드",
+  3: "백엔드",
+  4: "경영/사무",
+}
+
+function createDefaultMockAdminReports(): ReportItemInput[] {
+  return [
+    {
+      reportId: 1,
+      reportCount: 3,
+      companyName: "Naver",
+      recruitmentMode: "REGULAR",
+      rollingResultType: null,
+      prevReportedDate: null,
+      prevStepName: null,
+      currentStepName: null,
+      reportedDate: new Date(),
+      status: "PENDING",
+      jobCategoryId: 1,
+      jobCategoryName: "개발",
+      otherJobName: null,
+      interviewReviewContent: null,
+      interviewDifficulty: null,
+      onHold: false,
+    },
+    {
+      reportId: 2,
+      reportCount: 1,
+      companyName: "Kakao",
+      recruitmentMode: "ROLLING",
+      rollingResultType: "DATE_REPORTED",
+      prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
+      prevStepName: "서류",
+      currentStepName: "1차 면접 발표",
+      reportedDate: new Date(),
+      status: "PENDING",
+      jobCategoryId: 999,
+      jobCategoryName: "기타",
+      otherJobName: "데이터플랫폼",
+      interviewReviewContent: null,
+      interviewDifficulty: null,
+      onHold: false,
+    },
+  ]
+}
+
+let mockAdminReportsStore: ReportItemInput[] | null = null
+let mockAdminReportIdSeed = 2
+
+function getMockAdminReportsStore() {
+  if (!mockAdminReportsStore) {
+    mockAdminReportsStore = createDefaultMockAdminReports()
+    mockAdminReportIdSeed = mockAdminReportsStore.reduce((max, item) => Math.max(max, item.reportId), 0)
+  }
+  return mockAdminReportsStore
+}
+
+function findMockAdminReport(reportId: number) {
+  return getMockAdminReportsStore().find((item) => item.reportId === reportId) ?? null
+}
+
 const normalizeChatMessage = (item: ChatMessageInput): ChatMessage => ({
   ...item,
   timestamp: toDate(item.timestamp),
@@ -1347,7 +1410,41 @@ export async function resolveRollingStepPair(
 export async function createReport(payload: ReportCreateRequest): Promise<{ reportId: number }> {
   if (USE_MOCK) {
     await delay(300)
-    return { reportId: Math.floor(Math.random() * 10000) }
+    const store = getMockAdminReportsStore()
+    const nextId = ++mockAdminReportIdSeed
+    const normalizedCompanyName = payload.companyName.trim()
+    const normalizedOtherJobName = payload.otherJobName?.trim() || null
+    const normalizedRollingJobName = payload.rollingJobName?.trim() || null
+    const normalizedInterviewReview = payload.interviewReviewContent?.trim() || null
+    const isRolling = payload.recruitmentMode === "ROLLING"
+    const jobCategoryId = isRolling ? 999 : payload.jobCategoryId ?? null
+    const jobCategoryName = isRolling
+      ? "기타"
+      : jobCategoryId != null
+        ? (MOCK_REPORT_JOB_CATEGORY_NAMES[jobCategoryId] ?? "기타")
+        : null
+
+    store.unshift({
+      reportId: nextId,
+      reportCount: 1,
+      companyName: normalizedCompanyName,
+      recruitmentMode: payload.recruitmentMode,
+      rollingResultType:
+        payload.rollingResultType ?? (payload.prevReportedDate || payload.reportedDate ? "DATE_REPORTED" : "NO_RESPONSE_REPORTED"),
+      prevReportedDate: payload.prevReportedDate ?? null,
+      prevStepName: payload.prevStepName ?? null,
+      currentStepName: payload.currentStepName ?? null,
+      reportedDate: payload.reportedDate ?? null,
+      status: "PENDING",
+      jobCategoryId,
+      jobCategoryName,
+      otherJobName: isRolling ? normalizedRollingJobName : normalizedOtherJobName,
+      interviewReviewContent: normalizedInterviewReview,
+      interviewDifficulty: normalizedInterviewReview ? (payload.interviewDifficulty ?? "MEDIUM") : null,
+      onHold: false,
+    })
+
+    return { reportId: nextId }
   }
   return await request<{ reportId: number }>("/api/reports", {
     method: "POST",
@@ -1413,44 +1510,10 @@ export async function deleteNotification(notificationId: number): Promise<void> 
 export async function fetchAdminReports(status?: ReportStatus, scope: AdminReportScope = "regular"): Promise<ReportItem[]> {
   if (USE_MOCK) {
     await delay(300)
-    return [
-      {
-        reportId: 1,
-        reportCount: 3,
-        companyName: "Naver",
-        recruitmentMode: "REGULAR",
-        rollingResultType: null,
-        prevReportedDate: null,
-        prevStepName: null,
-        currentStepName: null,
-        reportedDate: new Date(),
-        status: "PENDING",
-        jobCategoryId: 1,
-        jobCategoryName: "개발",
-        otherJobName: null,
-        interviewReviewContent: null,
-        interviewDifficulty: null,
-        onHold: false,
-      },
-      {
-        reportId: 2,
-        reportCount: 1,
-        companyName: "Kakao",
-        recruitmentMode: "ROLLING",
-        rollingResultType: "DATE_REPORTED",
-        prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
-        prevStepName: "서류",
-        currentStepName: "1차 면접 발표",
-        reportedDate: new Date(),
-        status: "PENDING",
-        jobCategoryId: 999,
-        jobCategoryName: "기타",
-        otherJobName: "데이터플랫폼",
-        interviewReviewContent: null,
-        interviewDifficulty: null,
-        onHold: false,
-      },
-    ]
+    return getMockAdminReportsStore()
+      .filter((item) => (status ? item.status === status : true))
+      .filter((item) => (scope === "rolling" ? item.recruitmentMode === "ROLLING" : item.recruitmentMode !== "ROLLING"))
+      .map(normalizeReportItem)
   }
   const params = new URLSearchParams()
   if (status) params.set("status", status)
@@ -1495,24 +1558,27 @@ export async function updateAdminReport(
 ): Promise<ReportItem> {
   if (USE_MOCK) {
     await delay(300)
-    return {
-      reportId,
-      reportCount: 1,
-      companyName: payload.companyName,
-      recruitmentMode: payload.recruitmentMode,
-      rollingResultType: payload.rollingResultType ?? null,
-      prevReportedDate: payload.prevReportedDate ? new Date(payload.prevReportedDate) : null,
-      prevStepName: payload.prevStepName ?? null,
-      currentStepName: payload.currentStepName ?? null,
-      reportedDate: payload.reportedDate ? new Date(payload.reportedDate) : null,
-      status: "PENDING",
-      jobCategoryId: null,
-      jobCategoryName: null,
-      otherJobName: null,
-      interviewReviewContent: null,
-      interviewDifficulty: null,
-      onHold: false,
+    const target = findMockAdminReport(reportId)
+    if (!target) {
+      throw new Error("Report not found")
     }
+    target.companyName = payload.companyName
+    target.recruitmentMode = payload.recruitmentMode
+    target.rollingResultType = payload.rollingResultType ?? null
+    target.prevReportedDate = payload.prevReportedDate ?? null
+    target.prevStepName = payload.prevStepName ?? null
+    target.currentStepName = payload.currentStepName ?? null
+    target.reportedDate = payload.reportedDate ?? null
+    if (payload.recruitmentMode === "ROLLING") {
+      target.jobCategoryId = 999
+      target.jobCategoryName = "기타"
+      target.otherJobName = payload.rollingJobName ?? null
+    } else {
+      target.jobCategoryId = payload.jobCategoryId ?? null
+      target.jobCategoryName = payload.jobCategoryId != null ? (MOCK_REPORT_JOB_CATEGORY_NAMES[payload.jobCategoryId] ?? "기타") : null
+      target.otherJobName = payload.otherJobName ?? null
+    }
+    return normalizeReportItem(target)
   }
   const data = await request<ReportItemInput>(`/api/admin/reports${adminReportScopePath(scope)}/${reportId}`, {
     method: "PATCH",
@@ -1524,24 +1590,12 @@ export async function updateAdminReport(
 export async function processAdminReport(reportId: number, scope: AdminReportScope = "regular"): Promise<ReportItem> {
   if (USE_MOCK) {
     await delay(300)
-    return {
-      reportId,
-      reportCount: 1,
-      companyName: "Processed",
-      recruitmentMode: "REGULAR",
-      rollingResultType: null,
-      prevReportedDate: null,
-      prevStepName: null,
-      currentStepName: null,
-      reportedDate: new Date(),
-      status: "PROCESSED",
-      jobCategoryId: null,
-      jobCategoryName: null,
-      otherJobName: null,
-      interviewReviewContent: null,
-      interviewDifficulty: null,
-      onHold: false,
+    const target = findMockAdminReport(reportId)
+    if (!target) {
+      throw new Error("Report not found")
     }
+    target.status = "PROCESSED"
+    return normalizeReportItem(target)
   }
   const data = await request<ReportItemInput>(`/api/admin/reports${adminReportScopePath(scope)}/${reportId}/process`, {
     method: "POST",
@@ -1591,24 +1645,12 @@ export async function assignAllPendingAdminReports(scope: AdminReportScope = "re
 export async function discardAdminReport(reportId: number, scope: AdminReportScope = "regular"): Promise<ReportItem> {
   if (USE_MOCK) {
     await delay(200)
-    return {
-      reportId,
-      reportCount: 1,
-      companyName: "Discarded",
-      recruitmentMode: "REGULAR",
-      rollingResultType: null,
-      prevReportedDate: null,
-      prevStepName: null,
-      currentStepName: null,
-      reportedDate: new Date(),
-      status: "DISCARDED",
-      jobCategoryId: null,
-      jobCategoryName: null,
-      otherJobName: null,
-      interviewReviewContent: null,
-      interviewDifficulty: null,
-      onHold: false,
+    const target = findMockAdminReport(reportId)
+    if (!target) {
+      throw new Error("Report not found")
     }
+    target.status = "DISCARDED"
+    return normalizeReportItem(target)
   }
   const data = await request<ReportItemInput>(`/api/admin/reports${adminReportScopePath(scope)}/${reportId}/discard`, {
     method: "POST",

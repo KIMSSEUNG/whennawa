@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import type React from "react"
-import type { CompanySearchItem, CompanyStatus, KeywordLeadTime } from "@/lib/types"
+import type { CompanySearchItem, CompanyStatus, InterviewReview, KeywordLeadTime } from "@/lib/types"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { CompanyDetailPanel } from "@/components/company-detail-panel"
 
@@ -23,6 +23,7 @@ interface CompanyDetailSheetProps {
     mode: "REGULAR" | "ROLLING" | "INTERN",
     options?: { todayAnnouncement?: boolean },
   ) => void
+  onInterviewReviewSelect?: (review: InterviewReview) => void
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -41,6 +42,7 @@ export function CompanyDetailSheet({
   isStatusLoading,
   isLeadTimeLoading,
   onQuickReport,
+  onInterviewReviewSelect,
   open,
   onOpenChange,
 }: CompanyDetailSheetProps) {
@@ -66,6 +68,7 @@ export function CompanyDetailSheet({
           isStatusLoading={isStatusLoading}
           isLeadTimeLoading={isLeadTimeLoading}
           onQuickReport={onQuickReport}
+          onInterviewReviewSelect={onInterviewReviewSelect}
           showCompanyHeader={false}
           className="h-full"
         />

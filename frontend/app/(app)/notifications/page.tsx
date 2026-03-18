@@ -354,8 +354,8 @@ function NotificationsPageClient() {
           누군가 등록 회사의 <span className="font-extrabold text-primary">오늘 결과 발표가 났어요</span> 버튼으로 제보 시 알림이 와요.
         </p>
 
-        <form className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap" onSubmit={handleAddSubscriptionSubmit}>
-          <div className="relative min-w-0 flex-[1.55]">
+        <form className="mt-5 flex flex-col gap-2 md:flex-row md:items-center" onSubmit={handleAddSubscriptionSubmit}>
+          <div className="relative min-w-0 md:flex-[2.35]">
             <Input
               value={query}
               onChange={(e) => {
@@ -390,7 +390,7 @@ function NotificationsPageClient() {
           </div>
           <Button
             type="submit"
-            className={`h-12 w-full flex-[0.82] ${notificationTheme.solidButton} sm:w-auto`}
+            className={`h-12 w-full md:min-w-[8rem] md:flex-[0.52] ${notificationTheme.solidButton}`}
             disabled={isAdding || !trimmedQuery || !isAuthenticated}
           >
             {isAdding ? "등록 중..." : "알림 등록"}
@@ -398,7 +398,7 @@ function NotificationsPageClient() {
           <Button
             type="button"
             variant="outline"
-            className={`h-12 w-full flex-[0.72] ${notificationTheme.outlineButton} sm:w-auto`}
+            className={`h-12 w-full md:min-w-[7.5rem] md:flex-[0.46] ${notificationTheme.outlineButton}`}
             onClick={() => setIsAddCompanyOpen(true)}
           >
             회사 추가

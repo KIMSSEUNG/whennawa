@@ -67,6 +67,33 @@ public class InterviewReviewService {
     }
 
     @Transactional
+    public void createOrUpdateForRegularReport(StepDateReport report,
+                                               Long userId,
+                                               String contentRaw,
+                                               InterviewDifficulty difficulty) {
+        String content = normalizeOptionalContent(contentRaw);
+        if (content == null || report == null || report.getCompany() == null) {
+            deactivateForRegularReport(report == null ? null : report.getReportId());
+            return;
+        }
+        InterviewReview review = interviewReviewRepository.findByReportReportIdAndIsActiveTrue(report.getReportId())
+            .orElseGet(InterviewReview::new);
+        review.setCompany(report.getCompany());
+        review.setUser(resolveOptionalUser(userId));
+        review.setReport(report);
+        review.setRollingReport(null);
+        review.setRecruitmentMode(report.getRecruitmentMode() == null ? RecruitmentMode.REGULAR : report.getRecruitmentMode());
+        review.setStepName(resolveStepName(report.getPrevStepName(), report.getCurrentStepName()));
+        review.setDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
+        review.setContent(profanityMasker.mask(content));
+        review.setActive(true);
+        if (review.getLikeCount() == null) {
+            review.setLikeCount(0);
+        }
+        interviewReviewRepository.save(review);
+    }
+
+    @Transactional
     public void createForRollingReport(RollingReport report,
                                        Long userId,
                                        String contentRaw,
@@ -87,6 +114,49 @@ public class InterviewReviewService {
         review.setActive(true);
         review.setLikeCount(0);
         interviewReviewRepository.save(review);
+    }
+
+    @Transactional
+    public void createOrUpdateForRollingReport(RollingReport report,
+                                               Long userId,
+                                               String contentRaw,
+                                               InterviewDifficulty difficulty) {
+        String content = normalizeOptionalContent(contentRaw);
+        if (content == null || report == null || report.getCompany() == null) {
+            deactivateForRollingReport(report == null ? null : report.getReportId());
+            return;
+        }
+        InterviewReview review = interviewReviewRepository.findByRollingReportReportIdAndIsActiveTrue(report.getReportId())
+            .orElseGet(InterviewReview::new);
+        review.setCompany(report.getCompany());
+        review.setUser(resolveOptionalUser(userId));
+        review.setReport(null);
+        review.setRollingReport(report);
+        review.setRecruitmentMode(RecruitmentMode.ROLLING);
+        review.setStepName(resolveStepName(report.getPrevStepName(), report.getCurrentStepName()));
+        review.setDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
+        review.setContent(profanityMasker.mask(content));
+        review.setActive(true);
+        if (review.getLikeCount() == null) {
+            review.setLikeCount(0);
+        }
+        interviewReviewRepository.save(review);
+    }
+
+    @Transactional
+    public void deactivateForRegularReport(Long reportId) {
+        if (reportId == null) {
+            return;
+        }
+        interviewReviewRepository.findByReportReportIdAndIsActiveTrue(reportId).ifPresent(review -> review.setActive(false));
+    }
+
+    @Transactional
+    public void deactivateForRollingReport(Long reportId) {
+        if (reportId == null) {
+            return;
+        }
+        interviewReviewRepository.findByRollingReportReportIdAndIsActiveTrue(reportId).ifPresent(review -> review.setActive(false));
     }
 
     @Transactional(readOnly = true)
@@ -164,6 +234,15 @@ public class InterviewReviewService {
     public InterviewReviewItem like(Long reviewId, Long userId) {
         User user = resolveUser(userId);
         InterviewReview review = resolveReview(reviewId);
+        if (interviewReviewLikeRepository.existsByReviewReviewIdAndUser_Id(reviewId, user.getId())) {
+            long deleted = interviewReviewLikeRepository.deleteByReviewReviewIdAndUser_Id(reviewId, user.getId());
+            if (deleted > 0) {
+                int current = review.getLikeCount() == null ? 0 : review.getLikeCount();
+                review.setLikeCount(Math.max(0, current - 1));
+            }
+            return toItem(review, Collections.emptySet());
+        }
+
         if (!interviewReviewLikeRepository.existsByReviewReviewIdAndUser_Id(reviewId, user.getId())) {
             InterviewReviewLike like = new InterviewReviewLike();
             like.setReview(review);
@@ -175,7 +254,7 @@ public class InterviewReviewService {
                 // idempotent when request races
             }
         }
-        return toItem(review, Set.of(user.getId()));
+        return toItem(review, Set.of(review.getReviewId()));
     }
 
     @Transactional
@@ -187,7 +266,7 @@ public class InterviewReviewService {
             int current = review.getLikeCount() == null ? 0 : review.getLikeCount();
             review.setLikeCount(Math.max(0, current - 1));
         }
-        return toItem(review, Set.of(user.getId()));
+        return toItem(review, Collections.emptySet());
     }
 
     private List<InterviewReviewItem> toItems(Collection<InterviewReview> reviews, Long currentUserId) {

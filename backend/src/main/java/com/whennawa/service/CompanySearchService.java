@@ -153,7 +153,7 @@ public class CompanySearchService {
         try {
             interviewReviews = interviewReviewService.listTop(
                 company.getCompanyName(),
-                3,
+                10,
                 InterviewReviewSort.LIKES,
                 currentUserId
             );

@@ -11,7 +11,6 @@ import com.whennawa.dto.report.ReportStepResponse;
 import com.whennawa.dto.report.ReportUpdateRequest;
 import com.whennawa.entity.Company;
 import com.whennawa.entity.CompanyJobCategory;
-import com.whennawa.entity.InterviewReview;
 import com.whennawa.entity.JobCategory;
 import com.whennawa.entity.RecruitmentStepLog;
 import com.whennawa.entity.RecruitmentChannel;
@@ -22,6 +21,7 @@ import com.whennawa.entity.RollingJob;
 import com.whennawa.entity.RollingReport;
 import com.whennawa.entity.RollingStepLog;
 import com.whennawa.entity.StepDateReport;
+import com.whennawa.entity.enums.InterviewDifficulty;
 import com.whennawa.entity.enums.JobReviewStatus;
 import com.whennawa.entity.enums.LogSourceType;
 import com.whennawa.entity.enums.ReportStatus;
@@ -30,7 +30,6 @@ import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.StepKind;
 import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.CompanyJobCategoryRepository;
-import com.whennawa.repository.InterviewReviewRepository;
 import com.whennawa.repository.JobCategoryRepository;
 import com.whennawa.repository.RecruitmentChannelRepository;
 import com.whennawa.repository.RecruitmentStepLogRepository;
@@ -63,7 +62,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class ReportService {
     private final CompanyRepository companyRepository;
     private final CompanyJobCategoryRepository companyJobCategoryRepository;
-    private final InterviewReviewRepository interviewReviewRepository;
     private final JobCategoryRepository jobCategoryRepository;
     private final RecruitmentChannelRepository channelRepository;
     private final RecruitmentStepLogRepository recruitmentStepLogRepository;
@@ -114,7 +112,9 @@ public class ReportService {
                 prevReportedDate,
                 reportedDate,
                 jobSelection.jobCategory(),
-                jobSelection.otherJobName()
+                jobSelection.otherJobName(),
+                request.getInterviewReviewContent(),
+                request.getInterviewDifficulty()
             );
             if (duplicate != null) {
                 int current = duplicate.getReportCount() == null ? 0 : duplicate.getReportCount();
@@ -137,13 +137,8 @@ public class ReportService {
                     && jobSelection.otherJobName() != null) {
                     duplicate.setOtherJobName(jobSelection.otherJobName());
                 }
+                applyStagedInterviewReview(duplicate, request.getInterviewReviewContent(), request.getInterviewDifficulty());
                 reportRepository.save(duplicate);
-                interviewReviewService.createForRegularReport(
-                    duplicate,
-                    reporterUserId,
-                    request.getInterviewReviewContent(),
-                    request.getInterviewDifficulty()
-                );
                 if (mode == RecruitmentMode.REGULAR && Boolean.TRUE.equals(request.getTodayAnnouncement())) {
                     notificationService.onRegularTodayReport(company, reportedDate, reporterUserId, request.getNotificationMessage());
                 }
@@ -164,14 +159,9 @@ public class ReportService {
             report.setCurrentStepName(currentStepName);
             report.setReportedDate(reportedDate);
             report.setStatus(ReportStatus.PENDING);
+            applyStagedInterviewReview(report, request.getInterviewReviewContent(), request.getInterviewDifficulty());
 
             StepDateReport saved = reportRepository.save(report);
-            interviewReviewService.createForRegularReport(
-                saved,
-                reporterUserId,
-                request.getInterviewReviewContent(),
-                request.getInterviewDifficulty()
-            );
             if (mode == RecruitmentMode.REGULAR && Boolean.TRUE.equals(request.getTodayAnnouncement())) {
                 notificationService.onRegularTodayReport(company, reportedDate, reporterUserId, request.getNotificationMessage());
             }
@@ -193,7 +183,9 @@ public class ReportService {
                 currentStepName,
                 prevReportedDate,
                 reportedDate,
-                rollingJob
+                rollingJob,
+                request.getInterviewReviewContent(),
+                request.getInterviewDifficulty()
             );
             if (duplicate != null) {
                 int current = duplicate.getReportCount() == null ? 0 : duplicate.getReportCount();
@@ -212,13 +204,8 @@ public class ReportService {
                 if (duplicate.getRollingJob() == null) {
                     duplicate.setRollingJob(rollingJob);
                 }
+                applyStagedInterviewReview(duplicate, request.getInterviewReviewContent(), request.getInterviewDifficulty());
                 rollingReportRepository.save(duplicate);
-                interviewReviewService.createForRollingReport(
-                    duplicate,
-                    reporterUserId,
-                    request.getInterviewReviewContent(),
-                    request.getInterviewDifficulty()
-                );
                 return new ReportCreateResponse(duplicate.getReportId());
             }
 
@@ -236,14 +223,9 @@ public class ReportService {
             report.setCurrentStepName(currentStepName);
             report.setReportedDate(rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : reportedDate);
             report.setStatus(ReportStatus.PENDING);
+            applyStagedInterviewReview(report, request.getInterviewReviewContent(), request.getInterviewDifficulty());
 
             RollingReport saved = rollingReportRepository.save(report);
-            interviewReviewService.createForRollingReport(
-                saved,
-                reporterUserId,
-                request.getInterviewReviewContent(),
-                request.getInterviewDifficulty()
-            );
             return new ReportCreateResponse(saved.getReportId());
         }
     }
@@ -712,6 +694,7 @@ public class ReportService {
                 ? null
                 : reportedDate
         );
+        normalizeStagedInterviewReview(report);
         return toAdminItem(report);
     }
 
@@ -870,6 +853,7 @@ public class ReportService {
                 rollingLog.setReportCount(currentCount + reportCountToApply);
             }
             rollingStepLogRepository.save(rollingLog);
+            syncInterviewReviewForProcessing(report);
             report.setStatus(ReportStatus.PROCESSED);
             report.setDeletedAt(LocalDateTime.now());
             return toAdminItem(report);
@@ -969,6 +953,7 @@ public class ReportService {
                 regularLog.setReportCount(currentCount + reportCountToApply);
             }
             recruitmentStepLogRepository.save(regularLog);
+            syncInterviewReviewForProcessing(report);
             report.setStatus(ReportStatus.PROCESSED);
             report.setDeletedAt(LocalDateTime.now());
             return toAdminItem(report);
@@ -984,6 +969,7 @@ public class ReportService {
         if (report.getStatus() != ReportStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending reports can be discarded");
         }
+        interviewReviewService.deactivateForRegularReport(reportId);
         report.setStatus(ReportStatus.DISCARDED);
         report.setDeletedAt(LocalDateTime.now());
         return toAdminItem(report);
@@ -993,6 +979,7 @@ public class ReportService {
     public ReportAdminItem approveJobReview(Long reportId) {
         StepDateReport report = reportRepository.findByReportIdAndDeletedAtIsNull(reportId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found"));
+        syncInterviewReviewForApproval(report);
         report.setJobReviewStatus(JobReviewStatus.APPROVED);
         report.setJobReviewedAt(LocalDateTime.now());
         return toAdminItem(report);
@@ -1002,6 +989,7 @@ public class ReportService {
     public ReportAdminItem rejectJobReview(Long reportId) {
         StepDateReport report = reportRepository.findByReportIdAndDeletedAtIsNull(reportId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found"));
+        interviewReviewService.deactivateForRegularReport(reportId);
         report.setJobReviewStatus(JobReviewStatus.REJECTED);
         report.setJobReviewedAt(LocalDateTime.now());
         return toAdminItem(report);
@@ -1094,6 +1082,7 @@ public class ReportService {
         report.setPrevStepName(rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : prevStepName);
         report.setCurrentStepName(currentStepName);
         report.setReportedDate(rollingResultType == RollingReportType.NO_RESPONSE_REPORTED ? null : reportedDate);
+        normalizeStagedInterviewReview(report);
         return toAdminItem(report);
     }
 
@@ -1221,6 +1210,7 @@ public class ReportService {
             rollingLog.setReportCount(currentCount + reportCountToApply);
         }
         rollingStepLogRepository.save(rollingLog);
+        syncInterviewReviewForProcessing(report);
         report.setStatus(ReportStatus.PROCESSED);
         report.setDeletedAt(LocalDateTime.now());
         return toAdminItem(report);
@@ -1233,6 +1223,7 @@ public class ReportService {
         if (report.getStatus() != ReportStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending reports can be discarded");
         }
+        interviewReviewService.deactivateForRollingReport(reportId);
         report.setStatus(ReportStatus.DISCARDED);
         report.setDeletedAt(LocalDateTime.now());
         return toAdminItem(report);
@@ -1242,6 +1233,7 @@ public class ReportService {
     public ReportAdminItem approveRollingJobReview(Long reportId) {
         RollingReport report = rollingReportRepository.findByReportIdAndDeletedAtIsNull(reportId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found"));
+        syncInterviewReviewForApproval(report);
         report.setJobReviewStatus(JobReviewStatus.APPROVED);
         report.setJobReviewedAt(LocalDateTime.now());
         return toAdminItem(report);
@@ -1251,6 +1243,7 @@ public class ReportService {
     public ReportAdminItem rejectRollingJobReview(Long reportId) {
         RollingReport report = rollingReportRepository.findByReportIdAndDeletedAtIsNull(reportId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found"));
+        interviewReviewService.deactivateForRollingReport(reportId);
         report.setJobReviewStatus(JobReviewStatus.REJECTED);
         report.setJobReviewedAt(LocalDateTime.now());
         return toAdminItem(report);
@@ -1303,9 +1296,6 @@ public class ReportService {
     private ReportAdminItem toAdminItem(StepDateReport report) {
         Long jobCategoryId = report.getJobCategory() == null ? null : report.getJobCategory().getJobCategoryId();
         String jobCategoryName = report.getJobCategory() == null ? null : report.getJobCategory().getName();
-        InterviewReview latestReview = interviewReviewRepository
-            .findTopByReportReportIdAndIsActiveTrueOrderByCreatedAtDesc(report.getReportId())
-            .orElse(null);
         return new ReportAdminItem(
             report.getReportId(),
             report.getReportCount(),
@@ -1321,8 +1311,8 @@ public class ReportService {
             jobCategoryName,
             report.getOtherJobName(),
             report.getJobReviewStatus(),
-            latestReview == null ? null : latestReview.getContent(),
-            latestReview == null ? null : latestReview.getDifficulty(),
+            report.getInterviewReviewContent(),
+            report.getInterviewDifficulty(),
             isOnHold(report)
         );
     }
@@ -1330,9 +1320,6 @@ public class ReportService {
     private ReportAdminItem toAdminItem(RollingReport report) {
         Long jobCategoryId = report.getRollingJob() == null ? null : report.getRollingJob().getRollingJobId();
         String jobCategoryName = report.getRollingJob() == null ? null : report.getRollingJob().getJobName();
-        InterviewReview latestReview = interviewReviewRepository
-            .findTopByRollingReportReportIdAndIsActiveTrueOrderByCreatedAtDesc(report.getReportId())
-            .orElse(null);
         return new ReportAdminItem(
             report.getReportId(),
             report.getReportCount(),
@@ -1348,8 +1335,8 @@ public class ReportService {
             jobCategoryName,
             report.getRollingJob() == null ? report.getOtherJobName() : report.getRollingJob().getJobName(),
             report.getJobReviewStatus(),
-            latestReview == null ? null : latestReview.getContent(),
-            latestReview == null ? null : latestReview.getDifficulty(),
+            report.getInterviewReviewContent(),
+            report.getInterviewDifficulty(),
             isOnHold(report)
         );
     }
@@ -1363,6 +1350,126 @@ public class ReportService {
 
     private boolean isOnHold(RollingReport report) {
         return !isValidRollingReport(report);
+    }
+
+    private void applyStagedInterviewReview(StepDateReport report, String contentRaw, InterviewDifficulty difficulty) {
+        if (report == null) {
+            return;
+        }
+        String content = normalizeInterviewReviewContent(contentRaw);
+        if (content == null) {
+            return;
+        }
+        if (report.getInterviewReviewContent() == null || report.getInterviewReviewContent().isBlank()) {
+            report.setInterviewReviewContent(content);
+        }
+        if (report.getInterviewDifficulty() == null) {
+            report.setInterviewDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
+        }
+    }
+
+    private void applyStagedInterviewReview(RollingReport report, String contentRaw, InterviewDifficulty difficulty) {
+        if (report == null) {
+            return;
+        }
+        String content = normalizeInterviewReviewContent(contentRaw);
+        if (content == null) {
+            return;
+        }
+        if (report.getInterviewReviewContent() == null || report.getInterviewReviewContent().isBlank()) {
+            report.setInterviewReviewContent(content);
+        }
+        if (report.getInterviewDifficulty() == null) {
+            report.setInterviewDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
+        }
+    }
+
+    private void normalizeStagedInterviewReview(StepDateReport report) {
+        if (report == null) {
+            return;
+        }
+        String content = normalizeInterviewReviewContent(report.getInterviewReviewContent());
+        report.setInterviewReviewContent(content);
+        report.setInterviewDifficulty(content == null ? null : defaultInterviewDifficulty(report.getInterviewDifficulty()));
+    }
+
+    private void normalizeStagedInterviewReview(RollingReport report) {
+        if (report == null) {
+            return;
+        }
+        String content = normalizeInterviewReviewContent(report.getInterviewReviewContent());
+        report.setInterviewReviewContent(content);
+        report.setInterviewDifficulty(content == null ? null : defaultInterviewDifficulty(report.getInterviewDifficulty()));
+    }
+
+    private void syncInterviewReviewForProcessing(StepDateReport report) {
+        normalizeStagedInterviewReview(report);
+        if (report.getInterviewReviewContent() == null) {
+            interviewReviewService.deactivateForRegularReport(report.getReportId());
+            return;
+        }
+        interviewReviewService.createOrUpdateForRegularReport(
+            report,
+            null,
+            report.getInterviewReviewContent(),
+            report.getInterviewDifficulty()
+        );
+        report.setJobReviewStatus(JobReviewStatus.APPROVED);
+        report.setJobReviewedAt(LocalDateTime.now());
+    }
+
+    private void syncInterviewReviewForProcessing(RollingReport report) {
+        normalizeStagedInterviewReview(report);
+        if (report.getInterviewReviewContent() == null) {
+            interviewReviewService.deactivateForRollingReport(report.getReportId());
+            return;
+        }
+        interviewReviewService.createOrUpdateForRollingReport(
+            report,
+            null,
+            report.getInterviewReviewContent(),
+            report.getInterviewDifficulty()
+        );
+        report.setJobReviewStatus(JobReviewStatus.APPROVED);
+        report.setJobReviewedAt(LocalDateTime.now());
+    }
+
+    private void syncInterviewReviewForApproval(StepDateReport report) {
+        normalizeStagedInterviewReview(report);
+        interviewReviewService.createOrUpdateForRegularReport(
+            report,
+            null,
+            report.getInterviewReviewContent(),
+            report.getInterviewDifficulty()
+        );
+    }
+
+    private void syncInterviewReviewForApproval(RollingReport report) {
+        normalizeStagedInterviewReview(report);
+        interviewReviewService.createOrUpdateForRollingReport(
+            report,
+            null,
+            report.getInterviewReviewContent(),
+            report.getInterviewDifficulty()
+        );
+    }
+
+    private InterviewDifficulty defaultInterviewDifficulty(InterviewDifficulty difficulty) {
+        return difficulty == null ? InterviewDifficulty.MEDIUM : difficulty;
+    }
+
+    private String normalizeInterviewReviewContent(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isBlank()) {
+            return null;
+        }
+        if (trimmed.length() > 2000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Interview review is too long");
+        }
+        return trimmed;
     }
 
     private RecruitmentChannel resolveChannelForReport(StepDateReport report) {
@@ -1526,7 +1633,9 @@ public class ReportService {
                                                       LocalDate prevReportedDate,
                                                       LocalDate reportedDate,
                                                       JobCategory jobCategory,
-                                                      String otherJobName) {
+                                                      String otherJobName,
+                                                      String interviewReviewContent,
+                                                      InterviewDifficulty interviewDifficulty) {
         List<StepDateReport> candidates = reportRepository.findByCompanyNameIgnoreCaseAndRecruitmentModeAndStatusAndDeletedAtIsNull(
             companyName,
             mode,
@@ -1562,6 +1671,10 @@ public class ReportService {
             if (!isSameNormalizedText(candidate.getOtherJobName(), otherJobName)) {
                 continue;
             }
+            if (!isSameInterviewReview(candidate.getInterviewReviewContent(), candidate.getInterviewDifficulty(),
+                interviewReviewContent, interviewDifficulty)) {
+                continue;
+            }
             return candidate;
         }
         return null;
@@ -1573,7 +1686,9 @@ public class ReportService {
                                                             String currentStepName,
                                                             LocalDate prevReportedDate,
                                                             LocalDate reportedDate,
-                                                            RollingJob rollingJob) {
+                                                            RollingJob rollingJob,
+                                                            String interviewReviewContent,
+                                                            InterviewDifficulty interviewDifficulty) {
         List<RollingReport> candidates = rollingReportRepository.findByCompanyNameIgnoreCaseAndStatusAndDeletedAtIsNull(
             companyName,
             ReportStatus.PENDING
@@ -1600,6 +1715,10 @@ public class ReportService {
             Long candidateRollingJobId = candidate.getRollingJob() == null ? null : candidate.getRollingJob().getRollingJobId();
             Long requestedRollingJobId = rollingJob == null ? null : rollingJob.getRollingJobId();
             if (!isSameId(candidateRollingJobId, requestedRollingJobId)) {
+                continue;
+            }
+            if (!isSameInterviewReview(candidate.getInterviewReviewContent(), candidate.getInterviewDifficulty(),
+                interviewReviewContent, interviewDifficulty)) {
                 continue;
             }
             return candidate;
@@ -1629,6 +1748,24 @@ public class ReportService {
 
     private boolean isSameNormalizedText(String left, String right) {
         return normalizeKeyword(left).equals(normalizeKeyword(right));
+    }
+
+    private boolean isSameInterviewReview(String leftContent,
+                                          InterviewDifficulty leftDifficulty,
+                                          String rightContent,
+                                          InterviewDifficulty rightDifficulty) {
+        String normalizedLeftContent = normalizeInterviewReviewContent(leftContent);
+        String normalizedRightContent = normalizeInterviewReviewContent(rightContent);
+        if (normalizedLeftContent == null && normalizedRightContent == null) {
+            return true;
+        }
+        if (normalizedLeftContent == null || normalizedRightContent == null) {
+            return false;
+        }
+        if (!normalizedLeftContent.equals(normalizedRightContent)) {
+            return false;
+        }
+        return defaultInterviewDifficulty(leftDifficulty) == defaultInterviewDifficulty(rightDifficulty);
     }
 
     private void addSuggestion(Map<String, String> suggestions, String stepName) {

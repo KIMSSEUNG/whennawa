@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import { CalendarIcon } from "lucide-react"
@@ -60,6 +60,9 @@ function normalizeDateInput(value: string) {
 }
 
 export function GlobalReportModal() {
+  const compactFieldClass = "h-10 rounded-xl px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
+  const compactIconButtonClass = "h-10 w-10 shrink-0 rounded-xl border-border/70 bg-background hover:bg-accent/40"
+  const compactSelectTriggerClass = "h-10 rounded-xl px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
   const [isOpen, setIsOpen] = useState(false)
   const [isCompanyLocked, setIsCompanyLocked] = useState(false)
   const [isModeLocked, setIsModeLocked] = useState(false)
@@ -354,24 +357,25 @@ export function GlobalReportModal() {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="w-[min(94vw,720px)] max-w-xl max-h-[88dvh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>발표날짜 제보</DialogTitle>
-            <DialogDescription>수시는 직업명, 공채/인턴은 직군 기준으로 제보해 주세요.</DialogDescription>
-          </DialogHeader>
+        <DialogContent className="w-[min(95vw,760px)] max-w-[42rem] overflow-hidden p-5 sm:p-7">
+          <div className="max-h-[calc(92dvh-2rem)] overflow-y-auto px-1 pr-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[calc(92dvh-3rem)]">
+            <DialogHeader>
+              <DialogTitle>발표날짜 제보</DialogTitle>
+              <DialogDescription>수시는 직업명, 공채/인턴은 직군 기준으로 제보해 주세요.</DialogDescription>
+            </DialogHeader>
 
-          <form
-            onSubmit={submit}
-            onKeyDownCapture={(e) => {
-              if (e.key !== "Enter") return
-              const target = e.target as HTMLElement | null
-              const tagName = target?.tagName?.toLowerCase()
-              if (tagName === "textarea") return
-              e.preventDefault()
-            }}
-            className="space-y-4"
-          >
-            <div className="space-y-2">
+            <form
+              onSubmit={submit}
+              onKeyDownCapture={(e) => {
+                if (e.key !== "Enter") return
+                const target = e.target as HTMLElement | null
+                const tagName = target?.tagName?.toLowerCase()
+                if (tagName === "textarea") return
+                e.preventDefault()
+              }}
+              className="space-y-3 pt-3"
+            >
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">회사명</label>
               <div className="relative">
                 <Input
@@ -387,7 +391,7 @@ export function GlobalReportModal() {
                   onBlur={() => setIsCompanyFocused(false)}
                   placeholder="예: 네이버"
                   readOnly={isCompanyLocked}
-                  className={cn(isCompanyLocked && "pointer-events-none cursor-default")}
+                  className={cn(compactFieldClass, isCompanyLocked && "pointer-events-none cursor-default")}
                   required
                 />
                 {showCompanySuggestionList && (
@@ -411,11 +415,11 @@ export function GlobalReportModal() {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-2">
+            <div className="grid gap-2.5 md:grid-cols-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">전형 구분</label>
                 <Select value={mode} onValueChange={(v) => setMode(v as RecruitmentMode)}>
-                  <SelectTrigger disabled={isModeLocked} className={cn(isModeLocked && "pointer-events-none cursor-default opacity-100")}>
+                  <SelectTrigger disabled={isModeLocked} className={cn(compactSelectTriggerClass, isModeLocked && "pointer-events-none cursor-default opacity-100")}>
                     <SelectValue placeholder="전형 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -427,16 +431,16 @@ export function GlobalReportModal() {
               </div>
 
               {mode === "ROLLING" ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">직업명</label>
-                  <Input value={rollingJobName} onChange={(e) => setRollingJobName(e.target.value.slice(0, 100))} placeholder="예: 기계설비 개발" required />
+                  <Input value={rollingJobName} onChange={(e) => setRollingJobName(e.target.value.slice(0, 100))} placeholder="예: 기계설비 개발" required className={compactFieldClass} />
                 </div>
               ) : (
                 <>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-sm font-medium">직군</label>
                     <Select value={jobCategoryId} onValueChange={setJobCategoryId}>
-                      <SelectTrigger><SelectValue placeholder="직군 선택" /></SelectTrigger>
+                      <SelectTrigger className={compactSelectTriggerClass}><SelectValue placeholder="직군 선택" /></SelectTrigger>
                       <SelectContent className="max-h-[220px] overflow-y-auto">
                         {jobCategories.map((item) => (
                           <SelectItem key={`job-${item.jobCategoryId}`} value={String(item.jobCategoryId)}>
@@ -447,12 +451,13 @@ export function GlobalReportModal() {
                     </Select>
                   </div>
                   {isOtherCategory && (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <label className="text-sm font-medium">기타 직군명</label>
                       <Input
                         value={otherJobName}
                         onChange={(e) => setOtherJobName(e.target.value.slice(0, 20))}
                         placeholder="예: 데이터플랫폼"
+                        className={compactFieldClass}
                       />
                     </div>
                   )}
@@ -460,8 +465,8 @@ export function GlobalReportModal() {
               )}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-2">
+            <div className="grid gap-2.5 md:grid-cols-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">이전 전형명</label>
                 <div className="relative">
                   <Input
@@ -479,6 +484,7 @@ export function GlobalReportModal() {
                     }}
                     placeholder="예: 서류"
                     required={!noResponse}
+                    className={compactFieldClass}
                   />
                   {showPrevSuggestionList && (
                     <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
@@ -500,7 +506,7 @@ export function GlobalReportModal() {
                   )}
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">현재 전형명</label>
                 <div className="relative">
                   <Input
@@ -518,6 +524,7 @@ export function GlobalReportModal() {
                     }}
                     placeholder="예: 서류 발표"
                     required
+                    className={compactFieldClass}
                   />
                   {showCurrentSuggestionList && (
                     <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
@@ -548,7 +555,7 @@ export function GlobalReportModal() {
                 setNoResponse((prev) => !prev)
               }}
               className={cn(
-                "inline-flex h-10 items-center rounded-lg border px-3 text-sm transition-colors",
+                "inline-flex h-9 items-center rounded-xl border px-3 text-sm transition-colors",
                 noResponse ? "border-primary/40 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:bg-muted/40",
               )}
               disabled={isTodayAnnouncement}
@@ -557,8 +564,8 @@ export function GlobalReportModal() {
             </button>
 
             {!noResponse && (
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className="grid gap-2.5 md:grid-cols-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">이전 발표일</label>
                   <div className="flex items-center gap-2">
                     <Input
@@ -571,6 +578,7 @@ export function GlobalReportModal() {
                       placeholder="YYYY-MM-DD"
                       inputMode="numeric"
                       required
+                      className={compactFieldClass}
                     />
                     <Popover open={isPrevDateOpen} onOpenChange={setIsPrevDateOpen}>
                       <PopoverTrigger asChild>
@@ -578,7 +586,7 @@ export function GlobalReportModal() {
                           type="button"
                           size="icon"
                           variant="outline"
-                          className="h-10 w-10 shrink-0 border-border/70 bg-background hover:bg-accent/40"
+                          className={compactIconButtonClass}
                           aria-label={`이전 발표일 달력 열기 (${toDisplayDate(prevDate)})`}
                         >
                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -602,7 +610,7 @@ export function GlobalReportModal() {
                     </Popover>
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">현재 발표일</label>
                   <div className="flex items-center gap-2">
                     <Input
@@ -623,6 +631,7 @@ export function GlobalReportModal() {
                       required
                       readOnly={isTodayAnnouncement}
                       disabled={isTodayAnnouncement}
+                      className={compactFieldClass}
                     />
                     <Popover open={isReportedDateOpen} onOpenChange={setIsReportedDateOpen}>
                       <PopoverTrigger asChild>
@@ -630,7 +639,7 @@ export function GlobalReportModal() {
                           type="button"
                           size="icon"
                           variant="outline"
-                          className="h-10 w-10 shrink-0 border-border/70 bg-background hover:bg-accent/40"
+                          className={compactIconButtonClass}
                           aria-label={`현재 발표일 달력 열기 (${toDisplayDate(reportedDate)})`}
                           disabled={isTodayAnnouncement}
                         >
@@ -658,19 +667,19 @@ export function GlobalReportModal() {
               </div>
             )}
 
-            <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+            <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-2.5">
               <p className="text-sm font-medium text-foreground">면접 후기 (선택)</p>
               <p className="text-xs text-muted-foreground">
                 추 후 면접을 보게 될 사용자들을 위해 적어주시면 감사하겠습니다.
               </p>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className="grid gap-2.5 md:grid-cols-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">면접 난이도</label>
                   <Select
                     value={interviewDifficulty}
                     onValueChange={(value) => setInterviewDifficulty(value as InterviewDifficulty)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={compactSelectTriggerClass}>
                       <SelectValue placeholder="난이도 선택" />
                     </SelectTrigger>
                     <SelectContent>
@@ -685,16 +694,16 @@ export function GlobalReportModal() {
                 value={interviewReviewContent}
                 onChange={(e) => setInterviewReviewContent(e.target.value.slice(0, 2000))}
                 placeholder="면접 분위기, 질문 유형, 준비 팁 등을 적어주세요."
-                className="nawa-scrollbar h-[18vh] resize-none overflow-x-hidden overflow-y-auto [field-sizing:fixed] rounded-xl border-border/70 bg-gradient-to-b from-background to-muted/20 text-sm leading-6"
+                className="nawa-scrollbar min-h-[112px] h-[14vh] resize-none overflow-x-hidden overflow-y-auto [field-sizing:fixed] rounded-xl border-border/70 bg-gradient-to-b from-background to-muted/20 text-sm leading-5 focus-visible:ring-2"
               />
             </div>
 
-            {message && <p className="text-sm text-muted-foreground">{message}</p>}
-
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "제출 중..." : "제보하기"}</Button>
+            <div className="sticky bottom-0 z-10 -mx-1 flex items-center justify-between gap-3 border-t border-border/60 bg-background/95 px-1 pb-1 pt-3 backdrop-blur">
+              <p className="min-w-0 flex-1 text-sm text-muted-foreground">{message ?? "\u00A0"}</p>
+              <Button type="submit" disabled={isSubmitting} className="shrink-0">{isSubmitting ? "제출 중..." : "제보하기"}</Button>
             </div>
-          </form>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </>

@@ -1,6 +1,7 @@
 package com.whennawa.entity;
 
 import com.whennawa.entity.converter.RollingReportTypeConverter;
+import com.whennawa.entity.enums.InterviewDifficulty;
 import com.whennawa.entity.enums.JobReviewStatus;
 import com.whennawa.entity.enums.ReportStatus;
 import com.whennawa.entity.enums.RollingReportType;
@@ -68,6 +69,14 @@ public class RollingReport extends BaseEntity {
 
     @Column(name = "other_job_name", length = 20)
     private String otherJobName;
+
+    @Column(name = "interview_review_content", length = 2000)
+    private String interviewReviewContent;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "interview_difficulty", length = 16)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    private InterviewDifficulty interviewDifficulty;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "job_review_status", length = 16, nullable = false)

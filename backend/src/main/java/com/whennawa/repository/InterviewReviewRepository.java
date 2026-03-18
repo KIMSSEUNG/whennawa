@@ -34,6 +34,10 @@ public interface InterviewReviewRepository extends JpaRepository<InterviewReview
 
     Optional<InterviewReview> findTopByRollingReportReportIdAndIsActiveTrueOrderByCreatedAtDesc(Long reportId);
 
+    Optional<InterviewReview> findByReportReportIdAndIsActiveTrue(Long reportId);
+
+    Optional<InterviewReview> findByRollingReportReportIdAndIsActiveTrue(Long reportId);
+
     @Query("""
         select distinct r.stepName
         from InterviewReview r
