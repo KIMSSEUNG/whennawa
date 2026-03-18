@@ -75,7 +75,7 @@ export function BottomTabBar() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 md:hidden">
-      <div className="mx-auto mb-2 w-[calc(100%-20px)] max-w-[460px] rounded-[26px] border border-[#dce4ff] bg-[linear-gradient(180deg,rgba(53,98,224,0.96)_0%,rgba(37,81,199,0.98)_100%)] px-2 py-2 shadow-[0_20px_40px_rgba(47,83,186,0.28)] backdrop-blur-sm">
+      <div className="mx-auto mb-2 w-[calc(100%-20px)] max-w-[460px] rounded-[26px] border border-[#dce4ff] bg-[linear-gradient(180deg,rgba(53,98,224,0.96)_0%,rgba(37,81,199,0.98)_100%)] px-2 py-2 shadow-[0_20px_40px_rgba(47,83,186,0.28)] backdrop-blur-sm dark:border-[#31415f] dark:bg-[linear-gradient(180deg,rgba(18,28,49,0.94)_0%,rgba(13,21,39,0.98)_100%)] dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">
         <div className="grid safe-bottom" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map((tab) => {
             const isActive = pathname === tab.href
@@ -86,7 +86,9 @@ export function BottomTabBar() {
                 href={tab.href}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 rounded-[18px] px-2 py-2 text-[11px] font-medium transition-colors",
-                  isActive ? "bg-white/16 text-white" : "text-white/74 hover:bg-white/10 hover:text-white",
+                  isActive
+                    ? "bg-white/16 text-white dark:bg-[#233355] dark:text-[#e8efff]"
+                    : "text-white/74 hover:bg-white/10 hover:text-white dark:text-[#99a9cf] dark:hover:bg-[#1c2946] dark:hover:text-[#e8efff]",
                 )}
               >
                 <Icon className="h-4 w-4" />

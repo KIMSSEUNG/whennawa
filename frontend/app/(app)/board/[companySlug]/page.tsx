@@ -304,7 +304,7 @@ export default function CompanyBoardPage() {
                         {myUserId != null && post.authorUserId != null && myUserId !== post.authorUserId && (
                           <button
                             type="button"
-                            className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff]"
+                            className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff] dark:border-[#365168] dark:text-[#dceefe] dark:hover:bg-[#15273a]"
                             onClick={(event) => {
                               event.stopPropagation()
                               void handleBlockAuthor(post.authorUserId)

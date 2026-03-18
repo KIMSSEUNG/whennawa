@@ -89,14 +89,14 @@ export function TopNav() {
   const loginHref = `/login?next=${encodeURIComponent(`${pathname ?? "/"}${qs ? `?${qs}` : ""}`)}`
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 hidden border-b border-[#dfe6ff] bg-[rgba(248,250,255,0.84)] backdrop-blur-xl md:block">
+    <header className="shell-backdrop fixed left-0 right-0 top-0 z-50 hidden border-b backdrop-blur-xl md:block">
       <div className="flex h-16 items-center justify-between gap-6 px-6 xl:px-10">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-3 text-lg font-bold text-foreground">
             <Image src="/logo.png" alt="언제나와 로고" width={32} height={32} className="rounded-xl" priority />
             <div className="flex flex-col">
-              <span className="text-[17px] font-black tracking-tight text-[#21386f]">언제나와</span>
-              <span className="text-[11px] font-medium text-[#7a8fbf]">Hiring signal dashboard</span>
+              <span className="text-[17px] font-black tracking-tight text-[#21386f] dark:text-[#dbe6ff]">언제나와</span>
+              <span className="text-[11px] font-medium text-[#7a8fbf] dark:text-[#90a4d7]">Hiring signal dashboard</span>
             </div>
           </Link>
           <nav className="flex items-center gap-1">
@@ -126,7 +126,7 @@ export function TopNav() {
               onClick={handleLogout}
               disabled={isLoggingOut}
               className={cn(
-                "rounded-full border border-[#dce4ff] bg-white/80 px-4 py-2 text-sm font-semibold text-[#2a4078] shadow-[0_8px_16px_rgba(112,136,198,0.08)] transition-colors hover:bg-[#f4f7ff] disabled:opacity-50",
+                "shell-panel rounded-full border px-4 py-2 text-sm font-semibold text-[#2a4078] transition-colors hover:shell-panel-hover dark:text-[#dbe6ff] disabled:opacity-50",
               )}
             >
               {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
@@ -134,12 +134,12 @@ export function TopNav() {
           ) : (
             <Link
               href={loginHref}
-              className="rounded-full border border-[#dce4ff] bg-white/80 px-4 py-2 text-sm font-semibold text-[#2a4078] shadow-[0_8px_16px_rgba(112,136,198,0.08)] transition-colors hover:bg-[#f4f7ff]"
+              className="shell-panel rounded-full border px-4 py-2 text-sm font-semibold text-[#2a4078] transition-colors hover:shell-panel-hover dark:text-[#dbe6ff]"
             >
               로그인
             </Link>
           )}
-          <div className="rounded-full border border-[#dce4ff] bg-white/80 p-1 shadow-[0_8px_16px_rgba(112,136,198,0.08)]">
+          <div className="shell-panel rounded-full border p-1">
             <ThemeToggle />
           </div>
         </div>

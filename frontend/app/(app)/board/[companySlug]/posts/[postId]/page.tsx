@@ -286,11 +286,11 @@ export default function BoardPostDetailPage() {
           <span>·</span>
           <span>{formatDate(comment.createdAt)}</span>
           {myUserId != null && comment.authorUserId != null && myUserId !== comment.authorUserId && (
-            <button type="button" className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff]" onClick={() => void handleBlockAuthor(comment.authorUserId)}>
+            <button type="button" className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff] dark:border-[#365168] dark:text-[#dceefe] dark:hover:bg-[#15273a]" onClick={() => void handleBlockAuthor(comment.authorUserId)}>
               차단
             </button>
           )}
-          <button type="button" onClick={() => void handleToggleLike(comment)} className="ml-auto rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff]">
+          <button type="button" onClick={() => void handleToggleLike(comment)} className="ml-auto rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff] dark:border-[#365168] dark:text-[#dceefe] dark:hover:bg-[#15273a]">
             {comment.likedByMe ? "좋아요 취소" : "좋아요"} ({comment.likeCount})
           </button>
         </div>
@@ -350,7 +350,7 @@ export default function BoardPostDetailPage() {
           </div>
         )}
 
-        {comment.replies.length > 0 && <div className="mt-3 space-y-2 border-l border-[#dbe3f7] pl-3">{comment.replies.map((child) => renderCommentNode(child, depth + 1))}</div>}
+        {comment.replies.length > 0 && <div className="mt-3 space-y-2 border-l border-[#dbe3f7] pl-3 dark:border-[#365168]">{comment.replies.map((child) => renderCommentNode(child, depth + 1))}</div>}
       </div>
     )
   }
@@ -401,7 +401,7 @@ export default function BoardPostDetailPage() {
                 <span>·</span>
                 <span>{formatDate(post.createdAt)}</span>
                 {myUserId != null && post.authorUserId != null && myUserId !== post.authorUserId && (
-                  <button type="button" className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff]" onClick={() => void handleBlockAuthor(post.authorUserId)}>
+                  <button type="button" className="rounded-full border border-[#d8e2f8] px-2 py-0.5 transition-colors hover:bg-[#f5f8ff] dark:border-[#365168] dark:text-[#dceefe] dark:hover:bg-[#15273a]" onClick={() => void handleBlockAuthor(post.authorUserId)}>
                     차단
                   </button>
                 )}
@@ -424,7 +424,7 @@ export default function BoardPostDetailPage() {
       )}
 
       <section className={`${boardTheme.card} p-4 md:p-5`}>
-        <h3 className="text-lg font-semibold text-[#24427c]">댓글</h3>
+        <h3 className="text-lg font-semibold text-[#24427c] dark:text-[#dceefe]">댓글</h3>
         <div className="mt-3 space-y-2">
           <Textarea value={newCommentContent} onChange={(e) => setNewCommentContent(e.target.value)} placeholder="댓글을 입력해 주세요." className={`min-h-[110px] ${boardTheme.field}`} maxLength={3000} />
           <div className="flex flex-col items-start gap-2">

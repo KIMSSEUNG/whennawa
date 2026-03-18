@@ -38,6 +38,14 @@
   --sidebar-accent-foreground: #111827;
   --sidebar-border: #dbe4ff;
   --sidebar-ring: #3b5bdb;
+  --shell-backdrop: rgba(248, 250, 255, 0.84);
+  --shell-border: rgba(223, 230, 255, 0.95);
+  --shell-panel: rgba(255, 255, 255, 0.82);
+  --shell-panel-hover: rgba(244, 247, 255, 0.96);
+  --shell-shadow: 0 18px 40px rgba(112, 136, 198, 0.12);
+  --app-bg-start: #f8faff;
+  --app-bg-mid: #f3f7ff;
+  --app-bg-end: #eef3ff;
 }
 
 .dark {
@@ -69,6 +77,14 @@
   --sidebar-accent-foreground: #e5e7eb;
   --sidebar-border: #24314f;
   --sidebar-ring: #6f8bff;
+  --shell-backdrop: rgba(11, 18, 32, 0.82);
+  --shell-border: rgba(52, 69, 109, 0.92);
+  --shell-panel: rgba(17, 26, 44, 0.78);
+  --shell-panel-hover: rgba(27, 40, 67, 0.92);
+  --shell-shadow: 0 22px 48px rgba(0, 0, 0, 0.34);
+  --app-bg-start: #0b1220;
+  --app-bg-mid: #10182b;
+  --app-bg-end: #0f1730;
 }
 
 @theme inline {
@@ -112,6 +128,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-shell-backdrop: var(--shell-backdrop);
+  --color-shell-border: var(--shell-border);
+  --color-shell-panel: var(--shell-panel);
+  --color-shell-panel-hover: var(--shell-panel-hover);
 }
 
 @layer base {
@@ -120,6 +140,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top, color-mix(in oklab, var(--primary) 12%, transparent) 0%, transparent 34%),
+      linear-gradient(180deg, var(--app-bg-start) 0%, var(--app-bg-mid) 46%, var(--app-bg-end) 100%);
+    background-attachment: fixed;
   }
 }
 
@@ -206,4 +230,22 @@ body {
 
 .nawa-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in oklab, var(--primary) 58%, transparent);
+}
+
+@layer utilities {
+  .shell-backdrop {
+    background-color: var(--shell-backdrop);
+    border-color: var(--shell-border);
+    box-shadow: var(--shell-shadow);
+  }
+
+  .shell-panel {
+    background-color: var(--shell-panel);
+    border-color: var(--shell-border);
+    box-shadow: var(--shell-shadow);
+  }
+
+  .shell-panel-hover {
+    background-color: var(--shell-panel-hover);
+  }
 }
