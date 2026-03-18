@@ -44,6 +44,9 @@ Thumbs.db
 
 # local design assets
 design-previews/
+!public/design-previews/
+!public/design-previews/icon/
+!public/design-previews/icon/*.png
 
 # typescript
 *.tsbuildinfo
