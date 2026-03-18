@@ -1,7 +1,6 @@
-﻿"use client"
+"use client"
 
-import { useState } from "react"
-import { Suspense } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -20,6 +19,8 @@ export default function LoginPage() {
 
 function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false)
+  const [embeddedBrowserName, setEmbeddedBrowserName] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const showSessionExpired = searchParams.get("reason") === "session_expired"
@@ -27,6 +28,35 @@ function LoginPageContent() {
   const showConsentDenied = searchParams.get("reason") === "consent_denied"
   const showOauthFailed = searchParams.get("reason") === "oauth_failed"
   const next = searchParams.get("next") ?? "/"
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const userAgent = window.navigator.userAgent.toLowerCase()
+
+    if (userAgent.includes("kakaotalk")) {
+      setEmbeddedBrowserName("카카오톡")
+      return
+    }
+    if (userAgent.includes("instagram")) {
+      setEmbeddedBrowserName("인스타그램")
+      return
+    }
+    if (userAgent.includes("fban") || userAgent.includes("fbav")) {
+      setEmbeddedBrowserName("페이스북")
+      return
+    }
+    if (userAgent.includes("line/")) {
+      setEmbeddedBrowserName("라인")
+      return
+    }
+    if (userAgent.includes("naver(inapp")) {
+      setEmbeddedBrowserName("네이버")
+      return
+    }
+
+    setEmbeddedBrowserName(null)
+  }, [])
+
   const isBackBlockedPath = (path: string) => {
     const blockedPrefixes = ["/notifications", "/profile"]
     if (blockedPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}?`))) {
@@ -36,6 +66,7 @@ function LoginPageContent() {
     if (path.includes("/write")) return true
     return false
   }
+
   const normalizeSafePath = (value: string | null | undefined) => {
     if (!value) return null
     const trimmed = value.trim()
@@ -44,6 +75,7 @@ function LoginPageContent() {
     if ((showAuthRequired || showSessionExpired) && isBackBlockedPath(trimmed)) return null
     return trimmed
   }
+
   const handleGoBack = () => {
     const safeNext = normalizeSafePath(next)
     if (safeNext && safeNext !== "/") {
@@ -71,10 +103,22 @@ function LoginPageContent() {
   }
 
   const handleGoogleLogin = async () => {
+    if (embeddedBrowserName) return
     setIsLoading(true)
     const shouldRoute = await loginWithGoogle(next)
     if (shouldRoute) {
       router.push("/")
+    }
+  }
+
+  const handleCopyCurrentUrl = async () => {
+    if (typeof window === "undefined") return
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
     }
   }
 
@@ -126,6 +170,20 @@ function LoginPageContent() {
             </div>
           )}
 
+          {embeddedBrowserName && (
+            <div className="mb-6">
+              <Alert variant="destructive" className="text-left">
+                <AlertTitle>{embeddedBrowserName} 인앱 브라우저에서는 Google 로그인이 제한될 수 있습니다</AlertTitle>
+                <AlertDescription className="mt-2 space-y-3 text-left">
+                  <p>우측 상단 메뉴에서 Safari 또는 Chrome으로 연 뒤 다시 로그인해 주세요.</p>
+                  <Button type="button" variant="outline" className="w-full rounded-xl" onClick={handleCopyCurrentUrl}>
+                    {copied ? "현재 링크 복사됨" : "현재 링크 복사"}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
           <div className="mb-8 flex flex-col items-center">
             <Image src="/logo.png" alt="언제나와 로고" width={80} height={80} className="mb-4 rounded-2xl" priority />
             <h1 className="text-3xl font-bold tracking-tight text-foreground">언제나와</h1>
@@ -136,9 +194,9 @@ function LoginPageContent() {
             size="lg"
             className="w-full h-12 gap-3 rounded-xl font-medium bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={handleGoogleLogin}
-            disabled={isLoading}
+            disabled={isLoading || Boolean(embeddedBrowserName)}
           >
-            {isLoading ? "로그인 중..." : "Google로 계속하기"}
+            {embeddedBrowserName ? "외부 브라우저에서 로그인해 주세요" : isLoading ? "로그인 중..." : "Google로 계속하기"}
           </Button>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -166,5 +224,3 @@ function LoginPageContent() {
     </div>
   )
 }
-
-

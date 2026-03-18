@@ -23,18 +23,39 @@ public class AuthCookieService {
     public void setAuthCookies(HttpServletResponse response, String accessToken, String refreshToken) {
         Duration accessTtl = Duration.ofMinutes(appProperties.getJwt().getAccessTtlMinutes());
         Duration refreshTtl = Duration.ofDays(appProperties.getJwt().getRefreshTtlDays());
-        addCookie(response, ACCESS_COOKIE, accessToken, accessTtl, true);
-        addCookie(response, REFRESH_COOKIE, refreshToken, refreshTtl, true);
+        addCookie(
+            response,
+            ACCESS_COOKIE,
+            accessToken,
+            accessTtl,
+            true,
+            appProperties.getAuth().getAuthCookieSameSite()
+        );
+        addCookie(
+            response,
+            REFRESH_COOKIE,
+            refreshToken,
+            refreshTtl,
+            true,
+            appProperties.getAuth().getAuthCookieSameSite()
+        );
     }
 
     public void setAccessCookie(HttpServletResponse response, String accessToken) {
         Duration accessTtl = Duration.ofMinutes(appProperties.getJwt().getAccessTtlMinutes());
-        addCookie(response, ACCESS_COOKIE, accessToken, accessTtl, true);
+        addCookie(
+            response,
+            ACCESS_COOKIE,
+            accessToken,
+            accessTtl,
+            true,
+            appProperties.getAuth().getAuthCookieSameSite()
+        );
     }
 
     public void clearAuthCookies(HttpServletResponse response) {
-        addCookie(response, ACCESS_COOKIE, "", Duration.ZERO, true);
-        addCookie(response, REFRESH_COOKIE, "", Duration.ZERO, true);
+        addCookie(response, ACCESS_COOKIE, "", Duration.ZERO, true, appProperties.getAuth().getAuthCookieSameSite());
+        addCookie(response, REFRESH_COOKIE, "", Duration.ZERO, true, appProperties.getAuth().getAuthCookieSameSite());
     }
 
     public String resolveRefreshToken(HttpServletRequest request) {
@@ -51,7 +72,8 @@ public class AuthCookieService {
             LOGIN_NEXT_COOKIE,
             nextPath,
             Duration.ofMinutes(appProperties.getAuth().getLoginNextCookieTtlMinutes()),
-            true
+            true,
+            appProperties.getAuth().getLoginNextCookieSameSite()
         );
     }
 
@@ -60,7 +82,7 @@ public class AuthCookieService {
     }
 
     public void clearLoginNextCookie(HttpServletResponse response) {
-        addCookie(response, LOGIN_NEXT_COOKIE, "", Duration.ZERO, true);
+        addCookie(response, LOGIN_NEXT_COOKIE, "", Duration.ZERO, true, appProperties.getAuth().getLoginNextCookieSameSite());
     }
 
     private String resolveCookie(HttpServletRequest request, String name) {
@@ -80,14 +102,34 @@ public class AuthCookieService {
                            String name,
                            String value,
                            Duration maxAge,
-                           boolean httpOnly) {
-        ResponseCookie cookie = ResponseCookie.from(name, value)
+                           boolean httpOnly,
+                           String sameSite) {
+        ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from(name, value)
             .path("/")
             .httpOnly(httpOnly)
-            .sameSite("Lax")
             .maxAge(maxAge)
-            .build();
-        response.addHeader("Set-Cookie", cookie.toString());
+            .sameSite(normalizeSameSite(sameSite))
+            .secure(appProperties.getAuth().isCookieSecure());
+
+        String cookieDomain = appProperties.getAuth().getCookieDomain();
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            cookieBuilder.domain(cookieDomain.trim());
+        }
+
+        response.addHeader("Set-Cookie", cookieBuilder.build().toString());
+    }
+
+    private String normalizeSameSite(String sameSite) {
+        if (sameSite == null || sameSite.isBlank()) {
+            return "Lax";
+        }
+        if ("none".equalsIgnoreCase(sameSite)) {
+            return "None";
+        }
+        if ("strict".equalsIgnoreCase(sameSite)) {
+            return "Strict";
+        }
+        return "Lax";
     }
 }
 

@@ -43,6 +43,10 @@ public class AppProperties {
     @Getter @Setter
     public static class Auth {
         private long loginNextCookieTtlMinutes = 10;
+        private String authCookieSameSite = "Lax";
+        private String loginNextCookieSameSite = "Lax";
+        private boolean cookieSecure = false;
+        private String cookieDomain;
     }
 
     @Getter @Setter
