@@ -15,60 +15,144 @@ export default function OpengraphImage() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "64px",
+          position: "relative",
+          overflow: "hidden",
+          padding: "54px",
           background:
-            "radial-gradient(circle at 15% 15%, #5c7cfa 0%, rgba(92,124,250,0) 40%), linear-gradient(135deg, #0b1220 0%, #111827 55%, #1f2937 100%)",
-          color: "#f8fafc",
+            "linear-gradient(135deg, #eef4ff 0%, #dfe8ff 22%, #1f3f7f 58%, #121a2d 100%)",
+          color: "#0f172a",
           fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "14px",
-              background: "linear-gradient(135deg, #4c6ef5 0%, #2f49b3 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "28px",
-              fontWeight: 800,
-            }}
-          >
-            W
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            <div style={{ fontSize: "30px", fontWeight: 800 }}>언제나와</div>
-            <div style={{ fontSize: "22px", opacity: 0.85 }}>whennawa.shop</div>
-          </div>
-        </div>
+        <div
+          style={{
+            position: "absolute",
+            top: "-120px",
+            right: "-90px",
+            width: "420px",
+            height: "420px",
+            borderRadius: "999px",
+            background: "radial-gradient(circle, rgba(126,162,255,0.45) 0%, rgba(126,162,255,0) 72%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: "-80px",
+            bottom: "-120px",
+            width: "360px",
+            height: "360px",
+            borderRadius: "999px",
+            background: "radial-gradient(circle, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0) 72%)",
+          }}
+        />
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div style={{ fontSize: "66px", fontWeight: 900, letterSpacing: "-1px", lineHeight: 1.08 }}>
-            채용 타임라인
-          </div>
-          <div style={{ fontSize: "32px", opacity: 0.9 }}>공고 일정과 지원 흐름을 한 번에</div>
-        </div>
-
-        <div style={{ display: "flex", gap: "12px" }}>
-          {["공고 탐색", "기업 후기", "취업 공유", "알림"].map((item) => (
+        <div
+          style={{
+            display: "flex",
+            width: "100%",
+            borderRadius: "36px",
+            border: "1px solid rgba(219,230,255,0.86)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(246,249,255,0.92) 100%)",
+            boxShadow: "0 24px 60px rgba(24, 46, 107, 0.16)",
+            padding: "40px 42px",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <div
+                style={{
+                  width: "62px",
+                  height: "62px",
+                  borderRadius: "18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "linear-gradient(135deg, #4d84ff 0%, #2a63e8 100%)",
+                  color: "#ffffff",
+                  fontSize: "28px",
+                  fontWeight: 900,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)",
+                }}
+              >
+                W
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <div style={{ fontSize: "30px", fontWeight: 900, color: "#1f366d" }}>언제나와</div>
+                <div style={{ fontSize: "20px", color: "#6b7faa" }}>whennawa.shop</div>
+              </div>
+            </div>
             <div
-              key={item}
               style={{
-                border: "1px solid rgba(148, 163, 184, 0.45)",
-                background: "rgba(15, 23, 42, 0.5)",
+                display: "flex",
+                alignItems: "center",
                 borderRadius: "999px",
-                padding: "10px 18px",
-                fontSize: "22px",
-                color: "#e2e8f0",
+                padding: "10px 16px",
+                background: "#eff4ff",
+                color: "#4d6fb1",
+                fontSize: "18px",
+                fontWeight: 700,
+                border: "1px solid #d9e5ff",
               }}
             >
-              {item}
+              취업 타임라인 서비스
             </div>
-          ))}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                fontSize: "72px",
+                lineHeight: 1.03,
+                letterSpacing: "-2px",
+                fontWeight: 900,
+                color: "#13284f",
+              }}
+            >
+              채용 일정과 지원 흐름을
+              <br />
+              한 화면에서 확인하세요
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                fontSize: "30px",
+                lineHeight: 1.35,
+                color: "#5e73a4",
+                fontWeight: 600,
+              }}
+            >
+              발표일 검색, 면접 후기, 게시판, 알림까지
+              <br />
+              취업 준비에 필요한 흐름을 더 빠르게 연결합니다.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            {["발표일 검색", "면접 후기", "회사 게시판", "알림 관리"].map((item) => (
+              <div
+                key={item}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "999px",
+                  padding: "12px 18px",
+                  background: "#f5f8ff",
+                  border: "1px solid #dbe5ff",
+                  color: "#4666a7",
+                  fontSize: "22px",
+                  fontWeight: 700,
+                }}
+              >
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     ),
