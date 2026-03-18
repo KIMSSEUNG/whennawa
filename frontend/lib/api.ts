@@ -729,7 +729,7 @@ export async function createCompany(companyName: string): Promise<CompanyCreateR
       created: false,
       pending: true,
       normalizedChanged: false,
-      message: "?뚯궗 ?깅줉 ?붿껌 媛먯궗?⑸땲?? 泥섎━?먮뒗 ?쇱젙 ?쒓컙???꾩슂?????덉뒿?덈떎.",
+      message: "회사 등록 요청 감사합니다. 처리에는 일정 시간이 소요될 수 있습니다.",
     }
   }
   const data = await request<CompanyCreateResultInput>("/api/companies", {
@@ -1662,7 +1662,7 @@ export async function processAdminCompanyNameRequest(requestId: number): Promise
       status: "PROCESSED",
       alreadyExists: false,
       existingCompanyName: null,
-      message: "?뚯궗 ?깅줉???꾨즺?섏뿀?듬땲??",
+      message: "회사 등록이 완료되었습니다.",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -1684,7 +1684,7 @@ export async function discardAdminCompanyNameRequest(requestId: number): Promise
       status: "DISCARDED",
       alreadyExists: false,
       existingCompanyName: null,
-      message: "?붿껌???먭린?섏뿀?듬땲??",
+      message: "요청이 폐기되었습니다.",
       createdAt: new Date(),
       updatedAt: new Date(),
     }

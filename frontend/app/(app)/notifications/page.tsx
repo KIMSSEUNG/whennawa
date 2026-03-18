@@ -39,20 +39,20 @@ function formatDate(value: Date | null | undefined) {
 
 const notificationTheme = {
   heroSection:
-    "relative overflow-hidden rounded-[28px] border border-[#dfe6fb] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5 shadow-[0_18px_40px_rgba(76,104,168,0.08)] md:p-6",
+    "relative overflow-hidden rounded-[28px] border border-[#dfe6fb] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5 shadow-[0_18px_40px_rgba(76,104,168,0.08)] dark:border-[#31415f] dark:bg-[linear-gradient(180deg,#11172a_0%,#131b31_100%)] dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)] md:p-6",
   heroTopLine:
-    "absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,#4d84ff_0%,#7fa4ff_50%,#dce8ff_100%)]",
+    "absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,#4d84ff_0%,#7fa4ff_50%,#dce8ff_100%)] dark:bg-[linear-gradient(90deg,#537ef5_0%,#6d8ef0_50%,#233869_100%)]",
   heroGlowRight:
-    "absolute -right-16 -top-12 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(102,144,242,0.16)_0%,rgba(102,144,242,0)_72%)]",
+    "absolute -right-16 -top-12 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(102,144,242,0.16)_0%,rgba(102,144,242,0)_72%)] dark:bg-[radial-gradient(circle,rgba(83,126,245,0.2)_0%,rgba(83,126,245,0)_72%)]",
   heroGlowLeft:
-    "absolute -left-12 bottom-0 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(191,213,255,0.16)_0%,rgba(191,213,255,0)_72%)]",
-  heroEyebrow: "text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7387ba]",
-  heroTitle: "mt-3 text-[30px] font-black tracking-tight text-[#24427c] md:text-[38px]",
-  heroDescription: "mt-3 text-base font-semibold text-[#5f76a8] md:text-lg",
-  field: "border-[#dbe3f7] focus-visible:border-[#8ea7ee] focus-visible:ring-[#8ea7ee]/30",
-  solidButton: "bg-[#86a2f4] text-white hover:bg-[#7593ea]",
-  outlineButton: "border-[#d8e2f8] bg-white text-[#31508f] hover:bg-[#f5f8ff]",
-  card: "border-[#e1e7f7] bg-white",
+    "absolute -left-12 bottom-0 h-28 w-28 rounded-full bg-[radial-gradient(circle,rgba(191,213,255,0.16)_0%,rgba(191,213,255,0)_72%)] dark:bg-[radial-gradient(circle,rgba(68,92,152,0.18)_0%,rgba(68,92,152,0)_72%)]",
+  heroEyebrow: "text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7387ba] dark:text-[#8ea4d8]",
+  heroTitle: "mt-3 text-[30px] font-black tracking-tight text-[#24427c] dark:text-[#edf3ff] md:text-[38px]",
+  heroDescription: "mt-3 text-base font-semibold text-[#5f76a8] dark:text-[#9cb0df] md:text-lg",
+  field: "border-[#dbe3f7] bg-white dark:border-[#344464] dark:bg-[#0f1729] dark:text-[#edf3ff] dark:placeholder:text-[#8293b6] focus-visible:border-[#8ea7ee] focus-visible:ring-[#8ea7ee]/30",
+  solidButton: "bg-[#86a2f4] text-white hover:bg-[#7593ea] dark:bg-[#6d8ef0] dark:hover:bg-[#5c7de0]",
+  outlineButton: "border-[#d8e2f8] bg-white text-[#31508f] hover:bg-[#f5f8ff] dark:border-[#31415f] dark:bg-[#16213a] dark:text-[#d6e3ff] dark:hover:bg-[#1b2845]",
+  card: "border-[#e1e7f7] bg-white dark:border-[#31415f] dark:bg-[#16213a]",
 }
 
 function NotificationsPageClient() {
@@ -354,8 +354,8 @@ function NotificationsPageClient() {
           누군가 등록 회사의 <span className="font-extrabold text-primary">오늘 결과 발표가 났어요</span> 버튼으로 제보 시 알림이 와요.
         </p>
 
-        <form className="mt-5 flex flex-wrap gap-2" onSubmit={handleAddSubscriptionSubmit}>
-          <div className="relative w-full min-w-0 flex-1">
+        <form className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap" onSubmit={handleAddSubscriptionSubmit}>
+          <div className="relative min-w-0 flex-[1.55]">
             <Input
               value={query}
               onChange={(e) => {
@@ -370,17 +370,17 @@ function NotificationsPageClient() {
                 }
               }}
               placeholder="알림 받을 회사명"
-              className={`h-12 rounded-xl bg-white ${notificationTheme.field}`}
+              className={`h-12 rounded-xl bg-white dark:bg-[#0f1729] ${notificationTheme.field}`}
             />
             {isAuthenticated && showSuggestions && trimmedQuery && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-2xl border border-border/70 bg-card p-2 shadow-lg">
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-2xl border border-border/70 bg-card p-2 shadow-lg dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">
                 {suggestions.map((item) => (
                   <button
                     key={`notification-suggest-${item.companyName}`}
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => void handleAdd(item.companyName)}
-                    className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[#f3f7ff]"
+                    className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[#f3f7ff] dark:hover:bg-[#1b2845]"
                   >
                     {item.companyName}
                   </button>
@@ -390,12 +390,17 @@ function NotificationsPageClient() {
           </div>
           <Button
             type="submit"
-            className={`h-12 px-6 ${notificationTheme.solidButton}`}
+            className={`h-12 w-full flex-[0.82] ${notificationTheme.solidButton} sm:w-auto`}
             disabled={isAdding || !trimmedQuery || !isAuthenticated}
           >
             {isAdding ? "등록 중..." : "알림 등록"}
           </Button>
-          <Button type="button" variant="outline" className={`h-12 px-6 ${notificationTheme.outlineButton}`} onClick={() => setIsAddCompanyOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            className={`h-12 w-full flex-[0.72] ${notificationTheme.outlineButton} sm:w-auto`}
+            onClick={() => setIsAddCompanyOpen(true)}
+          >
             회사 추가
           </Button>
         </form>
@@ -407,7 +412,7 @@ function NotificationsPageClient() {
         {!isAuthenticated && isAuthChecked && (
           <div className="absolute -inset-px z-20 bg-background/78 backdrop-blur-[3px]">
             <div className="flex min-h-full items-center justify-center px-4 py-10 md:px-6">
-            <div className="w-full max-w-2xl rounded-[28px] border border-[#dfe6fb] bg-white/96 p-6 text-center shadow-[0_24px_60px_rgba(76,104,168,0.14)] md:p-8">
+            <div className="w-full max-w-2xl rounded-[28px] border border-[#dfe6fb] bg-white/96 p-6 text-center shadow-[0_24px_60px_rgba(76,104,168,0.14)] dark:border-[#31415f] dark:bg-[#131d34]/96 dark:shadow-[0_24px_60px_rgba(0,0,0,0.42)] md:p-8">
               <h3 className="text-base font-semibold text-foreground">로그인 후 이용해 주세요.</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 알림 등록과 수신 확인은 로그인 사용자만 가능합니다.
@@ -442,7 +447,7 @@ function NotificationsPageClient() {
                     type="button"
                     onClick={() => setSubscriptionSlide((prev) => Math.max(0, prev - 1))}
                     disabled={subscriptionSlide === 0}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#d8e2f8] text-xs text-[#31508f] disabled:opacity-40"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#d8e2f8] text-xs text-[#31508f] dark:border-[#31415f] dark:text-[#cfe0ff] disabled:opacity-40"
                     aria-label="이전 카드"
                   >
                     ←
@@ -451,7 +456,7 @@ function NotificationsPageClient() {
                     type="button"
                     onClick={() => setSubscriptionSlide((prev) => Math.min(maxSubscriptionSlide, prev + 1))}
                     disabled={subscriptionSlide >= maxSubscriptionSlide}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#d8e2f8] text-xs text-[#31508f] disabled:opacity-40"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#d8e2f8] text-xs text-[#31508f] dark:border-[#31415f] dark:text-[#cfe0ff] disabled:opacity-40"
                     aria-label="다음 카드"
                   >
                     →
@@ -462,7 +467,7 @@ function NotificationsPageClient() {
             </div>
           </div>
           {sortedSubscriptions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#d8e2f8] bg-white p-6 text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-dashed border-[#d8e2f8] bg-white p-6 text-sm text-muted-foreground dark:border-[#31415f] dark:bg-[#16213a]">
               등록한 회사가 없습니다.
             </div>
           ) : (
@@ -476,12 +481,12 @@ function NotificationsPageClient() {
                     "group w-full min-h-[172px] rounded-2xl border-4 p-5 text-left transition-all",
                     "hover:-translate-y-0.5 hover:shadow-md",
                     (item.companyId != null && (notificationsByCompanyId.get(item.companyId)?.length ?? 0) > 0)
-                      ? "border-[#7fa4ff] bg-white hover:border-[#5f8ff8]"
-                      : "border-[#d8e2f8] bg-white hover:border-[#b9cbed]",
+                      ? "border-[#7fa4ff] bg-white hover:border-[#5f8ff8] dark:border-[#537ef5] dark:bg-[#16213a] dark:hover:border-[#6d8ef0]"
+                      : "border-[#d8e2f8] bg-white hover:border-[#b9cbed] dark:border-[#31415f] dark:bg-[#16213a] dark:hover:border-[#49628f]",
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#eef4ff] text-base font-bold text-[#456ecf]">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#eef4ff] text-base font-bold text-[#456ecf] dark:bg-[#21304f] dark:text-[#c7d9ff]">
                       {item.companyName.charAt(0)}
                     </div>
                     <button
@@ -497,7 +502,7 @@ function NotificationsPageClient() {
                   </div>
                   <p className="mt-3 break-words font-semibold text-foreground">{item.companyName}</p>
                   <p className="mt-1 text-xs text-muted-foreground">등록일 {formatDate(item.createdAt)}</p>
-                  <p className="mt-2 inline-flex rounded-full bg-[#f3f7ff] px-2 py-0.5 text-xs font-medium text-[#5f76a8]">
+                  <p className="mt-2 inline-flex rounded-full bg-[#f3f7ff] px-2 py-0.5 text-xs font-medium text-[#5f76a8] dark:bg-[#21304f] dark:text-[#b9cbef]">
                     {(item.companyId != null && (notificationsByCompanyId.get(item.companyId)?.length ?? 0) > 0)
                       ? `알림 ${(notificationsByCompanyId.get(item.companyId)?.length ?? 0)}건`
                       : "알림 없음"}

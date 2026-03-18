@@ -10,18 +10,18 @@ interface SummaryChipsProps {
 
 export function SummaryChips({ total, applied, passed, rejected, isLoading }: SummaryChipsProps) {
   const chips = [
-    { label: "?꾩껜", value: total, className: "bg-muted text-foreground" },
+    { label: "전체", value: total, className: "bg-muted text-foreground" },
     {
-      label: "吏??,
+      label: "지원",
       value: applied,
       className: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
     },
     {
-      label: "?⑷꺽",
+      label: "합격",
       value: passed,
       className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
     },
-    { label: "遺덊빀寃?, value: rejected, className: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" },
+    { label: "불합격", value: rejected, className: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" },
   ]
 
   return (
@@ -35,7 +35,7 @@ export function SummaryChips({ total, applied, passed, rejected, isLoading }: Su
           )}
         >
           <span>{chip.label}</span>
-          <span className="font-semibold">{isLoading ? "?? : chip.value}</span>
+          <span className="font-semibold">{isLoading ? "..." : chip.value}</span>
         </span>
       ))}
     </div>

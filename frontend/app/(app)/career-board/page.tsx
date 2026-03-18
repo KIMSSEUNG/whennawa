@@ -14,6 +14,7 @@ import {
 import type { BoardPost } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { EmptyState } from "@/components/empty-state"
 import { CAREER_BOARD_PATH } from "@/lib/career-board"
@@ -230,26 +231,46 @@ export default function CareerBoardPage() {
           <span className={careerBoardTheme.tag}>{isSearchMode ? "검색결과" : "전체 목록"}</span>
         </div>
 
-        <form className="flex flex-wrap gap-2" onSubmit={handleSearch}>
-          <select value={searchField} onChange={(e) => setSearchField(e.target.value as SearchField)} className={careerBoardTheme.fieldSelect}>
-            <option value="title">제목</option>
-            <option value="content">내용</option>
-          </select>
-          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="검색어를 입력해 주세요" className={`h-10 w-full min-w-0 flex-1 ${careerBoardTheme.field}`} />
-          <Button type="submit" className={`h-10 ${careerBoardTheme.solidButton}`} disabled={isSearching}>
-            {isSearching ? "검색 중..." : "검색"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className={`h-10 ${careerBoardTheme.outlineButton}`}
-            onClick={() => {
-              setTotalPages(0)
-              void loadPosts(0)
-            }}
-          >
-            전체 보기
-          </Button>
+        <form className="flex flex-col gap-2 sm:flex-row sm:flex-wrap" onSubmit={handleSearch}>
+          <div className="flex min-w-0 gap-2">
+            <Select value={searchField} onValueChange={(value) => setSearchField(value as SearchField)}>
+              <SelectTrigger
+                className={`h-10 min-w-0 basis-[20%] rounded-lg ${careerBoardTheme.fieldSelect}`}
+              >
+                <SelectValue placeholder="제목" />
+              </SelectTrigger>
+              <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-0 rounded-xl border-[#dfdaf5] bg-white text-[#5e4f96] shadow-[0_18px_36px_rgba(109,98,168,0.14)] dark:border-[#4c456f] dark:bg-[#141222] dark:text-[#e3dcff]">
+                <SelectItem value="title" className="rounded-lg">
+                  제목
+                </SelectItem>
+                <SelectItem value="content" className="rounded-lg">
+                  내용
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="검색어를 입력해 주세요"
+              className={`h-10 min-w-0 basis-[80%] ${careerBoardTheme.field}`}
+            />
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button type="submit" className={`h-10 w-full sm:flex-1 ${careerBoardTheme.solidButton}`} disabled={isSearching}>
+              {isSearching ? "검색 중..." : "검색"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={`h-10 w-full sm:flex-1 ${careerBoardTheme.outlineButton}`}
+              onClick={() => {
+                setTotalPages(0)
+                void loadPosts(0)
+              }}
+            >
+              전체 보기
+            </Button>
+          </div>
         </form>
       </section>
 

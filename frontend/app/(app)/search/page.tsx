@@ -98,6 +98,8 @@ function SearchPageClient() {
     if (!normalizedQuery) return false
     return relatedResults.some((c) => c.companyName?.toLowerCase() === normalizedQuery.toLowerCase())
   }, [relatedResults, normalizedQuery])
+  const shouldShowRelatedSuggestions =
+    showRelatedSuggestions && !isCompanyRequestPopupOpen && Boolean(normalizedQuery) && relatedResults.length > 0 && !exactMatch
 
   const runSearch = async (value: string, syncUrl = true) => {
     const trimmed = value.trim()
@@ -415,14 +417,14 @@ function SearchPageClient() {
               type="button"
               onClick={handleMobileLogout}
               disabled={isLoggingOut}
-              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[#dce4ff] bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[#dce4ff] bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 dark:border-[#31415f] dark:bg-[#16213a] disabled:opacity-50"
             >
               {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
             </button>
           ) : (
             <Link
               href={loginHref}
-              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[#dce4ff] bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60"
+              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[#dce4ff] bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 dark:border-[#31415f] dark:bg-[#16213a]"
             >
               로그인
             </Link>
@@ -431,28 +433,28 @@ function SearchPageClient() {
         </div>
       </header>
 
-      <section className="relative mb-6 overflow-hidden rounded-[28px] border border-[#dfe6ff] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9ff_100%)] px-5 pb-5 pt-6 shadow-[0_22px_50px_rgba(97,118,177,0.10)] md:px-7 md:pb-7 md:pt-7">
-        <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#4b82ff_0%,#82a7ff_48%,#d4e1ff_100%)]" />
-        <div className="absolute -right-12 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(76,131,255,0.16)_0%,rgba(76,131,255,0)_72%)]" />
-        <div className="absolute -left-10 bottom-0 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(143,177,255,0.14)_0%,rgba(143,177,255,0)_72%)]" />
+      <section className="relative mb-6 overflow-hidden rounded-[28px] border border-[#dfe6ff] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9ff_100%)] px-5 pb-5 pt-6 shadow-[0_22px_50px_rgba(97,118,177,0.10)] dark:border-[#31415f] dark:bg-[linear-gradient(180deg,#11172a_0%,#131b31_100%)] dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)] md:px-7 md:pb-7 md:pt-7">
+        <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#4b82ff_0%,#82a7ff_48%,#d4e1ff_100%)] dark:bg-[linear-gradient(90deg,#537ef5_0%,#6d8ef0_48%,#233869_100%)]" />
+        <div className="absolute -right-12 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(76,131,255,0.16)_0%,rgba(76,131,255,0)_72%)] dark:bg-[radial-gradient(circle,rgba(83,126,245,0.2)_0%,rgba(83,126,245,0)_72%)]" />
+        <div className="absolute -left-10 bottom-0 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(143,177,255,0.14)_0%,rgba(143,177,255,0)_72%)] dark:bg-[radial-gradient(circle,rgba(76,107,176,0.18)_0%,rgba(76,107,176,0)_72%)]" />
         <div className="relative z-10">
           <div className="flex flex-col gap-5">
             <div className="max-w-[640px]">
-              <p className="text-[11px] font-semibold tracking-[0.2em] text-[#6c83bb]">SEARCH</p>
-              <h1 className="mt-3 text-[30px] font-black tracking-tight text-[#203872] md:text-[38px]">회사 검색</h1>
-              <p className="mt-3 max-w-[560px] text-sm leading-6 text-[#6177af] md:text-[15px]">
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-[#6c83bb] dark:text-[#8ea4d8]">SEARCH</p>
+              <h1 className="mt-3 text-[30px] font-black tracking-tight text-[#203872] dark:text-[#edf3ff] md:text-[38px]">회사 검색</h1>
+              <p className="mt-3 max-w-[560px] text-sm leading-6 text-[#6177af] dark:text-[#9cb0df] md:text-[15px]">
                 회사명을 검색해서 저장된 지원 이력, 전형 타임라인, 게시판 흐름을 한 번에 확인하세요.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8]">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8] dark:border-[#31415f] dark:bg-[#16203a] dark:text-[#bdd0ff]">
                   <Search className="h-3.5 w-3.5" />
                   회사명 즉시 조회
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8]">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8] dark:border-[#31415f] dark:bg-[#16203a] dark:text-[#bdd0ff]">
                   <TrendingUp className="h-3.5 w-3.5" />
                   발표 일정 비교
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8]">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8] dark:border-[#31415f] dark:bg-[#16203a] dark:text-[#bdd0ff]">
                   <Sparkles className="h-3.5 w-3.5" />
                   제보 바로 등록
                 </span>
@@ -465,10 +467,8 @@ function SearchPageClient() {
       {/* Search Area */}
       <section
         className={cn(
-          "relative mb-6 rounded-[24px] border border-[#dfe6ff] bg-white/95 p-4 shadow-[0_18px_40px_rgba(97,118,177,0.1)] md:p-5",
-          showRelatedSuggestions && !isCompanyRequestPopupOpen && normalizedQuery && relatedResults.length > 0 && !exactMatch
-            ? "z-20 mb-10"
-            : "z-0",
+          "relative mb-6 rounded-[24px] border border-[#dfe6ff] bg-white/95 p-4 shadow-[0_18px_40px_rgba(97,118,177,0.1)] dark:border-[#31415f] dark:bg-[#121a2d]/95 dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)] md:p-5",
+          shouldShowRelatedSuggestions ? "z-20" : "z-0",
         )}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]">
@@ -487,10 +487,10 @@ function SearchPageClient() {
                   setShowRelatedSuggestions(true)
                 }}
                 onFocus={() => setShowRelatedSuggestions(true)}
-                className="h-13 rounded-[18px] border-[#dce4ff] bg-white/94 px-4 shadow-none"
+                className="h-13 rounded-[18px] border-[#dce4ff] bg-white/94 px-4 shadow-none dark:border-[#344464] dark:bg-[#0f1729] dark:text-[#edf3ff] dark:placeholder:text-[#8293b6]"
               />
-              {showRelatedSuggestions && !isCompanyRequestPopupOpen && normalizedQuery && relatedResults.length > 0 && !exactMatch && (
-                <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-30 rounded-[20px] border border-[#dfe6ff] bg-white p-2 shadow-[0_18px_36px_rgba(97,118,177,0.14)]">
+              {shouldShowRelatedSuggestions && (
+                <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-30 rounded-[20px] border border-[#dfe6ff] bg-white p-2 shadow-[0_18px_36px_rgba(97,118,177,0.14)] dark:border-[#31415f] dark:bg-[#16213a] dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">
                   <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">연관 검색어</p>
                   <div className="max-h-64 overflow-auto">
                     {relatedResults.slice(0, 5).map((company) => (
@@ -520,22 +520,24 @@ function SearchPageClient() {
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="h-12 w-full rounded-[18px] border-[#dce4ff] bg-white sm:w-auto" onClick={() => setIsAddCompanyOpen(true)}>
+              <Button type="button" variant="outline" className="h-12 w-full rounded-[18px] border-[#dce4ff] bg-white dark:border-[#31415f] dark:bg-[#16213a] sm:w-auto" onClick={() => setIsAddCompanyOpen(true)}>
                 회사 추가하기
               </Button>
               {selectedCompany && (
                 <Link href={`/board/${toCompanySlug(selectedCompany.companyName)}`} className="w-full sm:w-auto">
-                  <Button type="button" variant="outline" className="h-12 w-full rounded-[18px] border-[#dce4ff] bg-white sm:w-auto">게시판 가기</Button>
+                  <Button type="button" variant="outline" className="h-12 w-full rounded-[18px] border-[#dce4ff] bg-white dark:border-[#31415f] dark:bg-[#16213a] sm:w-auto">게시판 가기</Button>
                 </Link>
               )}
             </div>
           </div>
-          <div className="relative z-10 mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#f1f5ff] px-3 py-1 text-[#6177af]">
-              <Building2 className="h-3.5 w-3.5" />
-              회사명으로 검색하고 상세 타임라인을 확인할 수 있습니다.
-            </span>
-          </div>
+          {!shouldShowRelatedSuggestions && (
+            <div className="relative z-10 mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#f1f5ff] px-3 py-1 text-[#6177af] dark:bg-[#16213a] dark:text-[#a8baea]">
+                <Building2 className="h-3.5 w-3.5" />
+                회사명으로 검색하고 상세 타임라인을 확인할 수 있습니다.
+              </span>
+            </div>
+          )}
         </form>
       </section>
 

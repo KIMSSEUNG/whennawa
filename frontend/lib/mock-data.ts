@@ -22,7 +22,7 @@ export const mockCompanies: Array<{ companyName: string; lastUpdatedAt: Date }> 
     lastUpdatedAt: new Date("2026-01-10"),
   },
   {
-    companyName: "??",
+    companyName: "현대자동차",
     lastUpdatedAt: new Date("2026-01-16"),
   },
   {
