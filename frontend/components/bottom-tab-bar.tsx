@@ -86,11 +86,12 @@ export function BottomTabBar() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 md:hidden">
-      <div className="mx-auto mb-2 w-[calc(100%-20px)] max-w-[460px] rounded-[26px] border border-[#dce4ff] bg-[linear-gradient(180deg,rgba(53,98,224,0.96)_0%,rgba(37,81,199,0.98)_100%)] px-2 py-2 shadow-[0_20px_40px_rgba(47,83,186,0.28)] backdrop-blur-sm dark:border-[#31415f] dark:bg-[linear-gradient(180deg,rgba(18,28,49,0.94)_0%,rgba(13,21,39,0.98)_100%)] dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">
+      <div className="mx-auto mb-2 w-[calc(100%-20px)] max-w-[460px] rounded-[26px] border border-[#dce4ff] bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(244,247,255,0.99)_100%)] px-2 py-2 shadow-[0_18px_34px_rgba(112,136,198,0.16)] backdrop-blur-sm dark:border-[#31415f] dark:bg-[linear-gradient(180deg,rgba(18,28,49,0.94)_0%,rgba(13,21,39,0.98)_100%)] dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">
         <div className="grid safe-bottom" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map((tab) => {
             const isActive = tab.href === "/profile" ? pathname === "/profile" : pathname === tab.href
             const Icon = tab.icon
+
             return (
               <Link
                 key={tab.href}
@@ -98,8 +99,8 @@ export function BottomTabBar() {
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 rounded-[18px] px-2 py-2 text-[11px] font-medium transition-colors",
                   isActive
-                    ? "bg-white/16 text-white dark:bg-[#233355] dark:text-[#e8efff]"
-                    : "text-white/74 hover:bg-white/10 hover:text-white dark:text-[#99a9cf] dark:hover:bg-[#1c2946] dark:hover:text-[#e8efff]",
+                    ? "bg-[linear-gradient(180deg,#4d84ff_0%,#2a63e8_100%)] text-white shadow-[0_10px_20px_rgba(44,92,221,0.22)] dark:bg-[#233355] dark:text-[#e8efff]"
+                    : "text-[#6a7fb2] hover:bg-[#eef4ff] hover:text-[#24458f] dark:text-[#99a9cf] dark:hover:bg-[#1c2946] dark:hover:text-[#e8efff]",
                 )}
               >
                 <Icon className="h-4 w-4" />

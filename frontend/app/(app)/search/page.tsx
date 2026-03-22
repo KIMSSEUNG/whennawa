@@ -20,7 +20,6 @@ import type {
 } from "@/lib/types"
 import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/empty-state"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { CompanyDetailSheet } from "@/components/company-detail-sheet"
 import { CompanyDetailPanel } from "@/components/company-detail-panel"
 import { CompanyChatRoom } from "@/components/chat/company-chat-room"
@@ -363,9 +362,6 @@ function SearchPageClient() {
           </Link>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">회사 검색</h1>
           <p className="text-sm text-muted-foreground">회사명을 검색해서 지원 이력과 전형 타임라인을 확인해 보세요.</p>
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-2 whitespace-nowrap">
-          <ThemeToggle />
         </div>
       </header>
 

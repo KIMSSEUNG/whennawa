@@ -17,14 +17,14 @@ export function ThemeToggle() {
   }
 
   return (
-    <div className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-muted/90 p-1 dark:bg-[#18233c]">
+    <div className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#f4f7ff] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] dark:bg-[#18233c]">
       <button
         type="button"
         onClick={() => setTheme("light")}
         className={cn(
-          "rounded-md px-3 py-1 text-sm transition-colors",
+          "rounded-full px-3 py-1 text-sm transition-colors",
           resolvedTheme === "light"
-            ? "bg-background font-medium text-foreground shadow-sm"
+            ? "bg-white font-medium text-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground",
         )}
       >
@@ -34,7 +34,7 @@ export function ThemeToggle() {
         type="button"
         onClick={() => setTheme("dark")}
         className={cn(
-          "rounded-md px-3 py-1 text-sm transition-colors",
+          "rounded-full px-3 py-1 text-sm transition-colors",
           resolvedTheme === "dark"
             ? "bg-background font-medium text-foreground shadow-sm dark:bg-[#243454] dark:text-[#eff4ff]"
             : "text-muted-foreground hover:text-foreground",

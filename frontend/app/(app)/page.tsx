@@ -11,8 +11,9 @@ import {
   fetchNotifications,
   fetchNotificationSubscriptions,
   getUser,
+  searchCompanies,
 } from "@/lib/api"
-import type { HomeHotCompanyItem, HomeLatestReportItem, NotificationSubscription, UserNotification } from "@/lib/types"
+import type { CompanySearchItem, HomeHotCompanyItem, HomeLatestReportItem, NotificationSubscription, UserNotification } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const statChips = [
@@ -53,6 +54,8 @@ const reportBoards = [
 export default function HomePage() {
   const router = useRouter()
   const [query, setQuery] = useState("")
+  const [relatedResults, setRelatedResults] = useState<CompanySearchItem[]>([])
+  const [showRelatedSuggestions, setShowRelatedSuggestions] = useState(true)
   const [latestReports, setLatestReports] = useState<HomeLatestReportItem[]>([])
   const [isLatestReportsLoading, setIsLatestReportsLoading] = useState(true)
   const [hotCompaniesFeed, setHotCompaniesFeed] = useState<HomeHotCompanyItem[]>([])
@@ -129,6 +132,33 @@ export default function HomePage() {
     return sorted.slice(0, 2)
   }, [subscriptions, notificationsByCompanyId])
 
+  const normalizedQuery = useMemo(() => query.trim(), [query])
+  const exactMatch = useMemo(() => {
+    if (!normalizedQuery) return false
+    return relatedResults.some((item) => item.companyName?.toLowerCase() === normalizedQuery.toLowerCase())
+  }, [normalizedQuery, relatedResults])
+  const shouldShowRelatedSuggestions =
+    showRelatedSuggestions && Boolean(normalizedQuery) && relatedResults.length > 0 && !exactMatch
+
+  useEffect(() => {
+    if (!normalizedQuery) {
+      setRelatedResults([])
+      return
+    }
+
+    let cancelled = false
+    const handle = setTimeout(async () => {
+      const data = await searchCompanies(normalizedQuery, 6).catch(() => [])
+      if (cancelled) return
+      setRelatedResults(data ?? [])
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [normalizedQuery])
+
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmed = query.trim()
@@ -139,7 +169,7 @@ export default function HomePage() {
     <div className="min-h-full bg-[linear-gradient(180deg,#eef4ff_0%,#f7faff_34%,#eff5ff_72%,#f9fbff_100%)] dark:bg-[linear-gradient(180deg,#0d1424_0%,#10192c_34%,#0f1728_72%,#0b1220_100%)]">
       <div className="page-shell [--page-max:1280px] pb-8 pt-4 md:pt-8">
         <div className="mx-auto flex w-full flex-col gap-5 md:gap-6">
-          <section className="relative overflow-hidden rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-5 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] dark:border-[#31415f] dark:bg-[linear-gradient(135deg,#142240_0%,#1c315d_58%,#1a3a6f_100%)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.38)] md:px-8 md:pb-8 md:pt-9">
+          <section className="relative overflow-visible rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-5 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] dark:border-[#31415f] dark:bg-[linear-gradient(135deg,#142240_0%,#1c315d_58%,#1a3a6f_100%)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.38)] md:px-8 md:pb-8 md:pt-9">
             <Image src="/design-previews/icon/hero-background.png" alt="" fill priority className="object-cover object-center" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(34,76,192,0.12)_0%,rgba(34,76,192,0.2)_62%,rgba(78,183,210,0.16)_100%)]" />
             <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(223,246,255,0.34)_0%,rgba(223,246,255,0)_72%)]" />
@@ -147,7 +177,7 @@ export default function HomePage() {
             <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_100%)]" />
             <Image src="/design-previews/icon/hero-mascots.png" alt="" width={124} height={82} className="absolute right-4 top-4 hidden opacity-95 md:block" />
 
-            <div className="relative z-10 mx-auto flex max-w-[860px] flex-col items-center text-center text-white">
+            <div className="relative z-20 mx-auto flex max-w-[860px] flex-col items-center text-center text-white">
               <p className="text-[11px] font-semibold tracking-[0.22em] text-white/70">HIRING SIGNAL DASHBOARD</p>
               <h1 className="mt-3 text-[34px] font-black tracking-tight md:text-[46px]">언제나와</h1>
               <p className="mt-3 text-sm text-white/90 md:text-base">취업 정보, 제보, 커뮤니티를 한 화면에서 빠르게 확인하세요.</p>
@@ -156,16 +186,43 @@ export default function HomePage() {
                 onSubmit={handleSearch}
                 className="mt-7 flex w-full max-w-[760px] flex-col gap-2 rounded-[20px] bg-white/94 p-2 shadow-[0_18px_40px_rgba(18,47,126,0.18)] backdrop-blur-sm dark:bg-[#111b2f]/92 dark:shadow-[0_18px_40px_rgba(0,0,0,0.36)] md:flex-row md:items-center"
               >
-                <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[16px] border border-[#d9e5ff] bg-[#f9fbff] px-4 py-3 dark:border-[#31415f] dark:bg-[#0f1729]">
+                <div className="relative min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-3 rounded-[16px] border border-[#d9e5ff] bg-[#f9fbff] px-4 py-3 dark:border-[#31415f] dark:bg-[#0f1729]">
                   <Search className="h-4 w-4 shrink-0 text-[#6c87c7] dark:text-[#8fa7df]" />
                   <input
                     type="search"
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
+                    onChange={(event) => {
+                      setQuery(event.target.value)
+                      setShowRelatedSuggestions(true)
+                    }}
+                    onFocus={() => setShowRelatedSuggestions(true)}
                     placeholder="기업명 또는 공고를 입력하세요"
                     className="w-full bg-transparent text-sm font-medium text-[#223d7a] outline-none placeholder:text-[#8ca2cf] dark:text-[#eef4ff] dark:placeholder:text-[#7f93bb]"
                   />
                   <span className="hidden text-xs font-semibold text-[#8ca2cf] dark:text-[#7f93bb] md:inline">⌘ /</span>
+                  </div>
+                  {shouldShowRelatedSuggestions && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-30 rounded-[20px] border border-[#dfe6ff] bg-white p-2 text-left shadow-[0_18px_36px_rgba(97,118,177,0.14)] dark:border-[#31415f] dark:bg-[#16213a] dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">
+                      <p className="px-2 pb-1 text-xs font-medium text-[#7083b4] dark:text-[#9bb0df]">연관 검색어</p>
+                      <div className="max-h-64 overflow-auto">
+                        {relatedResults.map((company) => (
+                          <button
+                            key={`related-${company.companyName}`}
+                            type="button"
+                            onClick={() => {
+                              setQuery(company.companyName)
+                              setShowRelatedSuggestions(false)
+                              router.push(`/search?q=${encodeURIComponent(company.companyName)}`)
+                            }}
+                            className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#223d7a] transition-colors hover:bg-[#eef4ff] dark:text-[#eef4ff] dark:hover:bg-[#1b2a47]"
+                          >
+                            {company.companyName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <button
                   type="submit"
