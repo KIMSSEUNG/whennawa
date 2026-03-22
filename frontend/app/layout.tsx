@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import Script from "next/script"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SiteFooter } from "@/components/site-footer"
@@ -65,10 +66,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#3B5BDB" },
-    { media: "(prefers-color-scheme: dark)", color: "#2F49B3" },
-  ],
+  themeColor: "#f8faff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -82,7 +80,31 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang="ko" className="light" style={{ colorScheme: "light" }} suppressHydrationWarning>
+      <head>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var storedTheme = window.localStorage.getItem("theme");
+                  var theme = storedTheme === "dark" ? "dark" : "light";
+                  var root = document.documentElement;
+                  root.classList.remove("light", "dark");
+                  root.classList.add(theme);
+                  root.style.colorScheme = theme;
+                } catch (error) {
+                  document.documentElement.classList.remove("dark");
+                  document.documentElement.classList.add("light");
+                  document.documentElement.style.colorScheme = "light";
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="font-sans antialiased min-h-dvh bg-background">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <div className="flex min-h-dvh flex-col">
