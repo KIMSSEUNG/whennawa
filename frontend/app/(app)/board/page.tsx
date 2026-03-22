@@ -120,13 +120,13 @@ export default function BoardPage() {
           </p>
 
           <form
-            className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+            className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-stretch"
             onSubmit={(event) => {
               event.preventDefault()
               void runSearch()
             }}
           >
-            <div className="relative min-w-0 flex-[1.55]">
+            <div className="relative min-w-0 sm:flex-1">
               <Input
                 type="search"
                 value={query}
@@ -162,7 +162,7 @@ export default function BoardPage() {
             </div>
             <Button
               type="submit"
-              className={`h-12 w-full flex-[0.82] rounded-[18px] ${boardTheme.solidButton} sm:w-auto`}
+              className={`h-12 w-full rounded-[18px] px-5 text-sm whitespace-nowrap sm:w-auto sm:flex-none ${boardTheme.solidButton}`}
               disabled={isSearching || !query.trim()}
             >
               {isSearching ? "검색 중..." : "게시판 검색"}
@@ -170,7 +170,7 @@ export default function BoardPage() {
             <Button
               type="button"
               variant="outline"
-              className={`h-12 w-full flex-[0.72] rounded-[18px] ${boardTheme.outlineButton} sm:w-auto`}
+              className={`h-12 w-full rounded-[18px] px-5 text-sm whitespace-nowrap sm:w-auto sm:flex-none ${boardTheme.outlineButton}`}
               onClick={() => setIsAddOpen(true)}
             >
               회사 추가
