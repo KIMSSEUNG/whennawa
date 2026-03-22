@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { loginWithGoogle } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { AppCard } from "@/components/app-card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function LoginPage() {
   return (
@@ -28,6 +27,27 @@ function LoginPageContent() {
   const showConsentDenied = searchParams.get("reason") === "consent_denied"
   const showOauthFailed = searchParams.get("reason") === "oauth_failed"
   const next = searchParams.get("next") ?? "/"
+  const loginNotice = showSessionExpired
+    ? {
+        title: "세션이 만료되었습니다",
+        description: "다시 로그인해서 계속 진행해 주세요.",
+      }
+    : showAuthRequired
+      ? {
+          title: "로그인이 필요합니다",
+          description: "Google 계정으로 로그인하면 서비스를 이어서 이용할 수 있어요.",
+        }
+      : showConsentDenied
+        ? {
+            title: "권한 동의가 필요합니다",
+            description: "필수 권한에 동의한 뒤 다시 로그인해 주세요.",
+          }
+        : showOauthFailed
+          ? {
+              title: "로그인에 실패했습니다",
+              description: "잠시 후 다시 시도해 주세요.",
+            }
+          : null
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -126,68 +146,25 @@ function LoginPageContent() {
     <div className="flex min-h-dvh flex-col items-center justify-center px-4 bg-background">
       <div className="w-full max-w-sm">
         <AppCard className="text-center" gradient="blue">
-          {showSessionExpired && (
-            <div className="mb-6">
-              <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">세션이 만료되었습니다</AlertTitle>
-                <AlertDescription className="justify-items-center text-center">
-                  다시 로그인해 주세요.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {showAuthRequired && (
-            <div className="mb-6">
-              <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">로그인이 필요합니다</AlertTitle>
-                <AlertDescription className="justify-items-center text-center">
-                  Google 계정으로 계속 진행해 주세요.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {showConsentDenied && (
-            <div className="mb-6">
-              <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">권한 동의가 필요합니다</AlertTitle>
-                <AlertDescription className="justify-items-center text-center">
-                  Google 필수 권한에 동의한 뒤 다시 시도해 주세요.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {showOauthFailed && (
-            <div className="mb-6">
-              <Alert variant="destructive" className="text-center">
-                <AlertTitle className="text-center">로그인에 실패했습니다</AlertTitle>
-                <AlertDescription className="justify-items-center text-center">
-                  잠시 후 다시 시도해 주세요.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {embeddedBrowserName && (
-            <div className="mb-6">
-              <Alert variant="destructive" className="text-left">
-                <AlertTitle>{embeddedBrowserName} 인앱 브라우저에서는 Google 로그인이 제한될 수 있습니다</AlertTitle>
-                <AlertDescription className="mt-2 space-y-3 text-left">
-                  <p>우측 상단 메뉴에서 Safari 또는 Chrome으로 연 뒤 다시 로그인해 주세요.</p>
-                  <Button type="button" variant="outline" className="w-full rounded-xl" onClick={handleCopyCurrentUrl}>
-                    {copied ? "현재 링크 복사됨" : "현재 링크 복사"}
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
           <div className="mb-8 flex flex-col items-center">
             <Image src="/logo.png" alt="언제나와 로고" width={80} height={80} className="mb-4 rounded-2xl" priority />
             <h1 className="text-3xl font-bold tracking-tight text-foreground">언제나와</h1>
             <p className="mt-2 text-muted-foreground">취업 전형 타임라인을 한눈에 확인하세요.</p>
+            {loginNotice && (
+              <div className="mt-4 w-full rounded-2xl border border-[#dbe4ff] bg-white/80 px-4 py-3 text-center shadow-sm dark:border-[#31415f] dark:bg-[#16213a]/80">
+                <p className="text-sm font-semibold text-foreground">{loginNotice.title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{loginNotice.description}</p>
+              </div>
+            )}
+            {embeddedBrowserName && (
+              <div className="mt-4 w-full rounded-2xl border border-[#dbe4ff] bg-white/80 px-4 py-3 text-left shadow-sm dark:border-[#31415f] dark:bg-[#16213a]/80">
+                <p className="text-sm font-semibold text-foreground">{embeddedBrowserName} 인앱 브라우저에서는 Google 로그인이 제한될 수 있습니다</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">우측 상단 메뉴에서 Safari 또는 Chrome으로 연 뒤 다시 로그인해 주세요.</p>
+                <Button type="button" variant="outline" className="mt-3 w-full rounded-xl" onClick={handleCopyCurrentUrl}>
+                  {copied ? "현재 링크 복사됨" : "현재 링크 복사"}
+                </Button>
+              </div>
+            )}
           </div>
 
           <Button
