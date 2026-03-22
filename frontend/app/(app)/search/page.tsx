@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/empty-state"
 import { CompanyDetailSheet } from "@/components/company-detail-sheet"
 import { CompanyDetailPanel } from "@/components/company-detail-panel"
 import { CompanyChatRoom } from "@/components/chat/company-chat-room"
+import { CompanyIcon } from "@/components/company-icon"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
@@ -436,7 +437,10 @@ function SearchPageClient() {
                         }}
                         className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
                       >
-                        {company.companyName}
+                        <div className="flex items-center gap-3">
+                          <CompanyIcon companyId={company.companyId} companyName={company.companyName} size={34} textClassName="text-xs" />
+                          <span>{company.companyName}</span>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -524,7 +528,10 @@ function SearchPageClient() {
                     )}
                   >
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <h3 className="min-w-0 truncate font-semibold text-foreground">{company.companyName}</h3>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <CompanyIcon companyId={company.companyId} companyName={company.companyName} size={42} />
+                        <h3 className="min-w-0 truncate font-semibold text-foreground">{company.companyName}</h3>
+                      </div>
                       <span className="text-xs text-muted-foreground transition-colors group-hover:text-foreground">
                         선택
                       </span>

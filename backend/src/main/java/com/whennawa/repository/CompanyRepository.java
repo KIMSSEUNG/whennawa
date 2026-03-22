@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface CompanyRepository extends JpaRepository<Company, Long> {
     interface CompanySearchRow {
+        Long getCompanyId();
         String getCompanyName();
         LocalDateTime getLastResultAt();
     }
@@ -19,6 +20,7 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
     @Query("""
         select c.companyName as companyName,
+               c.companyId as companyId,
                max(r.updatedAt) as lastResultAt
         from Company c
         left join RollingStepLog r on lower(r.companyName) = lower(c.companyName)

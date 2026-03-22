@@ -31,11 +31,13 @@ import type {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 type CompanySearchItemInput = {
+  companyId?: number | null
   companyName: string
   lastResultAt: Date | string | null
 }
 
 type HomeLatestReportItemInput = {
+  companyId?: number | null
   companyName: string
   stepName: string
   recruitmentMode: RecruitmentMode
@@ -43,6 +45,7 @@ type HomeLatestReportItemInput = {
 }
 
 type HomeHotCompanyItemInput = {
+  companyId?: number | null
   companyName: string
   latestStepName: string
   activityCount: number

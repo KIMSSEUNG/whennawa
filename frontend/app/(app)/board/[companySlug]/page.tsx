@@ -214,7 +214,10 @@ export default function CompanyBoardPage() {
         <div className="relative">
           <p className={boardTheme.heroEyebrow}>Board Home</p>
           <h1 className={boardTheme.heroTitle}>{companyName}</h1>
-          <p className={boardTheme.heroDescription}>목록에서는 제목만 노출되고, 본문은 상세 페이지에서 확인할 수 있습니다.</p>
+          <p className={boardTheme.heroDescription}>{companyName} 지원 후기, 면접 질문, 전형 정보, 발표 일정 흐름을 게시글로 확인해 보세요.</p>
+          <p className={`mt-3 max-w-3xl text-sm leading-6 ${boardTheme.metaText}`}>
+            {companyName} 채용 게시판입니다. 실제 지원 경험, 면접 질문, 전형 단계별 후기, 발표 일정 관련 정보를 모아 빠르게 탐색할 수 있습니다.
+          </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href={writeHref}>

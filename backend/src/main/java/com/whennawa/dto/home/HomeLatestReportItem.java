@@ -4,19 +4,26 @@ import com.whennawa.entity.enums.RecruitmentMode;
 import java.time.LocalDateTime;
 
 public class HomeLatestReportItem {
+    private final Long companyId;
     private final String companyName;
     private final String stepName;
     private final RecruitmentMode recruitmentMode;
     private final LocalDateTime updatedAt;
 
-    public HomeLatestReportItem(String companyName,
+    public HomeLatestReportItem(Long companyId,
+                                String companyName,
                                 String stepName,
                                 RecruitmentMode recruitmentMode,
                                 LocalDateTime updatedAt) {
+        this.companyId = companyId;
         this.companyName = companyName;
         this.stepName = stepName;
         this.recruitmentMode = recruitmentMode;
         this.updatedAt = updatedAt;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
     }
 
     public String getCompanyName() {

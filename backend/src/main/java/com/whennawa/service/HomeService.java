@@ -2,9 +2,11 @@ package com.whennawa.service;
 
 import com.whennawa.dto.home.HomeHotCompanyItem;
 import com.whennawa.dto.home.HomeLatestReportItem;
+import com.whennawa.entity.Company;
 import com.whennawa.entity.RecruitmentStepLog;
 import com.whennawa.entity.RollingStepLog;
 import com.whennawa.entity.enums.RecruitmentMode;
+import com.whennawa.repository.CompanyRepository;
 import com.whennawa.repository.RecruitmentStepLogRepository;
 import com.whennawa.repository.RollingStepLogRepository;
 import java.time.LocalDateTime;
@@ -22,11 +24,14 @@ public class HomeService {
 
     private final RecruitmentStepLogRepository recruitmentStepLogRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
+    private final CompanyRepository companyRepository;
 
     public HomeService(RecruitmentStepLogRepository recruitmentStepLogRepository,
-                       RollingStepLogRepository rollingStepLogRepository) {
+                       RollingStepLogRepository rollingStepLogRepository,
+                       CompanyRepository companyRepository) {
         this.recruitmentStepLogRepository = recruitmentStepLogRepository;
         this.rollingStepLogRepository = rollingStepLogRepository;
+        this.companyRepository = companyRepository;
     }
 
     public List<HomeLatestReportItem> listLatestReports(Integer limit) {
@@ -72,7 +77,7 @@ public class HomeService {
                     .thenComparing(HotCompanyAggregate::companyName, String.CASE_INSENSITIVE_ORDER)
             )
             .limit(safeLimit)
-            .map(item -> new HomeHotCompanyItem(item.companyName(), item.latestStepName(), item.activityCount(), item.updatedAt()))
+            .map(item -> new HomeHotCompanyItem(item.companyId(), item.companyName(), item.latestStepName(), item.activityCount(), item.updatedAt()))
             .toList();
     }
 
@@ -81,6 +86,7 @@ public class HomeService {
             return null;
         }
         return new HomeLatestReportItem(
+            resolveCompanyId(log.getCompanyName()),
             log.getCompanyName().trim(),
             log.getCurrentStepName().trim(),
             log.getRecruitmentMode() == null ? RecruitmentMode.REGULAR : log.getRecruitmentMode(),
@@ -94,6 +100,7 @@ public class HomeService {
         }
         RecruitmentMode mode = log.getRecruitmentMode() == null ? RecruitmentMode.ROLLING : log.getRecruitmentMode();
         return new HomeLatestReportItem(
+            resolveCompanyId(log.getCompanyName()),
             log.getCompanyName().trim(),
             log.getCurrentStepName().trim(),
             mode,
@@ -122,7 +129,7 @@ public class HomeService {
         int increment = reportCount == null ? 1 : Math.max(reportCount, 1);
         HotCompanyAggregate current = aggregates.get(key);
         if (current == null) {
-            aggregates.put(key, new HotCompanyAggregate(key, stepName.trim(), increment, updatedAt));
+            aggregates.put(key, new HotCompanyAggregate(resolveCompanyId(key), key, stepName.trim(), increment, updatedAt));
             return;
         }
 
@@ -135,11 +142,20 @@ public class HomeService {
 
         aggregates.put(
             key,
-            new HotCompanyAggregate(key, latestStepName, current.activityCount() + increment, latestUpdatedAt)
+            new HotCompanyAggregate(current.companyId(), key, latestStepName, current.activityCount() + increment, latestUpdatedAt)
         );
     }
 
+    private Long resolveCompanyId(String companyName) {
+        if (isBlank(companyName)) {
+            return null;
+        }
+        Company company = companyRepository.findByCompanyNameIgnoreCaseAndIsActiveTrue(companyName.trim()).orElse(null);
+        return company == null ? null : company.getCompanyId();
+    }
+
     private record HotCompanyAggregate(
+        Long companyId,
         String companyName,
         String latestStepName,
         int activityCount,
