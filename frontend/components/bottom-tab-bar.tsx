@@ -66,11 +66,22 @@ export function BottomTabBar() {
     }
   }, [])
 
-  const tabs = (role === "ADMIN" ? adminTabs : userTabs).filter((tab) => {
-    if (tab.href === "/profile") {
-      return isAuthenticated && role === "USER"
+  const tabs = (role === "ADMIN" ? adminTabs : userTabs).flatMap((tab) => {
+    if (tab.href !== "/profile") {
+      return [tab]
     }
-    return true
+
+    if (isAuthenticated && role === "USER") {
+      return [tab]
+    }
+
+    return [
+      {
+        href: `/login?next=${encodeURIComponent(pathname ?? "/")}`,
+        label: "로그인",
+        icon: UserRound,
+      },
+    ]
   })
 
   return (
@@ -78,7 +89,7 @@ export function BottomTabBar() {
       <div className="mx-auto mb-2 w-[calc(100%-20px)] max-w-[460px] rounded-[26px] border border-[#dce4ff] bg-[linear-gradient(180deg,rgba(53,98,224,0.96)_0%,rgba(37,81,199,0.98)_100%)] px-2 py-2 shadow-[0_20px_40px_rgba(47,83,186,0.28)] backdrop-blur-sm dark:border-[#31415f] dark:bg-[linear-gradient(180deg,rgba(18,28,49,0.94)_0%,rgba(13,21,39,0.98)_100%)] dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">
         <div className="grid safe-bottom" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map((tab) => {
-            const isActive = pathname === tab.href
+            const isActive = tab.href === "/profile" ? pathname === "/profile" : pathname === tab.href
             const Icon = tab.icon
             return (
               <Link

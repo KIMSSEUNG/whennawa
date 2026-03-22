@@ -11,8 +11,6 @@ import {
   fetchCompanyStatus,
   fetchCompanyLeadTime,
   createCompany,
-  getUser,
-  logout,
 } from "@/lib/api"
 import type {
   CompanySearchItem,
@@ -65,9 +63,6 @@ function SearchPageClient() {
   const [isCalendarVisible, setIsCalendarVisible] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selectedInterviewReview, setSelectedInterviewReview] = useState<InterviewReview | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
   const [newCompanyName, setNewCompanyName] = useState("")
   const [isAddingCompany, setIsAddingCompany] = useState(false)
@@ -186,50 +181,6 @@ function SearchPageClient() {
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
-
-  useEffect(() => {
-    let mounted = true
-
-    const loadAuth = async () => {
-      try {
-        const user = await getUser()
-        if (!mounted) return
-        setIsAuthenticated(Boolean(user))
-      } catch {
-        if (!mounted) return
-        setIsAuthenticated(false)
-      }
-    }
-
-    const handleSessionUpdate = () => {
-      loadAuth()
-    }
-
-    loadAuth()
-    window.addEventListener("session_update", handleSessionUpdate)
-    window.addEventListener("storage", handleSessionUpdate)
-
-    return () => {
-      mounted = false
-      window.removeEventListener("session_update", handleSessionUpdate)
-      window.removeEventListener("storage", handleSessionUpdate)
-    }
-  }, [])
-
-  const handleMobileLogout = async () => {
-    if (isLoggingOut) return
-    setIsLoggingOut(true)
-    try {
-      await logout()
-      setIsAuthenticated(false)
-      const qs = searchParams?.toString()
-      const nextPath = `${pathname ?? "/"}${qs ? `?${qs}` : ""}`
-      router.push(`/login?next=${encodeURIComponent(nextPath)}`)
-    } finally {
-      setIsLoggingOut(false)
-    }
-  }
-  const loginHref = `/login?next=${encodeURIComponent(`${pathname ?? "/"}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`)}`
 
   const handleAddCompany = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -414,23 +365,6 @@ function SearchPageClient() {
           <p className="text-sm text-muted-foreground">회사명을 검색해서 지원 이력과 전형 타임라인을 확인해 보세요.</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 whitespace-nowrap">
-          {isAuthenticated ? (
-            <button
-              type="button"
-              onClick={handleMobileLogout}
-              disabled={isLoggingOut}
-              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[#dce4ff] bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 dark:border-[#31415f] dark:bg-[#16213a] disabled:opacity-50"
-            >
-              {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
-            </button>
-          ) : (
-            <Link
-              href={loginHref}
-              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[#dce4ff] bg-card px-3 text-sm font-medium text-foreground hover:bg-accent/60 dark:border-[#31415f] dark:bg-[#16213a]"
-            >
-              로그인
-            </Link>
-          )}
           <ThemeToggle />
         </div>
       </header>
