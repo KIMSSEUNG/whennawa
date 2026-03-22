@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toCompanySlug } from "@/lib/company-slug"
+import { fromModeSlug, toModeSlug } from "@/lib/company-detail-route"
 import { normalizeCompanyName } from "@/lib/company-name"
 
 function SearchPageClient() {
@@ -61,6 +62,8 @@ function SearchPageClient() {
   const [isStatusLoading, setIsStatusLoading] = useState(false)
   const [isLeadTimeLoading, setIsLeadTimeLoading] = useState(false)
   const [isCalendarVisible, setIsCalendarVisible] = useState(false)
+  const [currentMode, setCurrentMode] = useState<"REGULAR" | "ROLLING" | "INTERN" | null>(null)
+  const [currentStep, setCurrentStep] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selectedInterviewReview, setSelectedInterviewReview] = useState<InterviewReview | null>(null)
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
@@ -75,8 +78,14 @@ function SearchPageClient() {
   const restoredFromUrlRef = useRef(false)
   const normalizedAddCompanyPreview = useMemo(() => normalizeCompanyName(newCompanyName), [newCompanyName])
 
-  const syncSearchUrl = (q: string | null, companyName: string | null) => {
-    const params = new URLSearchParams(searchParams?.toString() ?? "")
+  const syncSearchUrl = (
+    q: string | null,
+    companyName: string | null,
+    mode?: "REGULAR" | "ROLLING" | "INTERN" | null,
+    stepName?: string | null,
+  ) => {
+    const currentQs = searchParams?.toString() ?? ""
+    const params = new URLSearchParams(currentQs)
     if (q && q.trim()) {
       params.set("q", q.trim())
     } else {
@@ -87,8 +96,19 @@ function SearchPageClient() {
     } else {
       params.delete("company")
     }
+    if (mode) {
+      params.set("mode", toModeSlug(mode))
+    } else {
+      params.delete("mode")
+    }
+    if (stepName && stepName.trim()) {
+      params.set("step", stepName.trim())
+    } else {
+      params.delete("step")
+    }
     const qs = params.toString()
-    router.replace(`/search${qs ? `?${qs}` : ""}`)
+    if (qs === currentQs) return
+    router.replace(`/search${qs ? `?${qs}` : ""}`, { scroll: false })
   }
 
   const exactMatch = useMemo(() => {
@@ -114,6 +134,8 @@ function SearchPageClient() {
     setSelectedCalendarDate(null)
     setIsCalendarVisible(false)
     setKeyword("")
+    setCurrentMode(null)
+    setCurrentStep(null)
 
     try {
       const data = await searchCompanies(trimmed)
@@ -143,14 +165,26 @@ function SearchPageClient() {
     setIsCalendarVisible(false)
     setKeyword("")
     setLastLeadTimeKeyword("")
+    setCurrentStep(null)
     setIsStatusLoading(true)
 
     try {
       const detail = await fetchCompanyStatus(company.companyName)
       setStatus(detail)
+      const nextMode =
+        currentMode && ((currentMode === "REGULAR" && detail?.regularTimelines?.length) || (currentMode === "INTERN" && detail?.internTimelines?.length) || (currentMode === "ROLLING" && detail?.rollingSteps?.length))
+          ? currentMode
+          : detail?.regularTimelines?.length
+            ? "REGULAR"
+            : detail?.internTimelines?.length
+              ? "INTERN"
+              : detail?.rollingSteps?.length
+                ? "ROLLING"
+                : null
+      setCurrentMode(nextMode)
       if (syncUrl) {
         const currentQ = (searchedQuery || normalizedQuery).trim()
-        syncSearchUrl(currentQ || null, company.companyName)
+        syncSearchUrl(currentQ || null, company.companyName, nextMode, null)
       }
     } finally {
       setIsStatusLoading(false)
@@ -163,6 +197,8 @@ function SearchPageClient() {
     if (restoredFromUrlRef.current) return
     const q = (searchParams?.get("q") ?? "").trim()
     const company = (searchParams?.get("company") ?? "").trim()
+    const mode = fromModeSlug(searchParams?.get("mode"))
+    const step = (searchParams?.get("step") ?? "").trim()
     if (!q && !company) {
       restoredFromUrlRef.current = true
       return
@@ -175,8 +211,14 @@ function SearchPageClient() {
         setQuery(initialQuery)
         await runSearch(initialQuery, false)
       }
+      setCurrentMode(mode)
+      setCurrentStep(step || null)
       if (company) {
         await handleSelectCompany({ companyName: company, lastResultAt: null }, false, false)
+        if (step) {
+          setKeyword(step)
+          setLastLeadTimeKeyword("")
+        }
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -526,7 +568,7 @@ function SearchPageClient() {
                         isDesktop &&
                         "ring-2 ring-primary/70",
                     )}
-                  >
+                    >
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-3">
                         <CompanyIcon companyId={company.companyId} companyName={company.companyName} size={42} />
@@ -536,9 +578,16 @@ function SearchPageClient() {
                         선택
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">검색 화면에서 타임라인과 채팅을 확인합니다.</p>
+                    <p className="text-xs text-muted-foreground">선택하면 이 화면에서 타임라인과 채팅을 확인합니다.</p>
                     <div className="mt-2">
                       <div className="flex items-center gap-3">
+                        <Link
+                          href={`/board/${toCompanySlug(company.companyName)}/summary`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        >
+                          정보 요약
+                        </Link>
                         <Link
                           href={`/board/${toCompanySlug(company.companyName)}`}
                           onClick={(event) => event.stopPropagation()}
@@ -580,6 +629,20 @@ function SearchPageClient() {
               isStatusLoading={isStatusLoading}
               isLeadTimeLoading={isLeadTimeLoading}
               onInterviewReviewSelect={setSelectedInterviewReview}
+              onActiveModeChange={(mode) => {
+                if (mode === currentMode) return
+                setCurrentMode(mode)
+                const currentQ = (searchedQuery || normalizedQuery).trim()
+                syncSearchUrl(currentQ || null, selectedCompany?.companyName ?? null, mode, null)
+              }}
+              onSelectedStepChange={(stepName) => {
+                if ((stepName ?? null) === (currentStep ?? null)) return
+                setCurrentStep(stepName)
+                const currentQ = (searchedQuery || normalizedQuery).trim()
+                syncSearchUrl(currentQ || null, selectedCompany?.companyName ?? null, currentMode ?? null, stepName)
+              }}
+              initialMode={currentMode ?? undefined}
+              initialStep={currentStep ?? undefined}
               onQuickReport={(companyName, mode, options) =>
                 openGlobalReport(companyName, mode, {
                   todayAnnouncement: Boolean(options?.todayAnnouncement),
@@ -607,6 +670,20 @@ function SearchPageClient() {
         isStatusLoading={isStatusLoading}
         isLeadTimeLoading={isLeadTimeLoading}
         onInterviewReviewSelect={setSelectedInterviewReview}
+        onActiveModeChange={(mode) => {
+          if (mode === currentMode) return
+          setCurrentMode(mode)
+          const currentQ = (searchedQuery || normalizedQuery).trim()
+          syncSearchUrl(currentQ || null, selectedCompany?.companyName ?? null, mode, null)
+        }}
+        onSelectedStepChange={(stepName) => {
+          if ((stepName ?? null) === (currentStep ?? null)) return
+          setCurrentStep(stepName)
+          const currentQ = (searchedQuery || normalizedQuery).trim()
+          syncSearchUrl(currentQ || null, selectedCompany?.companyName ?? null, currentMode ?? null, stepName)
+        }}
+        initialMode={currentMode ?? undefined}
+        initialStep={currentStep ?? undefined}
         onQuickReport={(companyName, mode, options) =>
           openGlobalReport(companyName, mode, {
             todayAnnouncement: Boolean(options?.todayAnnouncement),

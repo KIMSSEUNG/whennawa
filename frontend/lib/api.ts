@@ -535,6 +535,9 @@ export async function getUser(): Promise<User | null> {
     const displayName = data.nickname?.trim() || data.email?.split("@")[0] || "User"
     return { id: String(data.userId), email: data.email, name: displayName, role: data.role }
   } catch (error) {
+    if (error instanceof Error && error.message.includes('"status":401')) {
+      return null
+    }
     console.error("Failed to load user", error)
     throw error
   }

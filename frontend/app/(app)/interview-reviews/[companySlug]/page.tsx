@@ -17,6 +17,12 @@ const formatDifficultyLabel = (difficulty: InterviewReview["difficulty"]) => {
   return "보통"
 }
 
+const getModeLabel = (mode: RecruitmentMode) => {
+  if (mode === "REGULAR") return "공채"
+  if (mode === "INTERN") return "인턴"
+  return "수시"
+}
+
 export default function InterviewReviewsPage() {
   const params = useParams<{ companySlug: string }>()
   const companySlug = params?.companySlug ?? ""
@@ -139,6 +145,20 @@ export default function InterviewReviewsPage() {
     setStepQuery("")
     setShowStepSuggestions(false)
   }
+
+  const seoSummaryLines = useMemo(() => {
+    const lines = [`${companyName} ${getModeLabel(mode)} 면접 후기 페이지입니다.`]
+
+    if (selectedStepName.trim()) {
+      lines.push(`${selectedStepName.trim()} 단계와 관련된 면접 후기를 중심으로 보고 있습니다.`)
+    }
+
+    if (items.length > 0) {
+      lines.push(`현재 화면에는 ${items.length}개의 면접 후기가 표시되고 있으며, 실제 등록된 후기 내용을 기반으로 확인할 수 있습니다.`)
+    }
+
+    return lines
+  }, [companyName, items.length, mode, selectedStepName])
 
   return (
     <>
@@ -303,6 +323,15 @@ export default function InterviewReviewsPage() {
             </Button>
           </div>
         )}
+
+        <section className="mt-6 rounded-xl border border-border/60 bg-card p-4">
+          <h2 className="text-sm font-semibold text-foreground">면접 후기 참고 정보</h2>
+          <div className="mt-3 space-y-2 text-sm leading-6 text-foreground/85">
+            {seoSummaryLines.map((line) => (
+              <p key={`review-seo-${line}`}>{line}</p>
+            ))}
+          </div>
+        </section>
       </main>
 
       <Dialog open={selectedReview != null} onOpenChange={(open) => !open && setSelectedReview(null)}>

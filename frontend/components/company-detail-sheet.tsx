@@ -24,6 +24,10 @@ interface CompanyDetailSheetProps {
     options?: { todayAnnouncement?: boolean },
   ) => void
   onInterviewReviewSelect?: (review: InterviewReview) => void
+  onActiveModeChange?: (mode: "REGULAR" | "ROLLING" | "INTERN") => void
+  onSelectedStepChange?: (stepName: string | null) => void
+  initialMode?: "REGULAR" | "ROLLING" | "INTERN"
+  initialStep?: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -43,6 +47,10 @@ export function CompanyDetailSheet({
   isLeadTimeLoading,
   onQuickReport,
   onInterviewReviewSelect,
+  onActiveModeChange,
+  onSelectedStepChange,
+  initialMode,
+  initialStep,
   open,
   onOpenChange,
 }: CompanyDetailSheetProps) {
@@ -69,6 +77,10 @@ export function CompanyDetailSheet({
           isLeadTimeLoading={isLeadTimeLoading}
           onQuickReport={onQuickReport}
           onInterviewReviewSelect={onInterviewReviewSelect}
+          onActiveModeChange={onActiveModeChange}
+          onSelectedStepChange={onSelectedStepChange}
+          initialMode={initialMode}
+          initialStep={initialStep}
           showCompanyHeader={false}
           className="h-full"
         />
