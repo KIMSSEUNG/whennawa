@@ -58,7 +58,7 @@ export function buildSeoMetadata({
           url: "/opengraph-image",
           width: 1200,
           height: 630,
-          alt: `${title} 링크 미리보기 이미지`,
+          alt: `${title} 미리보기 이미지`,
         },
       ],
     },
@@ -111,8 +111,8 @@ export async function fetchCareerBoardPostSeo(postId: string | number) {
 
 export function buildBoardCollectionMetadata(companyName: string, path: string) {
   return buildSeoMetadata({
-    title: `${companyName} 게시판`,
-    description: `${companyName} 지원 후기, 전형 정보, 질문과 답변을 한곳에서 확인할 수 있는 회사별 커뮤니티 게시판입니다.`,
+    title: `${companyName} 채용 후기 및 전형 정보 게시판`,
+    description: `${companyName} 지원 후기, 면접 질문, 전형 정보, 발표 일정 흐름을 한곳에서 확인할 수 있는 회사별 커뮤니티 게시판입니다.`,
     path,
   })
 }
@@ -155,8 +155,8 @@ export function buildBoardCollectionJsonLd(companyName: string, path: string) {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${companyName} 게시판`,
-    description: `${companyName} 지원 후기, 전형 정보, 질문과 답변을 한곳에서 확인할 수 있는 회사별 커뮤니티 게시판입니다.`,
+    name: `${companyName} 채용 후기 및 전형 정보 게시판`,
+    description: `${companyName} 지원 후기, 면접 질문, 전형 정보, 발표 일정 흐름을 한곳에서 확인할 수 있는 회사별 커뮤니티 게시판입니다.`,
     url: absoluteUrl(path),
     about: {
       "@type": "Organization",

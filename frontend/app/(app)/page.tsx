@@ -13,6 +13,7 @@ import {
   getUser,
   searchCompanies,
 } from "@/lib/api"
+import { CompanyIcon } from "@/components/company-icon"
 import type { CompanySearchItem, HomeHotCompanyItem, HomeLatestReportItem, NotificationSubscription, UserNotification } from "@/lib/types"
 import { SeoJsonLd } from "@/components/seo-json-ld"
 import { buildWebsiteJsonLd } from "@/lib/seo-metadata"
@@ -220,7 +221,10 @@ export default function HomePage() {
                             }}
                             className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#223d7a] transition-colors hover:bg-[#eef4ff] dark:text-[#eef4ff] dark:hover:bg-[#1b2a47]"
                           >
-                            {company.companyName}
+                            <div className="flex items-center gap-3">
+                              <CompanyIcon companyId={company.companyId} companyName={company.companyName} size={34} textClassName="text-xs" />
+                              <span>{company.companyName}</span>
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -289,7 +293,10 @@ export default function HomePage() {
                         <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#1fc8b8_0%,#109e95_100%)] text-sm font-extrabold text-white">
                           {index + 1}
                         </div>
-                        <p className="min-w-0 flex-1 truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{item.companyName}</p>
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <CompanyIcon companyId={item.companyId} companyName={item.companyName} size={38} textClassName="text-xs" />
+                          <p className="min-w-0 flex-1 truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{item.companyName}</p>
+                        </div>
                         <span className="shrink-0 rounded-full bg-[linear-gradient(180deg,#eef4ff_0%,#e5f1ff_100%)] px-2.5 py-1 text-[10px] font-semibold text-[#5972c3] dark:bg-[linear-gradient(180deg,#21304f_0%,#1a2741_100%)] dark:text-[#bdd0ff]">
                           {item.stepName}
                         </span>
@@ -329,7 +336,10 @@ export default function HomePage() {
                         <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#4d83ff_0%,#2a61e6_100%)] text-sm font-extrabold text-white">
                           {index + 1}
                         </div>
-                        <p className="truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{company.companyName}</p>
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <CompanyIcon companyId={company.companyId} companyName={company.companyName} size={38} textClassName="text-xs" />
+                          <p className="truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{company.companyName}</p>
+                        </div>
                       </Link>
                     ))
                   )}
@@ -379,7 +389,10 @@ export default function HomePage() {
                               <Bell className="h-4 w-4 text-[#5672ca] dark:text-[#bdd0ff]" />
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{item.companyName}</p>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <CompanyIcon companyId={item.companyId} companyName={item.companyName} size={38} textClassName="text-xs" />
+                                <p className="truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{item.companyName}</p>
+                              </div>
                               <p className="mt-1 text-[12px] text-[#6f82b3] dark:text-[#98abd7]">
                                 {count > 0 ? `새 알림 ${count}건이 도착했어요.` : "새로운 알림이 아직 없습니다."}
                               </p>
@@ -420,7 +433,7 @@ export default function HomePage() {
                     className="group flex items-center gap-4 rounded-[18px] border border-[#e4eaff] bg-white/96 px-4 py-4 shadow-[0_10px_22px_rgba(111,135,196,0.08)] transition-all hover:-translate-y-0.5 hover:border-[#d4e0ff] dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)] dark:hover:border-[#49628f]"
                   >
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,#eff4ff_0%,#dfe9ff_100%)]">
-                      <Image src={card.icon} alt="" width={54} height={54} className="h-auto w-[54px]" />
+                      <Image src={card.icon} alt={`${card.title} 아이콘`} width={54} height={54} className="h-auto w-[54px]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[18px] font-extrabold tracking-tight text-[#203872] dark:text-[#edf3ff]">{card.title}</p>

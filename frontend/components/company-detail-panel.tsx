@@ -26,6 +26,10 @@ interface CompanyDetailPanelProps {
     options?: { todayAnnouncement?: boolean },
   ) => void
   onInterviewReviewSelect?: (review: InterviewReview) => void
+  onActiveModeChange?: (mode: "REGULAR" | "ROLLING" | "INTERN") => void
+  onSelectedStepChange?: (stepName: string | null) => void
+  initialMode?: "REGULAR" | "ROLLING" | "INTERN"
+  initialStep?: string
   showCompanyHeader?: boolean
   className?: string
 }
@@ -66,6 +70,12 @@ function getLeadTimeMessages(keyword: string, leadTime: KeywordLeadTime) {
   }
 
   return messages
+}
+
+function getModeLabel(mode: "REGULAR" | "ROLLING" | "INTERN") {
+  if (mode === "REGULAR") return "공채"
+  if (mode === "INTERN") return "인턴"
+  return "수시"
 }
 
 function renderLeadTimeMessage(message: string) {
@@ -425,24 +435,42 @@ export function CompanyDetailPanel({
   isLeadTimeLoading,
   onQuickReport,
   onInterviewReviewSelect,
+  onActiveModeChange,
+  onSelectedStepChange,
+  initialMode,
+  initialStep = "",
   showCompanyHeader = true,
   className,
 }: CompanyDetailPanelProps) {
-  const leadTimeSectionRef = useRef<HTMLElement | null>(null)
+  const leadTimeSectionRef = useRef<HTMLDivElement | null>(null)
 
   const regularTimelines = status?.regularTimelines ?? []
   const internTimelines = status?.internTimelines ?? []
   const rollingSteps = status?.rollingSteps ?? []
   const interviewReviews = status?.interviewReviews ?? []
+  const companyName = company?.companyName ?? ""
   const hasRegular = regularTimelines.length > 0
   const hasIntern = internTimelines.length > 0
   const hasRolling = rollingSteps.length > 0
 
-  const [activeTab, setActiveTab] = useState<"REGULAR" | "ROLLING" | "INTERN">("REGULAR")
+  const [activeTab, setActiveTab] = useState<"REGULAR" | "ROLLING" | "INTERN">(initialMode ?? "REGULAR")
   const [rollingStepName, setRollingStepName] = useState("")
   const [rollingPrevDate, setRollingPrevDate] = useState("")
   const prevActiveTabRef = useRef<"REGULAR" | "ROLLING" | "INTERN">("REGULAR")
+  const initialStepApplyKeyRef = useRef("")
   useEffect(() => {
+    if (initialMode === "REGULAR" && hasRegular) {
+      setActiveTab("REGULAR")
+      return
+    }
+    if (initialMode === "INTERN" && hasIntern) {
+      setActiveTab("INTERN")
+      return
+    }
+    if (initialMode === "ROLLING" && hasRolling) {
+      setActiveTab("ROLLING")
+      return
+    }
     if (hasRegular) {
       setActiveTab("REGULAR")
     } else if (hasIntern) {
@@ -450,7 +478,7 @@ export function CompanyDetailPanel({
     } else if (hasRolling) {
       setActiveTab("ROLLING")
     }
-  }, [hasRegular, hasIntern, hasRolling, status?.companyName])
+  }, [hasRegular, hasIntern, hasRolling, initialMode, status?.companyName])
 
   useEffect(() => {
     setRollingStepName("")
@@ -458,14 +486,34 @@ export function CompanyDetailPanel({
   }, [status?.companyName])
 
   useEffect(() => {
+    const normalizedInitialStep = initialStep.trim()
+    if (!normalizedInitialStep) return
+    const applyKey = `${status?.companyName ?? ""}:${activeTab}:${normalizedInitialStep}`
+    if (initialStepApplyKeyRef.current === applyKey) return
+
+    if (activeTab === "ROLLING") {
+      const matchedRollingStep =
+        rollingSteps.find((item) => item.stepName === normalizedInitialStep)?.stepName ?? normalizedInitialStep
+      setRollingStepName(matchedRollingStep)
+      initialStepApplyKeyRef.current = applyKey
+      return
+    }
+
+    onKeywordChange(normalizedInitialStep)
+    onKeywordSearch({ preventDefault() {} } as React.FormEvent, normalizedInitialStep, activeTab === "INTERN" ? "INTERN" : "REGULAR")
+    initialStepApplyKeyRef.current = applyKey
+  }, [activeTab, initialStep, onKeywordChange, onKeywordSearch, rollingSteps, status?.companyName])
+
+  useEffect(() => {
     if (prevActiveTabRef.current === activeTab) {
       return
     }
     prevActiveTabRef.current = activeTab
+    onActiveModeChange?.(activeTab)
     onKeywordChange("")
     setRollingStepName("")
     setRollingPrevDate("")
-  }, [activeTab, onKeywordChange])
+  }, [activeTab, onActiveModeChange, onKeywordChange])
 
   const regularSuggestions = Array.from(
     new Set(
@@ -493,6 +541,9 @@ export function CompanyDetailPanel({
   }
 
   const selectedInterviewStep = activeTab === "ROLLING" ? rollingStepName.trim() : keyword.trim()
+  useEffect(() => {
+    onSelectedStepChange?.(selectedInterviewStep || null)
+  }, [onSelectedStepChange, selectedInterviewStep])
   const modeInterviewReviews = useMemo(
     () => interviewReviews.filter((review) => review.recruitmentMode === activeTab),
     [activeTab, interviewReviews],

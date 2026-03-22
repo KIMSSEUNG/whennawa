@@ -6,6 +6,7 @@ import com.whennawa.dto.company.CompanyStatusStep;
 import com.whennawa.dto.company.CompanyStatusResponse;
 import com.whennawa.dto.company.CompanyYearlyStatusResponse;
 import com.whennawa.dto.company.CompanyCreateResponse;
+import com.whennawa.dto.company.CompanyListResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
 import com.whennawa.dto.company.RollingPredictionResponse;
 import com.whennawa.dto.company.RollingStepStatsResponse;
@@ -75,7 +76,7 @@ public class CompanySearchService {
             if (CareerBoardConstants.CAREER_BOARD_NAME.equalsIgnoreCase(row.getCompanyName().trim())) {
                 continue;
             }
-            merged.putIfAbsent(row.getCompanyName(), new CompanySearchResponse(row.getCompanyName(), row.getLastResultAt()));
+            merged.putIfAbsent(row.getCompanyName(), new CompanySearchResponse(row.getCompanyId(), row.getCompanyName(), row.getLastResultAt()));
         }
 
         if (!normalizedQuery.isBlank()) {
@@ -90,13 +91,23 @@ public class CompanySearchService {
                 if (!key.contains(normalizedQuery)) {
                     continue;
                 }
-                merged.putIfAbsent(company.getCompanyName(), new CompanySearchResponse(company.getCompanyName(), null));
+                merged.putIfAbsent(company.getCompanyName(), new CompanySearchResponse(company.getCompanyId(), company.getCompanyName(), null));
             }
         }
 
         return merged.values().stream()
             .sorted(Comparator.comparing(CompanySearchResponse::getCompanyName, String.CASE_INSENSITIVE_ORDER))
             .limit(resolvedLimit)
+            .toList();
+    }
+
+    public List<CompanyListResponse> listActiveCompanies() {
+        return companyRepository.findAll().stream()
+            .filter(Company::isActive)
+            .filter(company -> company.getCompanyName() != null && !company.getCompanyName().isBlank())
+            .filter(company -> !CareerBoardConstants.CAREER_BOARD_NAME.equalsIgnoreCase(company.getCompanyName().trim()))
+            .sorted(Comparator.comparing(Company::getCompanyName, String.CASE_INSENSITIVE_ORDER))
+            .map(company -> new CompanyListResponse(company.getCompanyId(), company.getCompanyName()))
             .toList();
     }
     public CompanyCreateResponse createCompany(String rawCompanyName) {

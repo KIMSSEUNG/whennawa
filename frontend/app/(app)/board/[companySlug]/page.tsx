@@ -63,7 +63,11 @@ export default function CompanyBoardPage() {
       setPosts(data.items)
       setPage(data.page)
       const resolvedTotalPages =
-        typeof data.totalPages === "number" && data.totalPages >= 0 ? data.totalPages : data.hasNext ? data.page + 2 : data.page + 1
+        typeof data.totalPages === "number" && data.totalPages >= 0
+          ? data.totalPages
+          : data.hasNext
+            ? data.page + 2
+            : data.page + 1
       setTotalPages(Math.max(resolvedTotalPages, 0))
       if (isFirstPage) setIsSearchMode(false)
     } catch (error) {
@@ -92,7 +96,11 @@ export default function CompanyBoardPage() {
       setPosts(data.items)
       setPage(data.page)
       const resolvedTotalPages =
-        typeof data.totalPages === "number" && data.totalPages >= 0 ? data.totalPages : data.hasNext ? data.page + 2 : data.page + 1
+        typeof data.totalPages === "number" && data.totalPages >= 0
+          ? data.totalPages
+          : data.hasNext
+            ? data.page + 2
+            : data.page + 1
       setTotalPages(Math.max(resolvedTotalPages, 0))
       setIsSearchMode(true)
     } catch (error) {
@@ -199,7 +207,9 @@ export default function CompanyBoardPage() {
   }
 
   const paginationBlockStart = Math.floor(page / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE
-  const paginationPages = Array.from({ length: PAGE_GROUP_SIZE }, (_, index) => paginationBlockStart + index).filter((value) => value < totalPages)
+  const paginationPages = Array.from({ length: PAGE_GROUP_SIZE }, (_, index) => paginationBlockStart + index).filter(
+    (value) => value < totalPages,
+  )
   const canGoPrevPage = page > 0
   const canGoNextPage = page < totalPages - 1
   const canGoPrevBlock = paginationBlockStart > 0
@@ -214,11 +224,19 @@ export default function CompanyBoardPage() {
         <div className="relative">
           <p className={boardTheme.heroEyebrow}>Board Home</p>
           <h1 className={boardTheme.heroTitle}>{companyName}</h1>
-          <p className={boardTheme.heroDescription}>목록에서는 제목만 노출되고, 본문은 상세 페이지에서 확인할 수 있습니다.</p>
+          <p className={boardTheme.heroDescription}>
+            {companyName} 지원 후기, 면접 질문, 전형 정보, 발표 일정 흐름을 게시글로 확인해 보세요.
+          </p>
+          <p className={`mt-3 max-w-3xl text-sm leading-6 ${boardTheme.metaText}`}>
+            {companyName} 채용 게시판입니다. 실제 지원 경험, 면접 질문, 전형 단계별 후기, 발표 일정 관련 정보를 모아 빠르게 탐색할 수 있습니다.
+          </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href={writeHref}>
               <Button type="button" className={`h-10 ${boardTheme.solidButton}`}>게시글 작성하기</Button>
+            </Link>
+            <Link href={`/board/${companySlug}/summary`}>
+              <Button type="button" variant="outline" className={`h-10 ${boardTheme.outlineButton}`}>정보 요약 보기</Button>
             </Link>
             <Link href={`/search?company=${encodeURIComponent(companyName)}`}>
               <Button type="button" variant="outline" className={`h-10 ${boardTheme.outlineButton}`}>회사 상세 검색</Button>
@@ -241,7 +259,12 @@ export default function CompanyBoardPage() {
             <option value="title">제목</option>
             <option value="content">내용</option>
           </select>
-          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="검색어를 입력해 주세요" className={`h-10 w-full min-w-0 flex-1 ${boardTheme.field}`} />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="검색어를 입력해 주세요."
+            className={`h-10 w-full min-w-0 flex-1 ${boardTheme.field}`}
+          />
           <Button type="submit" className={`h-10 ${boardTheme.solidButton}`} disabled={isSearching}>
             {isSearching ? "검색 중..." : "검색"}
           </Button>

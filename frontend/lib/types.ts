@@ -1,9 +1,11 @@
 export interface CompanySearchItem {
+  companyId?: number | null
   companyName: string
   lastResultAt: Date | null
 }
 
 export interface HomeLatestReportItem {
+  companyId?: number | null
   companyName: string
   stepName: string
   recruitmentMode: RecruitmentMode
@@ -11,6 +13,7 @@ export interface HomeLatestReportItem {
 }
 
 export interface HomeHotCompanyItem {
+  companyId?: number | null
   companyName: string
   latestStepName: string
   activityCount: number

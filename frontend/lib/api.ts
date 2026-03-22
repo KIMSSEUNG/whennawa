@@ -31,11 +31,13 @@ import type {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 type CompanySearchItemInput = {
+  companyId?: number | null
   companyName: string
   lastResultAt: Date | string | null
 }
 
 type HomeLatestReportItemInput = {
+  companyId?: number | null
   companyName: string
   stepName: string
   recruitmentMode: RecruitmentMode
@@ -43,6 +45,7 @@ type HomeLatestReportItemInput = {
 }
 
 type HomeHotCompanyItemInput = {
+  companyId?: number | null
   companyName: string
   latestStepName: string
   activityCount: number
@@ -532,6 +535,9 @@ export async function getUser(): Promise<User | null> {
     const displayName = data.nickname?.trim() || data.email?.split("@")[0] || "User"
     return { id: String(data.userId), email: data.email, name: displayName, role: data.role }
   } catch (error) {
+    if (error instanceof Error && error.message.includes('"status":401')) {
+      return null
+    }
     console.error("Failed to load user", error)
     throw error
   }

@@ -4,6 +4,7 @@ import com.whennawa.dto.company.CompanySearchResponse;
 import com.whennawa.dto.company.CompanyStatusResponse;
 import com.whennawa.dto.company.CompanyCreateRequest;
 import com.whennawa.dto.company.CompanyCreateResponse;
+import com.whennawa.dto.company.CompanyListResponse;
 import com.whennawa.dto.company.KeywordLeadTimeResponse;
 import com.whennawa.dto.company.RollingPredictionResponse;
 import com.whennawa.entity.enums.RecruitmentMode;
@@ -40,6 +41,11 @@ public class CompanySearchController {
     public List<CompanySearchResponse> searchCompanies(@RequestParam("query") String query,
                                                        @RequestParam(value = "limit", required = false) Integer limit) {
         return companySearchService.searchCompanies(query, limit);
+    }
+
+    @GetMapping
+    public List<CompanyListResponse> listCompanies() {
+        return companySearchService.listActiveCompanies();
     }
 
     @PostMapping
