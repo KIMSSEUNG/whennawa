@@ -27,27 +27,6 @@ function LoginPageContent() {
   const showConsentDenied = searchParams.get("reason") === "consent_denied"
   const showOauthFailed = searchParams.get("reason") === "oauth_failed"
   const next = searchParams.get("next") ?? "/"
-  const loginNotice = showSessionExpired
-    ? {
-        title: "세션이 만료되었습니다",
-        description: "다시 로그인해서 계속 진행해 주세요.",
-      }
-    : showAuthRequired
-      ? {
-          title: "로그인이 필요합니다",
-          description: "Google 계정으로 로그인하면 서비스를 이어서 이용할 수 있어요.",
-        }
-      : showConsentDenied
-        ? {
-            title: "권한 동의가 필요합니다",
-            description: "필수 권한에 동의한 뒤 다시 로그인해 주세요.",
-          }
-        : showOauthFailed
-          ? {
-              title: "로그인에 실패했습니다",
-              description: "잠시 후 다시 시도해 주세요.",
-            }
-          : null
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -150,12 +129,6 @@ function LoginPageContent() {
             <Image src="/logo.png" alt="언제나와 로고" width={80} height={80} className="mb-4 rounded-2xl" priority />
             <h1 className="text-3xl font-bold tracking-tight text-foreground">언제나와</h1>
             <p className="mt-2 text-muted-foreground">취업 전형 타임라인을 한눈에 확인하세요.</p>
-            {loginNotice && (
-              <div className="mt-4 w-full rounded-2xl border border-[#dbe4ff] bg-white/80 px-4 py-3 text-center shadow-sm dark:border-[#31415f] dark:bg-[#16213a]/80">
-                <p className="text-sm font-semibold text-foreground">{loginNotice.title}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{loginNotice.description}</p>
-              </div>
-            )}
             {embeddedBrowserName && (
               <div className="mt-4 w-full rounded-2xl border border-[#dbe4ff] bg-white/80 px-4 py-3 text-left shadow-sm dark:border-[#31415f] dark:bg-[#16213a]/80">
                 <p className="text-sm font-semibold text-foreground">{embeddedBrowserName} 인앱 브라우저에서는 Google 로그인이 제한될 수 있습니다</p>
