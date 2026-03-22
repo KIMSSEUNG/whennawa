@@ -14,6 +14,8 @@ import {
   searchCompanies,
 } from "@/lib/api"
 import type { CompanySearchItem, HomeHotCompanyItem, HomeLatestReportItem, NotificationSubscription, UserNotification } from "@/lib/types"
+import { SeoJsonLd } from "@/components/seo-json-ld"
+import { buildWebsiteJsonLd } from "@/lib/seo-metadata"
 import { cn } from "@/lib/utils"
 
 const statChips = [
@@ -167,6 +169,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-full bg-[linear-gradient(180deg,#eef4ff_0%,#f7faff_34%,#eff5ff_72%,#f9fbff_100%)] dark:bg-[linear-gradient(180deg,#0d1424_0%,#10192c_34%,#0f1728_72%,#0b1220_100%)]">
+      <SeoJsonLd data={buildWebsiteJsonLd()} />
       <div className="page-shell [--page-max:1280px] pb-8 pt-4 md:pt-8">
         <div className="mx-auto flex w-full flex-col gap-5 md:gap-6">
           <section className="relative overflow-visible rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-5 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] dark:border-[#31415f] dark:bg-[linear-gradient(135deg,#142240_0%,#1c315d_58%,#1a3a6f_100%)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.38)] md:px-8 md:pb-8 md:pt-9">

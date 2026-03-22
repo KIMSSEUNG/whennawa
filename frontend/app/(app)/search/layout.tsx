@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import type React from "react"
+import { SeoJsonLd } from "@/components/seo-json-ld"
+import { buildWebsiteJsonLd } from "@/lib/seo-metadata"
 
 export const metadata: Metadata = {
   title: "회사 검색",
@@ -10,6 +12,11 @@ export const metadata: Metadata = {
 }
 
 export default function SearchLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return (
+    <>
+      <SeoJsonLd data={buildWebsiteJsonLd()} />
+      {children}
+    </>
+  )
 }
 

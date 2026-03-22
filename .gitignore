@@ -23,6 +23,7 @@ backend/bin/
 frontend/node_modules/
 frontend/.next/
 frontend/tsconfig.tsbuildinfo
+local-docs/
 
 # Python / misc
 __pycache__/
