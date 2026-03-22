@@ -1,4 +1,4 @@
-﻿import type React from "react"
+import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
@@ -10,8 +10,10 @@ import { getSiteUrl } from "@/lib/seo"
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 const siteUrl = getSiteUrl()
-const siteName = "\uC5B8\uC81C\uB098\uC640"
-const siteTitle = `${siteName} | \uCC44\uC6A9 \uD0C0\uC784\uB77C\uC778`
+const siteName = "언제나와"
+const siteTitle = `${siteName} | 2026 채용 일정 및 기업별 채용 타임라인`
+const siteDescription =
+  "삼성, 네이버 등 주요 기업의 채용 일정과 전형 흐름을 한눈에 확인하세요. 서류 마감일과 발표일을 타임라인으로 관리하는 서비스, 언제나와입니다."
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -19,7 +21,7 @@ export const metadata: Metadata = {
     default: siteTitle,
     template: `%s | ${siteName}`,
   },
-  description: "채용 공고 일정과 지원 흐름을 한 번에 확인하는 취업 타임라인 서비스.",
+  description: siteDescription,
   alternates: {
     canonical: "/",
   },
@@ -28,21 +30,21 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName,
     title: siteTitle,
-    description: "채용 공고 일정과 지원 흐름을 한 번에 확인하는 취업 타임라인 서비스.",
+    description: siteDescription,
     locale: "ko_KR",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "언제나와 채용 타임라인 링크 미리보기 이미지",
+        alt: "언제나와 채용 일정 링크 미리보기 이미지",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
-    description: "채용 공고 일정과 지원 흐름을 한 번에 확인하는 취업 타임라인 서비스.",
+    description: siteDescription,
     images: ["/twitter-image"],
   },
   generator: "v0.app",

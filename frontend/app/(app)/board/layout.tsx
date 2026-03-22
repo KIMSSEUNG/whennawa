@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import type React from "react"
 
 export const metadata: Metadata = {
-  title: "취업 게시판",
-  description: "회사별 게시판에서 취업 정보와 경험을 공유해 보세요.",
+  title: "기업별 채용 후기 게시판",
+  description: "기업별 채용 후기, 면접 경험, 지원 팁을 회사 게시판에서 모아 확인하세요.",
   alternates: {
     canonical: "/board",
   },

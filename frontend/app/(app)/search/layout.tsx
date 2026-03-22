@@ -4,8 +4,8 @@ import { SeoJsonLd } from "@/components/seo-json-ld"
 import { buildWebsiteJsonLd } from "@/lib/seo-metadata"
 
 export const metadata: Metadata = {
-  title: "회사 검색",
-  description: "회사명을 검색하고 채용 전형 타임라인을 확인하세요.",
+  title: "기업 채용 일정 검색",
+  description: "기업명으로 서류, 면접, 발표 흐름을 검색하고 채용 타임라인을 빠르게 확인하세요.",
   alternates: {
     canonical: "/search",
   },
@@ -19,4 +19,3 @@ export default function SearchLayout({ children }: { children: React.ReactNode }
     </>
   )
 }
-
