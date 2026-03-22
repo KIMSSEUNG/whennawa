@@ -7,7 +7,6 @@ pipeline {
   }
 
   stages {
-
     stage('Checkout') {
       steps {
         checkout scm
@@ -17,15 +16,13 @@ pipeline {
     stage('Deploy') {
       steps {
         sh '''
-          cd $WORKSPACE
-
-          # 1️⃣ backend / frontend만 빌드
+          # Build backend and frontend images
           docker compose build backend frontend
 
-          # 2️⃣ backend / frontend 재시작
+          # Start backend and frontend containers
           docker compose up -d backend frontend
 
-          # 3️⃣ dozzle이 꺼져 있으면 자동 실행 (db는 건드리지 않음)
+          # Start dozzle separately without touching other services
           docker compose up -d dozzle
         '''
       }
@@ -34,12 +31,18 @@ pipeline {
 
   post {
     failure {
-      sh '''
-        echo ==== Docker Status ====
-        docker ps || true
-        echo ==== Docker Logs ====
-        docker compose logs --tail=200 backend frontend dozzle || true
-      '''
+      script {
+        if (getContext(hudson.FilePath)) {
+          sh '''
+            echo ==== Docker Status ====
+            docker ps || true
+            echo ==== Docker Logs ====
+            docker compose logs --tail=200 backend frontend dozzle || true
+          '''
+        } else {
+          echo 'Skipping docker diagnostics because no workspace/node context is available.'
+        }
+      }
     }
   }
 }
