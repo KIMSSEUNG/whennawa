@@ -1,5 +1,4 @@
 import type { RecruitmentMode } from "@/lib/types"
-import { fromCompanySlug, toCompanySlug } from "@/lib/company-slug"
 
 export type CompanyDetailMode = RecruitmentMode
 
@@ -34,15 +33,15 @@ export function fromStepSlug(stepSlug: string | undefined | null) {
 }
 
 export function buildCompanyDetailPath(companyName: string, mode?: CompanyDetailMode | null, stepName?: string | null) {
-  const base = `/companies/${toCompanySlug(companyName)}`
-  if (!mode) return base
-
-  const modePath = `${base}/${toModeSlug(mode)}`
-  if (!stepName?.trim()) return modePath
-
-  return `${modePath}/${toStepSlug(stepName)}`
-}
-
-export function getCompanyNameFromDetailSlug(companySlug: string) {
-  return fromCompanySlug(companySlug)
+  const params = new URLSearchParams()
+  const normalizedCompanyName = companyName.trim()
+  params.set("q", normalizedCompanyName)
+  params.set("company", normalizedCompanyName)
+  if (mode) {
+    params.set("mode", toModeSlug(mode))
+  }
+  if (stepName?.trim()) {
+    params.set("step", stepName.trim())
+  }
+  return `/search?${params.toString()}`
 }
