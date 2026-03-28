@@ -1,9 +1,11 @@
 ﻿"use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { CompanySearchItem, CompanyStatus, InterviewReview, KeywordLeadTime } from "@/lib/types"
+import { toCompanySlug } from "@/lib/company-slug"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -442,6 +444,7 @@ export function CompanyDetailPanel({
   showCompanyHeader = true,
   className,
 }: CompanyDetailPanelProps) {
+  const router = useRouter()
   const leadTimeSectionRef = useRef<HTMLDivElement | null>(null)
 
   const regularTimelines = status?.regularTimelines ?? []
@@ -594,6 +597,13 @@ export function CompanyDetailPanel({
     onQuickReport(company.companyName, "ROLLING")
   }
 
+  const handleInterviewReviewClick = (review: InterviewReview) => {
+    if (!company?.companyName) return
+    router.push(
+      `/interview-reviews/${toCompanySlug(company.companyName)}?reviewId=${review.reviewId}&mode=${review.recruitmentMode}`,
+    )
+  }
+
   if (!company) {
     return (
       <div className={cn("flex h-full min-h-[320px] items-center justify-center", className)}>
@@ -735,18 +745,18 @@ export function CompanyDetailPanel({
               {filteredInterviewReviews.map((review) => (
                 <article
                   key={`review-${review.reviewId}`}
-                  className="cursor-pointer rounded-lg border border-[#d8e2fb] px-3 py-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)] transition-colors hover:bg-[#fbfcff]"
-                  onClick={() => onInterviewReviewSelect?.(review)}
+                  className="cursor-pointer rounded-[18px] border border-[#d8e2fb] bg-white px-3 py-3 shadow-[0_10px_24px_rgba(110,132,190,0.08)] transition-colors hover:bg-[#fbfcff]"
+                  onClick={() => handleInterviewReviewClick(review)}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2 text-xs text-[#6f83b3]">
-                    <span className="inline-flex min-w-0 max-w-full items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.92)]">
+                    <span className="inline-flex min-w-0 max-w-full items-center rounded-full border border-[#c8d8ff] bg-white px-2.5 py-1 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.96)]">
                       <span className="truncate">{review.stepName}</span>
                     </span>
-                    <span className="inline-flex shrink-0 items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.92)]">
+                    <span className="inline-flex shrink-0 items-center rounded-full border border-[#c8d8ff] bg-white px-2.5 py-1 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.96)]">
                       {review.difficulty === "HARD" ? "어려움" : review.difficulty === "EASY" ? "쉬움" : "보통"}
                     </span>
                   </div>
-                  <p className="line-clamp-2 text-sm text-foreground">{review.content}</p>
+                  <p className="pl-1 line-clamp-2 text-sm text-foreground">{review.content}</p>
                 </article>
               ))}
             </div>

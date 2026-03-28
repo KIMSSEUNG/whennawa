@@ -1,8 +1,10 @@
 ﻿"use client"
 
+import type { MouseEventHandler } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
+import { AlertTriangle, Circle, Leaf, ThumbsUp } from "lucide-react"
 import { fromCompanySlug } from "@/lib/company-slug"
 import { fetchInterviewReviewSteps, fetchInterviewReviews, likeInterviewReview } from "@/lib/api"
 import type { InterviewReview, InterviewReviewSort, RecruitmentMode } from "@/lib/types"
@@ -15,6 +17,28 @@ const formatDifficultyLabel = (difficulty: InterviewReview["difficulty"]) => {
   if (difficulty === "HARD") return "어려움"
   if (difficulty === "EASY") return "쉬움"
   return "보통"
+}
+
+const getDifficultyTone = (difficulty: InterviewReview["difficulty"]) => {
+  if (difficulty === "HARD") {
+    return {
+      label: "어려움",
+      className: "border-[#ff9b9b] bg-[#fff3f3] text-[#d14343]",
+      Icon: AlertTriangle,
+    }
+  }
+  if (difficulty === "EASY") {
+    return {
+      label: "쉬움",
+      className: "border-[#7fd3a0] bg-[#effcf4] text-[#1f9d57]",
+      Icon: Leaf,
+    }
+  }
+  return {
+    label: "보통",
+    className: "border-[#f2cb63] bg-[#fff9e8] text-[#c58a00]",
+    Icon: Circle,
+  }
 }
 
 const getModeLabel = (mode: RecruitmentMode) => {
@@ -189,19 +213,29 @@ export default function InterviewReviewsPage() {
     setShowStepSuggestions(false)
   }
 
-  const seoSummaryLines = useMemo(() => {
-    const lines = [`${companyName} ${getModeLabel(mode)} 면접 후기 페이지입니다.`]
+  const renderLikeButton = (review: InterviewReview, isPending: boolean, onClick: MouseEventHandler<HTMLButtonElement>) => (
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={onClick}
+      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#d7e3ff] bg-[#f7faff] px-2.5 text-[13px] font-semibold text-[#3f5fa8] transition-colors hover:bg-[#eef4ff] disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <ThumbsUp className="h-3.5 w-3.5" />
+      <span>{isPending ? "..." : review.likeCount}</span>
+    </button>
+  )
 
-    if (selectedStepName.trim()) {
-      lines.push(`${selectedStepName.trim()} 단계와 관련된 면접 후기를 중심으로 보고 있습니다.`)
-    }
-
-    if (items.length > 0) {
-      lines.push(`현재 화면에는 ${items.length}개의 면접 후기가 표시되고 있으며, 실제 등록된 후기 내용을 기반으로 확인할 수 있습니다.`)
-    }
-
-    return lines
-  }, [companyName, items.length, mode, selectedStepName])
+  const renderDifficultyBadge = (difficulty: InterviewReview["difficulty"]) => {
+    const tone = getDifficultyTone(difficulty)
+    return (
+      <span
+        className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold ${tone.className}`}
+      >
+        <tone.Icon className="h-3.5 w-3.5" />
+        <span>{tone.label}</span>
+      </span>
+    )
+  }
 
   useEffect(() => {
     if (!Number.isFinite(requestedReviewId) || requestedReviewId <= 0) return
@@ -229,20 +263,23 @@ export default function InterviewReviewsPage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-foreground">{companyName} 면접 후기</h1>
-          <Link href={`/search?company=${encodeURIComponent(companyName)}`} className="text-sm text-primary hover:underline">
-            검색으로 돌아가기
-          </Link>
-        </div>
+      <main className="mx-auto w-full max-w-4xl px-4 py-6 md:px-6 md:py-8">
+        <div className="mb-5 rounded-[28px] border border-[#dfe6ff] bg-[linear-gradient(180deg,#ffffff_0%,#f6f9ff_100%)] p-5 shadow-[0_18px_40px_rgba(97,118,177,0.10)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-[24px] font-black tracking-tight text-[#223971] md:text-[28px]">{companyName} 면접 후기</h1>
+              <p className="mt-2 text-sm text-[#7083b4]">{getModeLabel(mode)} 전형 기준으로 등록된 실제 면접 경험을 확인할 수 있습니다.</p>
+            </div>
+            <Link href={`/search?company=${encodeURIComponent(companyName)}`} className="shrink-0 text-sm font-medium text-primary hover:underline">
+              검색으로 돌아가기
+            </Link>
+          </div>
 
-        <div className="mb-4 overflow-x-auto">
-          <div className="flex min-w-max items-center gap-2">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setMode("REGULAR")}
-              className={`h-9 rounded-full border px-3 text-sm transition-colors ${
+              className={`h-10 rounded-full border px-4 text-sm font-medium transition-colors ${
                 mode === "REGULAR"
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40"
@@ -253,7 +290,7 @@ export default function InterviewReviewsPage() {
             <button
               type="button"
               onClick={() => setMode("INTERN")}
-              className={`h-9 rounded-full border px-3 text-sm transition-colors ${
+              className={`h-10 rounded-full border px-4 text-sm font-medium transition-colors ${
                 mode === "INTERN"
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40"
@@ -264,7 +301,7 @@ export default function InterviewReviewsPage() {
             <button
               type="button"
               onClick={() => setMode("ROLLING")}
-              className={`h-9 rounded-full border px-3 text-sm transition-colors ${
+              className={`h-10 rounded-full border px-4 text-sm font-medium transition-colors ${
                 mode === "ROLLING"
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40"
@@ -273,69 +310,70 @@ export default function InterviewReviewsPage() {
               수시
             </button>
           </div>
-        </div>
 
-        <div className="mb-4">
-          <div className="relative">
-            <Input
-              value={stepQuery}
-              onChange={(e) => {
-                setStepQuery(e.target.value)
-                setShowStepSuggestions(true)
-              }}
-              onFocus={() => setShowStepSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowStepSuggestions(false), 120)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  const exact = stepNames.find((name) => name === stepQuery.trim())
-                  if (exact) {
-                    applyStepFilter(exact)
-                  }
-                }
-              }}
-              placeholder="전형명을 입력해 주세요."
-              className="h-11 border-[#d8e2fb] bg-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.95)]"
-            />
-            {showStepSuggestions && filteredStepSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-border/60 bg-card p-1.5 shadow-lg">
-                <div className="max-h-52 overflow-auto">
-                  {filteredStepSuggestions.map((stepName) => (
-                    <button
-                      key={`step-suggestion-${stepName}`}
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => applyStepFilter(stepName)}
-                      className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-accent/60"
-                    >
-                      {stepName}
-                    </button>
-                  ))}
-                </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px] md:items-start">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm leading-none font-semibold text-[#48639f]">전형 필터</label>
               </div>
-            )}
-          </div>
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={clearStepFilter}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              전체 보기
-            </button>
-          </div>
-        </div>
+              <div className="relative h-11">
+                <Input
+                  value={stepQuery}
+                  onChange={(e) => {
+                    setStepQuery(e.target.value)
+                    setShowStepSuggestions(true)
+                  }}
+                  onFocus={() => setShowStepSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowStepSuggestions(false), 120)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      if (!stepQuery.trim()) {
+                        clearStepFilter()
+                        return
+                      }
+                      const exact = stepNames.find((name) => name === stepQuery.trim())
+                      if (exact) {
+                        applyStepFilter(exact)
+                      }
+                    }
+                  }}
+                  placeholder="전형명을 입력해 주세요."
+                  className="h-full rounded-[16px] text-sm border-[#d8e2fb] bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.95)]"
+                />
+                {showStepSuggestions && filteredStepSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-border/60 bg-card p-1.5 shadow-lg">
+                    <div className="max-h-52 overflow-auto">
+                      {filteredStepSuggestions.map((stepName) => (
+                        <button
+                          key={`step-suggestion-${stepName}`}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => applyStepFilter(stepName)}
+                          className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-accent/60"
+                        >
+                          {stepName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-        <div className="mb-4 flex justify-end">
-          <Select value={sort} onValueChange={(value) => setSort(value as InterviewReviewSort)}>
-            <SelectTrigger className="w-40 border-[#d8e2fb] bg-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.95)]">
-              <SelectValue placeholder="정렬" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="LIKES">좋아요 순</SelectItem>
-              <SelectItem value="LATEST">최신 순</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm leading-none font-semibold text-[#48639f]">정렬</label>
+              <Select value={sort} onValueChange={(value) => setSort(value as InterviewReviewSort)}>
+                <SelectTrigger className="h-11 w-full rounded-[16px] data-[size=default]:h-11 text-sm border-[#d8e2fb] bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.95)]">
+                  <SelectValue placeholder="정렬" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LIKES">좋아요 순</SelectItem>
+                  <SelectItem value="LATEST">최신 순</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
         <section className="space-y-3">
@@ -355,9 +393,17 @@ export default function InterviewReviewsPage() {
                 }`}
                 onClick={() => setSelectedReview(item)}
               >
-                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{item.stepName}</span>
-                  <span>{formatDifficultyLabel(item.difficulty)}</span>
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <span className="inline-flex h-9 items-center rounded-full border border-[#cfdcff] bg-[#f7faff] px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
+                    {item.stepName}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {renderDifficultyBadge(item.difficulty)}
+                    {renderLikeButton(item, isLikePending, (event) => {
+                      event.stopPropagation()
+                      void toggleLike(item)
+                    })}
+                  </div>
                 </div>
                 <p className={`break-words text-sm text-foreground ${expandable ? "line-clamp-1" : ""}`}>{item.content}</p>
                 {expandable && <span className="mt-1 inline-block text-xs text-primary">자세히 보기</span>}
@@ -365,19 +411,6 @@ export default function InterviewReviewsPage() {
                   <span className="text-xs text-muted-foreground">
                     {item.createdAt.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
                   </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="min-w-[5.5rem] px-3"
-                    disabled={isLikePending}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void toggleLike(item)
-                    }}
-                  >
-                    {isLikePending ? "처리 중..." : `좋아요 ${item.likeCount}`}
-                  </Button>
                 </div>
               </article>
             )
@@ -398,54 +431,44 @@ export default function InterviewReviewsPage() {
           </div>
         )}
 
-        <section className="mt-6 rounded-xl border border-border/60 bg-card p-4">
-          <h2 className="text-sm font-semibold text-foreground">면접 후기 참고 정보</h2>
-          <div className="mt-3 space-y-2 text-sm leading-6 text-foreground/85">
-            {seoSummaryLines.map((line) => (
-              <p key={`review-seo-${line}`}>{line}</p>
-            ))}
-          </div>
-        </section>
       </main>
 
       <Dialog open={selectedReview != null} onOpenChange={(open) => !open && setSelectedReview(null)}>
-        <DialogContent className="max-h-[85vh] max-w-2xl !overflow-hidden border-[#d8e2fb] bg-white shadow-[0_20px_60px_rgba(98,120,177,0.18)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <DialogContent className="max-h-[85vh] max-w-2xl !overflow-hidden rounded-[28px] border-[#d8e2fb] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] shadow-[0_24px_72px_rgba(98,120,177,0.22)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {selectedReview && (
-            <div className="flex max-h-[calc(85vh-2rem)] flex-col gap-3 overflow-hidden">
-              <DialogHeader>
-                <div className="mb-1 flex items-center justify-between gap-2 pr-8 text-xs text-[#6f83b3]">
-                  <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
-                    {selectedReview.stepName}
-                  </span>
-                  <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
-                    {formatDifficultyLabel(selectedReview.difficulty)}
-                  </span>
-                </div>
-                <DialogTitle className="text-left text-base text-foreground">면접 후기 상세</DialogTitle>
-              </DialogHeader>
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <div className="nawa-scrollbar h-full overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                  <div className="rounded-xl border border-[#d8e2fb] bg-[#fbfcff] px-4 py-4 text-sm leading-7 text-foreground whitespace-pre-wrap break-words shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
-                    {selectedReview.content}
+            <div className="flex max-h-[calc(85vh-2rem)] flex-col gap-4 overflow-hidden">
+              <div className="rounded-[22px] border border-[#e3ebff] bg-[linear-gradient(180deg,#ffffff_0%,#f5f9ff_100%)] px-4 py-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9)]">
+                <DialogHeader className="gap-3">
+                  <div className="flex items-start justify-between gap-3 pr-8">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex h-8 items-center rounded-full border border-[#cfdcff] bg-white px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[0_6px_16px_rgba(111,135,196,0.10)]">
+                        {selectedReview.stepName}
+                      </span>
+                      {renderDifficultyBadge(selectedReview.difficulty)}
+                    </div>
                   </div>
+                  <div className="space-y-1 text-left">
+                    <DialogTitle className="text-[19px] font-black tracking-tight text-[#1f366d]">면접 후기 상세</DialogTitle>
+                    <p className="text-[13px] text-[#6f83b3]">{selectedReview.stepName} 경험을 실제 후기 내용으로 확인할 수 있습니다.</p>
+                  </div>
+                </DialogHeader>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <div className="nawa-scrollbar h-full w-full overflow-y-auto rounded-[22px] border border-[#dbe5ff] bg-white px-4 py-5 text-[15px] leading-7 text-foreground whitespace-pre-wrap break-words shadow-[0_12px_28px_rgba(110,132,190,0.10)] [scrollbar-gutter:auto] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  {selectedReview.content}
                 </div>
               </div>
-              <div className="mt-1 flex items-center justify-between gap-3">
-                <span className="text-xs text-muted-foreground">
+
+              <div className="flex items-center justify-between gap-3 rounded-[18px] border border-[#e8efff] bg-white/72 px-4 py-3">
+                <span className="text-[13px] font-medium text-[#6f83b3]">
                   {selectedReview.createdAt.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
                 </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="min-w-[5.5rem] px-3"
-                  disabled={pendingLikeReviewIds.includes(selectedReview.reviewId)}
-                  onClick={() => void toggleLike(selectedReview)}
-                >
-                  {pendingLikeReviewIds.includes(selectedReview.reviewId)
-                    ? "처리 중..."
-                    : `좋아요 ${selectedReview.likeCount}`}
-                </Button>
+                {renderLikeButton(
+                  selectedReview,
+                  pendingLikeReviewIds.includes(selectedReview.reviewId),
+                  () => void toggleLike(selectedReview),
+                )}
               </div>
             </div>
           )}
