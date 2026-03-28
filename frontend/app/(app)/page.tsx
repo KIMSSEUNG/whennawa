@@ -110,26 +110,26 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-full bg-[linear-gradient(180deg,#eef4ff_0%,#f7faff_34%,#eff5ff_72%,#f9fbff_100%)] dark:bg-[linear-gradient(180deg,#0d1424_0%,#10192c_34%,#0f1728_72%,#0b1220_100%)]">
+    <div className="min-h-full overflow-x-hidden bg-[linear-gradient(180deg,#eef4ff_0%,#f7faff_34%,#eff5ff_72%,#f9fbff_100%)] dark:bg-[linear-gradient(180deg,#0d1424_0%,#10192c_34%,#0f1728_72%,#0b1220_100%)]">
       <SeoJsonLd data={buildWebsiteJsonLd()} />
       <div className="page-shell [--page-max:1280px] pb-8 pt-4 md:pt-8">
         <div className="mx-auto flex w-full flex-col gap-5 md:gap-6">
-          <section className="relative overflow-visible rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-5 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] dark:border-[#31415f] dark:bg-[linear-gradient(135deg,#142240_0%,#1c315d_58%,#1a3a6f_100%)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.38)] md:px-8 md:pb-8 md:pt-9">
+          <section className="relative overflow-hidden rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-4 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] dark:border-[#31415f] dark:bg-[linear-gradient(135deg,#142240_0%,#1c315d_58%,#1a3a6f_100%)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.38)] md:px-8 md:pb-8 md:pt-9">
             <Image src="/design-previews/icon/hero-background.png" alt="" fill priority className="object-cover object-center" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(34,76,192,0.12)_0%,rgba(34,76,192,0.2)_62%,rgba(78,183,210,0.16)_100%)]" />
-            <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(223,246,255,0.34)_0%,rgba(223,246,255,0)_72%)]" />
-            <div className="absolute -left-10 bottom-6 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(207,239,255,0.24)_0%,rgba(207,239,255,0)_74%)]" />
+            <div className="absolute -right-16 -top-20 hidden h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(223,246,255,0.34)_0%,rgba(223,246,255,0)_72%)] md:block" />
+            <div className="absolute -left-10 bottom-6 hidden h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(207,239,255,0.24)_0%,rgba(207,239,255,0)_74%)] md:block" />
             <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.08)_100%)]" />
             <Image src="/design-previews/icon/hero-mascots.png" alt="" width={124} height={82} className="absolute right-4 top-4 hidden opacity-95 md:block" />
 
-            <div className="relative z-20 mx-auto flex max-w-[860px] flex-col items-center text-center text-white">
+            <div className="relative z-20 mx-auto flex max-w-full flex-col items-center text-center text-white md:max-w-[860px]">
               <p className="text-[11px] font-semibold tracking-[0.22em] text-white/70">HIRING SIGNAL DASHBOARD</p>
-              <h1 className="mt-3 text-[34px] font-black tracking-tight md:text-[46px]">언제나와</h1>
-              <p className="mt-3 text-sm text-white/90 md:text-base">회사별 발표 흐름과 전형 타임라인을 빠르게 검색하세요.</p>
+              <h1 className="mt-3 text-[30px] font-black tracking-tight md:text-[46px]">언제나와</h1>
+              <p className="mt-3 max-w-[280px] text-sm leading-6 text-white/90 md:max-w-none md:text-base">회사별 발표 흐름과 전형 타임라인을 빠르게 검색하세요.</p>
 
               <form
                 onSubmit={handleSearch}
-                className="mt-7 flex w-full max-w-[760px] flex-col gap-2 rounded-[20px] bg-white/94 p-2 shadow-[0_18px_40px_rgba(18,47,126,0.18)] backdrop-blur-sm dark:bg-[#111b2f]/92 dark:shadow-[0_18px_40px_rgba(0,0,0,0.36)] md:flex-row md:items-center"
+                className="mt-7 flex w-full max-w-full flex-col gap-2 rounded-[20px] bg-white/94 p-2 shadow-[0_18px_40px_rgba(18,47,126,0.18)] backdrop-blur-sm dark:bg-[#111b2f]/92 dark:shadow-[0_18px_40px_rgba(0,0,0,0.36)] md:max-w-[760px] md:flex-row md:items-center"
               >
                 <div className="relative min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-3 rounded-[16px] border border-[#d9e5ff] bg-[#f9fbff] px-4 py-3 dark:border-[#31415f] dark:bg-[#0f1729]">
