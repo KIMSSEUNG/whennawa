@@ -10,9 +10,6 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 const userNavItems = [
   { href: "/search", label: "발표일 검색" },
-  { href: "/board", label: "회사별 게시판" },
-  { href: "/career-board", label: "취업고민" },
-  { href: "/notifications", label: "알림" },
   { href: "/profile", label: "프로필" },
 ]
 

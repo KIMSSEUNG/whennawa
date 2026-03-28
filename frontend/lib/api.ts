@@ -638,6 +638,59 @@ export async function fetchHomeHotCompanies(limit = 3): Promise<HomeHotCompanyIt
   }
 }
 
+export async function fetchHomeLatestInterviewReviews(limit = 3): Promise<InterviewReview[]> {
+  try {
+    if (USE_MOCK) {
+      await delay(180)
+      return [
+        {
+          reviewId: 1,
+          companyId: 1,
+          companyName: "LG전자",
+          recruitmentMode: "REGULAR",
+          stepName: "1차 면접",
+          difficulty: "MEDIUM",
+          content: "실무 질문이 많았고 프로젝트 깊이를 꽤 자세히 물어봤습니다.",
+          likeCount: 4,
+          likedByMe: false,
+          createdAt: new Date(),
+        },
+        {
+          reviewId: 2,
+          companyId: 2,
+          companyName: "네이버",
+          recruitmentMode: "INTERN",
+          stepName: "최종 면접",
+          difficulty: "HARD",
+          content: "기술 질문보다 문제 해결 과정과 커뮤니케이션 방식을 길게 확인했습니다.",
+          likeCount: 7,
+          likedByMe: false,
+          createdAt: new Date(Date.now() - 1000 * 60 * 32),
+        },
+        {
+          reviewId: 3,
+          companyId: 3,
+          companyName: "카카오",
+          recruitmentMode: "ROLLING",
+          stepName: "코딩 테스트 이후 면접",
+          difficulty: "MEDIUM",
+          content: "직무 적합성과 이전 경험을 연결해서 설명하는 질문이 많았습니다.",
+          likeCount: 2,
+          likedByMe: false,
+          createdAt: new Date(Date.now() - 1000 * 60 * 75),
+        },
+      ].slice(0, Math.max(1, limit))
+    }
+
+    const params = new URLSearchParams({ limit: String(limit) })
+    const data = await request<InterviewReviewInput[]>(`/api/home/latest-interview-reviews?${params.toString()}`)
+    return (data ?? []).map(normalizeInterviewReview)
+  } catch (error) {
+    console.error("Failed to fetch home latest interview reviews", error)
+    return []
+  }
+}
+
 export async function fetchCompanyStatus(companyName: string): Promise<CompanyStatus | null> {
   try {
     if (USE_MOCK) {

@@ -4,19 +4,19 @@ import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, ChevronRight, Search, Sparkles, TrendingUp } from "lucide-react"
+import { Search, Sparkles, TrendingUp } from "lucide-react"
 import {
   fetchHomeHotCompanies,
+  fetchHomeLatestInterviewReviews,
   fetchHomeLatestReports,
-  fetchNotifications,
-  fetchNotificationSubscriptions,
-  getUser,
   searchCompanies,
 } from "@/lib/api"
 import { CompanyIcon } from "@/components/company-icon"
-import type { CompanySearchItem, HomeHotCompanyItem, HomeLatestReportItem, NotificationSubscription, UserNotification } from "@/lib/types"
+import { toCompanySlug } from "@/lib/company-slug"
+import type { CompanySearchItem, HomeHotCompanyItem, HomeLatestReportItem, InterviewReview } from "@/lib/types"
 import { SeoJsonLd } from "@/components/seo-json-ld"
 import { buildWebsiteJsonLd } from "@/lib/seo-metadata"
+import { buildCompanyDetailPath } from "@/lib/company-detail-route"
 import { cn } from "@/lib/utils"
 
 const statChips = [
@@ -27,32 +27,17 @@ const statChips = [
 
 const showStatChips = false
 
-const reportBoards = [
-  {
-    href: "/board",
-    title: "회사 정보 게시판",
-    description: "기업별 정보와 후기를 확인하세요",
-    icon: "/design-previews/icon/board-company.png",
-  },
-  {
-    href: "/career-board",
-    title: "취업 고민 게시판",
-    description: "고민과 경험을 함께 나누세요",
-    icon: "/design-previews/icon/board-career.png",
-  },
-  {
-    href: "/search",
-    title: "발표일 탐색",
-    description: "원하는 회사의 발표 흐름을 빠르게 확인하세요",
-    icon: "/design-previews/icon/search-company.png",
-  },
-  {
-    href: "/notifications",
-    title: "알림 관리",
-    description: "관심 회사 발표만 선택해서 받아보세요",
-    icon: "/design-previews/icon/notifications.png",
-  },
-]
+const formatDifficultyLabel = (difficulty: InterviewReview["difficulty"]) => {
+  if (difficulty === "HARD") return "어려움"
+  if (difficulty === "EASY") return "쉬움"
+  return "보통"
+}
+
+const truncateInterviewPreview = (content: string) => {
+  const normalized = content.replace(/\s+/g, " ").trim()
+  if (normalized.length <= 72) return normalized
+  return `${normalized.slice(0, 72)}...`
+}
 
 export default function HomePage() {
   const router = useRouter()
@@ -61,23 +46,28 @@ export default function HomePage() {
   const [showRelatedSuggestions, setShowRelatedSuggestions] = useState(true)
   const [latestReports, setLatestReports] = useState<HomeLatestReportItem[]>([])
   const [isLatestReportsLoading, setIsLatestReportsLoading] = useState(true)
+  const [latestInterviewReviews, setLatestInterviewReviews] = useState<InterviewReview[]>([])
+  const [isLatestInterviewReviewsLoading, setIsLatestInterviewReviewsLoading] = useState(true)
   const [hotCompaniesFeed, setHotCompaniesFeed] = useState<HomeHotCompanyItem[]>([])
   const [isHotCompaniesLoading, setIsHotCompaniesLoading] = useState(true)
-  const [isAuthChecked, setIsAuthChecked] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [subscriptions, setSubscriptions] = useState<NotificationSubscription[]>([])
-  const [notifications, setNotifications] = useState<UserNotification[]>([])
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
       setIsLatestReportsLoading(true)
+      setIsLatestInterviewReviewsLoading(true)
       setIsHotCompaniesLoading(true)
-      const [latestData, hotData] = await Promise.all([fetchHomeLatestReports(3), fetchHomeHotCompanies(3)])
+      const [latestData, interviewData, hotData] = await Promise.all([
+        fetchHomeLatestReports(5),
+        fetchHomeLatestInterviewReviews(3),
+        fetchHomeHotCompanies(5),
+      ])
       if (!mounted) return
       setLatestReports(latestData)
+      setLatestInterviewReviews(interviewData)
       setHotCompaniesFeed(hotData)
       setIsLatestReportsLoading(false)
+      setIsLatestInterviewReviewsLoading(false)
       setIsHotCompaniesLoading(false)
     })()
 
@@ -85,55 +75,6 @@ export default function HomePage() {
       mounted = false
     }
   }, [])
-
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      const user = await getUser().catch(() => null)
-      if (!mounted) return
-
-      const authed = Boolean(user)
-      setIsAuthenticated(authed)
-      setIsAuthChecked(true)
-      if (!authed) return
-
-      const [subData, notiData] = await Promise.all([
-        fetchNotificationSubscriptions(0, 20),
-        fetchNotifications(0, 20),
-      ])
-
-      if (!mounted) return
-      setSubscriptions(subData.items ?? [])
-      setNotifications(notiData.items ?? [])
-    })()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  const notificationsByCompanyId = useMemo(() => {
-    const grouped = new Map<number, UserNotification[]>()
-    for (const item of notifications) {
-      if (item.companyId == null) continue
-      const prev = grouped.get(item.companyId) ?? []
-      prev.push(item)
-      grouped.set(item.companyId, prev)
-    }
-    return grouped
-  }, [notifications])
-
-  const previewSubscriptions = useMemo(() => {
-    const sorted = [...subscriptions].sort((a, b) => {
-      const aCount = a.companyId == null ? 0 : (notificationsByCompanyId.get(a.companyId)?.length ?? 0)
-      const bCount = b.companyId == null ? 0 : (notificationsByCompanyId.get(b.companyId)?.length ?? 0)
-      const aHas = aCount > 0 ? 1 : 0
-      const bHas = bCount > 0 ? 1 : 0
-      if (aHas !== bHas) return bHas - aHas
-      return a.companyName.localeCompare(b.companyName, "ko-KR")
-    })
-    return sorted.slice(0, 2)
-  }, [subscriptions, notificationsByCompanyId])
 
   const normalizedQuery = useMemo(() => query.trim(), [query])
   const exactMatch = useMemo(() => {
@@ -184,7 +125,7 @@ export default function HomePage() {
             <div className="relative z-20 mx-auto flex max-w-[860px] flex-col items-center text-center text-white">
               <p className="text-[11px] font-semibold tracking-[0.22em] text-white/70">HIRING SIGNAL DASHBOARD</p>
               <h1 className="mt-3 text-[34px] font-black tracking-tight md:text-[46px]">언제나와</h1>
-              <p className="mt-3 text-sm text-white/90 md:text-base">취업 정보, 제보, 커뮤니티를 한 화면에서 빠르게 확인하세요.</p>
+              <p className="mt-3 text-sm text-white/90 md:text-base">회사별 발표 흐름과 전형 타임라인을 빠르게 검색하세요.</p>
 
               <form
                 onSubmit={handleSearch}
@@ -263,7 +204,7 @@ export default function HomePage() {
             </div>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[0.92fr_0.92fr_1.16fr]">
+          <section className="grid items-stretch gap-4 xl:grid-cols-3">
             <article className="relative overflow-hidden rounded-[24px] border border-[#dfe6ff] bg-white/95 p-5 shadow-[0_18px_40px_rgba(97,118,177,0.1)] dark:border-[#31415f] dark:bg-[#121a2d]/95 dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)]">
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-3">
@@ -281,13 +222,13 @@ export default function HomePage() {
                   ) : latestReports.length === 0 ? (
                     <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
                       <p className="font-semibold text-[#36538f] dark:text-[#c8d8ff]">새 제보가 들어오면 이곳에 가장 먼저 보여드릴게요.</p>
-                      <p className="mt-2">지금은 발표일 검색에서 전체 흐름을 확인하거나, 관심 회사를 알림에 등록해보세요.</p>
+                      <p className="mt-2">지금은 발표일 검색에서 전체 흐름을 먼저 확인해보세요.</p>
                     </div>
                   ) : (
                     latestReports.map((item, index) => (
                       <Link
                         key={`${item.companyName}-${item.stepName}-${item.updatedAt?.toISOString() ?? "latest"}`}
-                        href={`/search?q=${encodeURIComponent(item.companyName)}`}
+                        href={buildCompanyDetailPath(item.companyName, item.recruitmentMode, item.stepName)}
                         className="flex items-center gap-3 rounded-[18px] border border-[#e4eaff] bg-white/96 px-4 py-2.5 shadow-[0_10px_22px_rgba(111,135,196,0.08)] transition-transform hover:-translate-y-0.5 dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]"
                       >
                         <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#1fc8b8_0%,#109e95_100%)] text-sm font-extrabold text-white">
@@ -307,30 +248,83 @@ export default function HomePage() {
               </div>
             </article>
 
-            <article className="relative overflow-hidden rounded-[24px] border border-[#dfe6ff] bg-white/95 p-5 shadow-[0_18px_40px_rgba(97,118,177,0.1)] dark:border-[#31415f] dark:bg-[#121a2d]/95 dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)]">
-              <div className="relative z-10">
+            <article className="relative h-full overflow-hidden rounded-[24px] border border-[#dfe6ff] bg-white/95 p-5 shadow-[0_18px_40px_rgba(97,118,177,0.1)] dark:border-[#31415f] dark:bg-[#121a2d]/95 dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)]">
+              <div className="relative z-10 flex h-full flex-col">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-[22px] font-extrabold tracking-tight text-[#223971] dark:text-[#edf3ff]">최근 업데이트가 많은 회사</h2>
-                    <p className="mt-1 text-[12px] text-[#7083b4] dark:text-[#98abd7]">최근 7일 동안 발표 제보와 일정 갱신이 활발했던 회사</p>
+                    <h2 className="text-[22px] font-extrabold tracking-tight text-[#223971] dark:text-[#edf3ff]">최근 등록된 면접 정보</h2>
+                    <p className="mt-1 text-[12px] text-[#7083b4] dark:text-[#98abd7]">실제 지원 경험이 담긴 최신 면접 후기를 빠르게 확인하세요</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex-1">
+                  {isLatestInterviewReviewsLoading ? (
+                    <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
+                      최신 면접 정보를 불러오는 중입니다.
+                    </div>
+                  ) : latestInterviewReviews.length === 0 ? (
+                    <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
+                      등록된 면접 정보가 쌓이면 이곳에 가장 먼저 보여드릴게요.
+                    </div>
+                  ) : (
+                    <div className="flex h-full flex-col justify-between gap-3">
+                      {latestInterviewReviews.map((review, index) => (
+                        <Link
+                          key={`interview-${review.reviewId}-${review.createdAt.toISOString()}`}
+                          href={`/interview-reviews/${toCompanySlug(review.companyName ?? "")}?reviewId=${review.reviewId}&mode=${review.recruitmentMode}`}
+                          className="block rounded-[18px] border border-[#e4eaff] bg-white/96 px-4 py-3 shadow-[0_10px_22px_rgba(111,135,196,0.08)] transition-transform hover:-translate-y-0.5 dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#4d83ff_0%,#2a61e6_100%)] text-sm font-extrabold text-white">
+                              {index + 1}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <CompanyIcon companyId={review.companyId} companyName={review.companyName ?? "-"} size={38} textClassName="text-xs" />
+                                <div className="min-w-0">
+                                  <p className="truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{review.companyName ?? "-"}</p>
+                                  <p className="mt-0.5 text-[11px] text-[#6f82b3] dark:text-[#98abd7]">
+                                    {review.stepName} · 난이도 {formatDifficultyLabel(review.difficulty)}
+                                  </p>
+                                </div>
+                              </div>
+                              <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-[#5f72a5] dark:text-[#b4c3e7]">
+                                {truncateInterviewPreview(review.content)}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </article>
+
+            <article className="relative h-full overflow-hidden rounded-[24px] border border-[#dfe6ff] bg-white/95 p-5 shadow-[0_18px_40px_rgba(97,118,177,0.1)] dark:border-[#31415f] dark:bg-[#121a2d]/95 dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)]">
+              <div className="relative z-10 flex h-full flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-[22px] font-extrabold tracking-tight text-[#223971] dark:text-[#edf3ff]">업데이트가 많은 회사</h2>
+                    <p className="mt-1 text-[12px] text-[#7083b4] dark:text-[#98abd7]">누적 발표 제보와 일정 갱신이 많은 회사를 모아 보여드립니다</p>
                   </div>
                   <TrendingUp className="mt-1 h-5 w-5 text-[#7090ea] dark:text-[#9db5ff]" />
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 flex-1 space-y-3">
                   {isHotCompaniesLoading ? (
                     <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
-                      최근 업데이트가 많은 회사를 계산하는 중입니다.
+                      업데이트가 많은 회사를 불러오는 중입니다.
                     </div>
                   ) : hotCompaniesFeed.length === 0 ? (
                     <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
-                      최근 7일 기준으로 활발한 회사가 집계되면 이곳에 보여드릴게요.
+                      누적 업데이트가 많은 회사가 집계되면 이곳에 보여드릴게요.
                     </div>
                   ) : (
                     hotCompaniesFeed.map((company, index) => (
                       <Link
                         key={`${company.companyName}-${company.latestStepName}-${company.updatedAt?.toISOString() ?? "hot"}`}
-                        href={`/search?q=${encodeURIComponent(company.companyName)}`}
+                        href={buildCompanyDetailPath(company.companyName)}
                         className="flex items-center gap-3 rounded-[18px] border border-[#e4eaff] bg-white/96 px-4 py-2.5 shadow-[0_10px_22px_rgba(111,135,196,0.08)] transition-transform hover:-translate-y-0.5 dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]"
                       >
                         <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#4d83ff_0%,#2a61e6_100%)] text-sm font-extrabold text-white">
@@ -346,102 +340,33 @@ export default function HomePage() {
                 </div>
               </div>
             </article>
-
-            <article className="relative overflow-hidden rounded-[24px] border border-[#dfe6ff] bg-white/95 p-5 shadow-[0_18px_40px_rgba(97,118,177,0.1)] dark:border-[#31415f] dark:bg-[#121a2d]/95 dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)]">
-              <div className="relative z-10">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-[22px] font-extrabold tracking-tight text-[#223971] dark:text-[#edf3ff]">내 알림 현황</h2>
-                    <p className="mt-1 text-[12px] text-[#7083b4] dark:text-[#98abd7]">관심 기업 발표를 놓치지 않도록</p>
-                  </div>
-                  <Sparkles className="mt-1 h-5 w-5 text-[#7090ea] dark:text-[#9db5ff]" />
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {!isAuthChecked ? (
-                    <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
-                      알림 정보를 불러오는 중입니다.
-                    </div>
-                  ) : !isAuthenticated ? (
-                    <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
-                      로그인 후 맞춤 알림을 확인할 수 있어요.
-                    </div>
-                  ) : previewSubscriptions.length === 0 ? (
-                    <div className="rounded-[18px] border border-dashed border-[#d9e3ff] bg-white/84 px-4 py-5 text-[13px] text-[#7083b4] dark:border-[#31415f] dark:bg-[#16213a]/84 dark:text-[#98abd7]">
-                      아직 등록된 알림 회사가 없습니다.
-                    </div>
-                  ) : (
-                    previewSubscriptions.map((item) => {
-                      const count = item.companyId == null ? 0 : (notificationsByCompanyId.get(item.companyId)?.length ?? 0)
-                      return (
-                        <Link
-                          key={item.subscriptionId}
-                          href="/notifications"
-                          className={cn(
-                            "block rounded-[18px] border px-4 py-3 shadow-[0_10px_22px_rgba(111,135,196,0.08)] transition-transform hover:-translate-y-0.5 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]",
-                            count > 0
-                              ? "border-[#d5e0ff] bg-[linear-gradient(180deg,#ffffff_0%,#edf4ff_100%)] dark:border-[#537ef5] dark:bg-[linear-gradient(180deg,#16213a_0%,#1c2946_100%)]"
-                              : "border-[#e4eaff] bg-white/96 dark:border-[#31415f] dark:bg-[#16213a]/96",
-                          )}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#eef4ff_0%,#e7f2ff_100%)]">
-                              <Bell className="h-4 w-4 text-[#5672ca] dark:text-[#bdd0ff]" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex min-w-0 items-center gap-3">
-                                <CompanyIcon companyId={item.companyId} companyName={item.companyName} size={38} textClassName="text-xs" />
-                                <p className="truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{item.companyName}</p>
-                              </div>
-                              <p className="mt-1 text-[12px] text-[#6f82b3] dark:text-[#98abd7]">
-                                {count > 0 ? `새 알림 ${count}건이 도착했어요.` : "새로운 알림이 아직 없습니다."}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
-                      )
-                    })
-                  )}
-                </div>
-
-                <Link
-                  href="/notifications"
-                  className="mt-4 inline-flex w-full items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,#4d84ff_0%,#2a63e8_100%)] px-4 py-3 text-[14px] font-bold text-white shadow-[0_12px_28px_rgba(44,92,221,0.22)]"
-                >
-                  알림 설정하기
-                </Link>
-              </div>
-            </article>
           </section>
 
           <section className="relative overflow-hidden rounded-[24px] border border-[#dfe6ff] bg-white/95 p-5 shadow-[0_18px_40px_rgba(97,118,177,0.1)] dark:border-[#31415f] dark:bg-[#121a2d]/95 dark:shadow-[0_22px_48px_rgba(0,0,0,0.34)]">
-            <Image src="/design-previews/icon/panel-shape.png" alt="" fill className="object-cover opacity-55" />
             <div className="relative z-10">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-[22px] font-extrabold tracking-tight text-[#223971] dark:text-[#edf3ff]">서비스 바로가기</h2>
-                  <p className="mt-1 text-[12px] text-[#7083b4] dark:text-[#98abd7]">탐색, 커뮤니티, 알림 기능을 빠르게 이동하세요.</p>
+                  <h2 className="text-[22px] font-extrabold tracking-tight text-[#223971] dark:text-[#edf3ff]">검색 활용 가이드</h2>
+                  <p className="mt-2 max-w-[720px] text-[14px] leading-6 text-[#7083b4] dark:text-[#98abd7]">
+                    처음 들어와도 무엇을 먼저 봐야 하는지 바로 이해할 수 있도록, 지금 공개한 핵심 흐름만 간단하게 정리했습니다.
+                  </p>
                 </div>
-                <p className="text-[12px] text-[#8b9dcc] dark:text-[#8fa3cf]">메인에서는 요약을 보고, 세부 화면에서 깊게 탐색합니다.</p>
+                <Sparkles className="mt-1 h-5 w-5 text-[#7090ea] dark:text-[#9db5ff]" />
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                {reportBoards.map((card) => (
-                  <Link
-                    key={card.title}
-                    href={card.href}
-                    className="group flex items-center gap-4 rounded-[18px] border border-[#e4eaff] bg-white/96 px-4 py-4 shadow-[0_10px_22px_rgba(111,135,196,0.08)] transition-all hover:-translate-y-0.5 hover:border-[#d4e0ff] dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)] dark:hover:border-[#49628f]"
-                  >
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,#eff4ff_0%,#dfe9ff_100%)]">
-                      <Image src={card.icon} alt={`${card.title} 아이콘`} width={54} height={54} className="h-auto w-[54px]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[18px] font-extrabold tracking-tight text-[#203872] dark:text-[#edf3ff]">{card.title}</p>
-                      <p className="mt-1 text-[12px] text-[#6f82b3] dark:text-[#98abd7]">{card.description}</p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-[#89a0dc] dark:text-[#9db5ff] transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                ))}
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-[18px] border border-[#e4eaff] bg-white/96 px-5 py-5 shadow-[0_10px_22px_rgba(111,135,196,0.08)] dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                  <p className="text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">1. 회사명으로 바로 검색</p>
+                  <p className="mt-2 text-[13px] leading-6 text-[#6f82b3] dark:text-[#98abd7]">삼성전자, 카카오, 네이버처럼 회사명을 입력하면 관련 발표 흐름을 바로 찾을 수 있습니다.</p>
+                </div>
+                <div className="rounded-[18px] border border-[#e4eaff] bg-white/96 px-5 py-5 shadow-[0_10px_22px_rgba(111,135,196,0.08)] dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                  <p className="text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">2. 최신 카드부터 확인</p>
+                  <p className="mt-2 text-[13px] leading-6 text-[#6f82b3] dark:text-[#98abd7]">최근 발표 제보와 면접 정보를 먼저 훑어보면 지금 올라오는 흐름을 빠르게 파악할 수 있습니다.</p>
+                </div>
+                <div className="rounded-[18px] border border-[#e4eaff] bg-white/96 px-5 py-5 shadow-[0_10px_22px_rgba(111,135,196,0.08)] dark:border-[#31415f] dark:bg-[#16213a]/96 dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                  <p className="text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">3. 검색 결과에서 단계 좁히기</p>
+                  <p className="mt-2 text-[13px] leading-6 text-[#6f82b3] dark:text-[#98abd7]">회사 검색 후 전형 유형과 단계 정보를 좁혀 보면 원하는 발표일에 더 빨리 도달할 수 있습니다.</p>
+                </div>
               </div>
             </div>
           </section>

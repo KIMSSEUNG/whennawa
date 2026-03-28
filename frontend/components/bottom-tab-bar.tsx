@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, Building2, MessageSquareText, SearchCheck, UserRound } from "lucide-react"
+import { SearchCheck, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getUser } from "@/lib/api"
 
@@ -11,15 +11,12 @@ type Role = "USER" | "ADMIN" | null
 
 const userTabs = [
   { href: "/search", label: "발표 검색", icon: SearchCheck },
-  { href: "/board", label: "회사 게시판", icon: Building2 },
-  { href: "/career-board", label: "취업 고민", icon: MessageSquareText },
-  { href: "/notifications", label: "알림", icon: Bell },
   { href: "/profile", label: "프로필", icon: UserRound },
 ]
 
 const adminTabs = [
   { href: "/admin/reports", label: "공고 검수", icon: SearchCheck },
-  { href: "/admin/company-requests", label: "회사 검수", icon: Building2 },
+  { href: "/admin/company-requests", label: "회사 검수", icon: UserRound },
   { href: "/profile", label: "프로필", icon: UserRound },
 ]
 

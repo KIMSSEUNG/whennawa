@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import type React from "react"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = {
   title: "기업별 채용 후기 게시판",
@@ -10,5 +11,6 @@ export const metadata: Metadata = {
 }
 
 export default function BoardLayout({ children }: { children: React.ReactNode }) {
-  return children
+  void children
+  redirect("/search")
 }

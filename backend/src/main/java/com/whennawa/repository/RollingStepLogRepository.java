@@ -6,7 +6,6 @@ import com.whennawa.entity.enums.LogSourceType;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.entity.enums.RollingReportType;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
@@ -29,8 +28,6 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
         """)
     List<String> findTopStepNamesByRecruitmentMode(@Param("recruitmentMode") RecruitmentMode recruitmentMode);
 
-    List<RollingStepLog> findByUpdatedAtAfterOrderByUpdatedAtDesc(LocalDateTime cutoff);
-
     @Query("""
         select log
         from RollingStepLog log
@@ -39,6 +36,15 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
         order by log.updatedAt desc, log.rollingLogId desc
         """)
     List<RollingStepLog> findRecentLogs(Pageable pageable);
+
+    @Query("""
+        select log
+        from RollingStepLog log
+        where log.currentStepName is not null
+          and trim(log.currentStepName) <> ''
+        order by log.updatedAt desc, log.rollingLogId desc
+        """)
+    List<RollingStepLog> findAllForHotCompanies();
 
     Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
         String companyName,

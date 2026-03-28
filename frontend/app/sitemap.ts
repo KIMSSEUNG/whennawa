@@ -99,24 +99,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         return [
           {
-            url: `${siteUrl}/board/${companySlug}`,
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.85,
-          },
-          {
-            url: `${siteUrl}/board/${companySlug}/summary`,
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.8,
-          },
-          {
-            url: `${siteUrl}/interview-reviews/${companySlug}`,
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.8,
-          },
-          {
             url: buildSearchUrl(siteUrl, companyName),
             lastModified: now,
             changeFrequency: "daily" as const,
@@ -177,18 +159,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,
-    },
-    {
-      url: `${siteUrl}/board`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${siteUrl}/career-board`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.75,
     },
     ...companyRoutes,
   ]

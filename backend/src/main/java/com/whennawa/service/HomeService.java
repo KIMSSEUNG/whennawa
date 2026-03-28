@@ -2,11 +2,15 @@ package com.whennawa.service;
 
 import com.whennawa.dto.home.HomeHotCompanyItem;
 import com.whennawa.dto.home.HomeLatestReportItem;
+import com.whennawa.dto.interview.InterviewReviewItem;
 import com.whennawa.entity.Company;
+import com.whennawa.entity.InterviewReview;
 import com.whennawa.entity.RecruitmentStepLog;
 import com.whennawa.entity.RollingStepLog;
+import com.whennawa.entity.enums.InterviewDifficulty;
 import com.whennawa.entity.enums.RecruitmentMode;
 import com.whennawa.repository.CompanyRepository;
+import com.whennawa.repository.InterviewReviewRepository;
 import com.whennawa.repository.RecruitmentStepLogRepository;
 import com.whennawa.repository.RollingStepLogRepository;
 import java.time.LocalDateTime;
@@ -20,18 +24,19 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class HomeService {
-    private static final int HOT_COMPANY_LOOKBACK_DAYS = 7;
-
     private final RecruitmentStepLogRepository recruitmentStepLogRepository;
     private final RollingStepLogRepository rollingStepLogRepository;
     private final CompanyRepository companyRepository;
+    private final InterviewReviewRepository interviewReviewRepository;
 
     public HomeService(RecruitmentStepLogRepository recruitmentStepLogRepository,
                        RollingStepLogRepository rollingStepLogRepository,
-                       CompanyRepository companyRepository) {
+                       CompanyRepository companyRepository,
+                       InterviewReviewRepository interviewReviewRepository) {
         this.recruitmentStepLogRepository = recruitmentStepLogRepository;
         this.rollingStepLogRepository = rollingStepLogRepository;
         this.companyRepository = companyRepository;
+        this.interviewReviewRepository = interviewReviewRepository;
     }
 
     public List<HomeLatestReportItem> listLatestReports(Integer limit) {
@@ -60,13 +65,12 @@ public class HomeService {
 
     public List<HomeHotCompanyItem> listHotCompanies(Integer limit) {
         int safeLimit = limit == null ? 3 : Math.max(1, Math.min(limit, 10));
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(HOT_COMPANY_LOOKBACK_DAYS);
         Map<String, HotCompanyAggregate> aggregates = new HashMap<>();
 
-        for (RecruitmentStepLog log : recruitmentStepLogRepository.findByUpdatedAtAfterOrderByUpdatedAtDesc(cutoff)) {
+        for (RecruitmentStepLog log : recruitmentStepLogRepository.findAllForHotCompanies()) {
             mergeHotCompany(aggregates, log.getCompanyName(), log.getCurrentStepName(), log.getUpdatedAt(), log.getReportCount());
         }
-        for (RollingStepLog log : rollingStepLogRepository.findByUpdatedAtAfterOrderByUpdatedAtDesc(cutoff)) {
+        for (RollingStepLog log : rollingStepLogRepository.findAllForHotCompanies()) {
             mergeHotCompany(aggregates, log.getCompanyName(), log.getCurrentStepName(), log.getUpdatedAt(), log.getReportCount());
         }
 
@@ -78,6 +82,13 @@ public class HomeService {
             )
             .limit(safeLimit)
             .map(item -> new HomeHotCompanyItem(item.companyId(), item.companyName(), item.latestStepName(), item.activityCount(), item.updatedAt()))
+            .toList();
+    }
+
+    public List<InterviewReviewItem> listLatestInterviewReviews(Integer limit) {
+        int safeLimit = limit == null ? 3 : Math.max(1, Math.min(limit, 10));
+        return interviewReviewRepository.findLatestActiveReviews(PageRequest.of(0, safeLimit)).stream()
+            .map(this::toInterviewReviewItem)
             .toList();
     }
 
@@ -110,6 +121,26 @@ public class HomeService {
 
     private LocalDateTime fallbackUpdatedAt(LocalDateTime updatedAt, LocalDateTime createdAt) {
         return updatedAt != null ? updatedAt : createdAt;
+    }
+
+    private InterviewReviewItem toInterviewReviewItem(InterviewReview review) {
+        if (review == null || review.getCompany() == null) {
+            return null;
+        }
+        InterviewDifficulty difficulty = review.getDifficulty() == null ? InterviewDifficulty.MEDIUM : review.getDifficulty();
+        Integer likeCount = review.getLikeCount();
+        return new InterviewReviewItem(
+            review.getReviewId(),
+            review.getCompany().getCompanyId(),
+            review.getCompany().getCompanyName(),
+            review.getRecruitmentMode() == null ? RecruitmentMode.REGULAR : review.getRecruitmentMode(),
+            review.getStepName(),
+            difficulty,
+            review.getContent(),
+            likeCount == null ? 0 : Math.max(0, likeCount),
+            false,
+            fallbackUpdatedAt(review.getUpdatedAt(), review.getCreatedAt())
+        );
     }
 
     private boolean isBlank(String value) {

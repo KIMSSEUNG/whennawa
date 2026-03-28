@@ -166,7 +166,7 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
   if (!companyId) return null
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+    <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:min-h-[620px]">
       <div className="mb-3 rounded-xl border border-primary/15 bg-gradient-to-r from-primary/10 to-accent/30 px-3 py-2">
         <h3 className="text-sm font-semibold text-foreground">{companyName ? `${companyName} 채팅` : "회사 채팅"}</h3>
         <p className="text-xs text-muted-foreground">
@@ -174,7 +174,7 @@ export function CompanyChatRoom({ companyId, companyName }: CompanyChatRoomProps
         </p>
       </div>
 
-      <div ref={listRef} className="h-64 overflow-y-auto rounded-xl border border-border/60 bg-background p-3">
+      <div ref={listRef} className="h-64 overflow-y-auto rounded-xl border border-border/60 bg-background p-3 md:h-[440px]">
         {messages.length === 0 ? (
           <p className="text-xs text-muted-foreground">아직 채팅 메시지가 없습니다.</p>
         ) : (

@@ -2,6 +2,7 @@ package com.whennawa.controller;
 
 import com.whennawa.dto.home.HomeHotCompanyItem;
 import com.whennawa.dto.home.HomeLatestReportItem;
+import com.whennawa.dto.interview.InterviewReviewItem;
 import com.whennawa.service.HomeService;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,5 +31,12 @@ public class HomeController {
         @RequestParam(value = "limit", required = false) Integer limit
     ) {
         return homeService.listHotCompanies(limit);
+    }
+
+    @GetMapping("/latest-interview-reviews")
+    public List<InterviewReviewItem> latestInterviewReviews(
+        @RequestParam(value = "limit", required = false) Integer limit
+    ) {
+        return homeService.listLatestInterviewReviews(limit);
     }
 }

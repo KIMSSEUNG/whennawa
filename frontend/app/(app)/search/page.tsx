@@ -528,18 +528,6 @@ function SearchPageClient() {
       >
         {/* Results List */}
         <div className={cn("min-w-0", !hasSearched && "mx-auto w-full max-w-xl")}>
-          {hasSearched && (
-            <div className="mb-3 rounded-xl border border-border/60 bg-background px-3 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">최근 검색</span>
-                <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                  결과 {results.length}건
-                </span>
-              </div>
-              <p className="mt-1 truncate text-sm font-semibold text-foreground">{searchedQuery}</p>
-            </div>
-          )}
-
           {isSearching ? (
             <div className="flex items-center justify-center py-16">
               <span className="text-[2em] text-muted-foreground animate-pulse">검색 중...</span>
@@ -554,8 +542,25 @@ function SearchPageClient() {
               title="검색 결과 없음"
               description={`"${searchedQuery}"에 해당하는 회사 이력을 찾지 못했어요.`}
             />
+          ) : selectedCompany && isDesktop ? (
+            <CompanyChatRoom
+              companyId={status?.companyId ?? null}
+              companyName={selectedCompany.companyName}
+            />
           ) : (
             <div className="space-y-4">
+              {hasSearched && (
+                <div className="rounded-xl border border-border/60 bg-background px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">최근 검색</span>
+                    <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                      결과 {results.length}건
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-sm font-semibold text-foreground">{searchedQuery}</p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {results.map((company) => (
                   <button
@@ -601,7 +606,7 @@ function SearchPageClient() {
                 ))}
               </div>
 
-              {selectedCompany && (
+              {selectedCompany && !isDesktop && (
                 <CompanyChatRoom
                   companyId={status?.companyId ?? null}
                   companyName={selectedCompany.companyName}

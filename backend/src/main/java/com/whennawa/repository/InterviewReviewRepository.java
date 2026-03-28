@@ -39,6 +39,17 @@ public interface InterviewReviewRepository extends JpaRepository<InterviewReview
     Optional<InterviewReview> findByRollingReportReportIdAndIsActiveTrue(Long reportId);
 
     @Query("""
+        select r
+        from InterviewReview r
+        where r.isActive = true
+          and r.company is not null
+          and r.content is not null
+          and trim(r.content) <> ''
+        order by r.createdAt desc, r.reviewId desc
+        """)
+    List<InterviewReview> findLatestActiveReviews(Pageable pageable);
+
+    @Query("""
         select distinct r.stepName
         from InterviewReview r
         where r.company.companyId = :companyId

@@ -1,8 +1,8 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { fromCompanySlug } from "@/lib/company-slug"
 import { fetchInterviewReviewSteps, fetchInterviewReviews, likeInterviewReview } from "@/lib/api"
 import type { InterviewReview, InterviewReviewSort, RecruitmentMode } from "@/lib/types"
@@ -25,20 +25,40 @@ const getModeLabel = (mode: RecruitmentMode) => {
 
 export default function InterviewReviewsPage() {
   const params = useParams<{ companySlug: string }>()
+  const searchParams = useSearchParams()
   const companySlug = params?.companySlug ?? ""
   const companyName = useMemo(() => fromCompanySlug(companySlug), [companySlug])
+  const requestedReviewId = Number(searchParams?.get("reviewId") ?? "")
+  const requestedMode = searchParams?.get("mode")
   const [items, setItems] = useState<InterviewReview[]>([])
   const [page, setPage] = useState(0)
   const [hasNext, setHasNext] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [sort, setSort] = useState<InterviewReviewSort>("LIKES")
-  const [mode, setMode] = useState<RecruitmentMode>("REGULAR")
+  const [sort, setSort] = useState<InterviewReviewSort>(Number.isFinite(requestedReviewId) && requestedReviewId > 0 ? "LATEST" : "LIKES")
+  const [mode, setMode] = useState<RecruitmentMode>(
+    requestedMode === "REGULAR" || requestedMode === "INTERN" || requestedMode === "ROLLING" ? requestedMode : "REGULAR",
+  )
   const [stepNames, setStepNames] = useState<string[]>([])
   const [stepQuery, setStepQuery] = useState("")
   const [selectedStepName, setSelectedStepName] = useState("")
   const [showStepSuggestions, setShowStepSuggestions] = useState(false)
   const [selectedReview, setSelectedReview] = useState<InterviewReview | null>(null)
+  const [highlightedReviewId, setHighlightedReviewId] = useState<number | null>(null)
   const [pendingLikeReviewIds, setPendingLikeReviewIds] = useState<number[]>([])
+  const reviewRefs = useRef<Record<number, HTMLElement | null>>({})
+  const autoOpenedReviewIdRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (requestedMode === "REGULAR" || requestedMode === "INTERN" || requestedMode === "ROLLING") {
+      setMode(requestedMode)
+    }
+  }, [requestedMode])
+
+  useEffect(() => {
+    if (Number.isFinite(requestedReviewId) && requestedReviewId > 0) {
+      setSort("LATEST")
+    }
+  }, [requestedReviewId])
 
   useEffect(() => {
     let cancelled = false
@@ -61,12 +81,35 @@ export default function InterviewReviewsPage() {
     const load = async () => {
       setIsLoading(true)
       try {
-        const data = await fetchInterviewReviews(companyName, 0, 20, sort, selectedStepName || undefined, mode)
-        if (cancelled) return
-        const modeFiltered = (data.items ?? []).filter((item) => item.recruitmentMode === mode)
-        setItems(modeFiltered)
-        setPage(data.page)
-        setHasNext(data.hasNext)
+        const shouldLocateRequestedReview = Number.isFinite(requestedReviewId) && requestedReviewId > 0
+        let nextPage = 0
+        let lastPage = 0
+        let nextHasMore = false
+        let mergedItems: InterviewReview[] = []
+
+        while (true) {
+          const data = await fetchInterviewReviews(companyName, nextPage, 20, sort, selectedStepName || undefined, mode)
+          if (cancelled) return
+
+          const modeFiltered = (data.items ?? []).filter((item) => item.recruitmentMode === mode)
+          mergedItems = [...mergedItems, ...modeFiltered]
+          lastPage = data.page
+          nextHasMore = data.hasNext
+
+          const foundRequestedReview = shouldLocateRequestedReview
+            ? mergedItems.some((item) => item.reviewId === requestedReviewId)
+            : false
+
+          if (!shouldLocateRequestedReview || foundRequestedReview || !data.hasNext) {
+            break
+          }
+
+          nextPage += 1
+        }
+
+        setItems(mergedItems)
+        setPage(lastPage)
+        setHasNext(nextHasMore)
       } catch {
         if (cancelled) return
         setItems([])
@@ -80,7 +123,7 @@ export default function InterviewReviewsPage() {
     return () => {
       cancelled = true
     }
-  }, [companyName, sort, selectedStepName, mode])
+  }, [companyName, sort, selectedStepName, mode, requestedReviewId])
 
   const loadMore = async () => {
     if (!hasNext || isLoading) return
@@ -159,6 +202,30 @@ export default function InterviewReviewsPage() {
 
     return lines
   }, [companyName, items.length, mode, selectedStepName])
+
+  useEffect(() => {
+    if (!Number.isFinite(requestedReviewId) || requestedReviewId <= 0) return
+    if (autoOpenedReviewIdRef.current === requestedReviewId) return
+
+    const matched = items.find((item) => item.reviewId === requestedReviewId)
+    if (!matched) return
+
+    autoOpenedReviewIdRef.current = requestedReviewId
+    const targetNode = reviewRefs.current[requestedReviewId]
+    if (targetNode) {
+      setHighlightedReviewId(requestedReviewId)
+      const targetTop = Math.max(0, window.scrollY + targetNode.getBoundingClientRect().top - 140)
+      window.scrollTo({ top: targetTop, behavior: "auto" })
+      window.setTimeout(() => {
+        setSelectedReview(matched)
+      }, 120)
+      window.setTimeout(() => {
+        setHighlightedReviewId((current) => (current === requestedReviewId ? null : current))
+      }, 1200)
+      return
+    }
+    setSelectedReview(matched)
+  }, [items, requestedReviewId])
 
   return (
     <>
@@ -278,7 +345,14 @@ export default function InterviewReviewsPage() {
             return (
               <article
                 key={`review-${item.reviewId}`}
-                className="cursor-pointer rounded-xl border border-[#d8e2fb] bg-card p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)] transition-colors hover:bg-[#fbfcff]"
+                ref={(node) => {
+                  reviewRefs.current[item.reviewId] = node
+                }}
+                className={`cursor-pointer rounded-xl border bg-card p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)] transition-all hover:bg-[#fbfcff] ${
+                  highlightedReviewId === item.reviewId
+                    ? "border-[#4d83ff] ring-2 ring-[#bcd1ff] bg-[#f7faff]"
+                    : "border-[#d8e2fb]"
+                }`}
                 onClick={() => setSelectedReview(item)}
               >
                 <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
