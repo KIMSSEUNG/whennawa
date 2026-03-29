@@ -33,6 +33,12 @@ const formatDifficultyLabel = (difficulty: InterviewReview["difficulty"]) => {
   return "보통"
 }
 
+const formatRecruitmentModeLabel = (mode: InterviewReview["recruitmentMode"]) => {
+  if (mode === "REGULAR") return "공채"
+  if (mode === "INTERN") return "인턴"
+  return "수시"
+}
+
 const truncateInterviewPreview = (content: string) => {
   const normalized = content.replace(/\s+/g, " ").trim()
   if (normalized.length <= 72) return normalized
@@ -284,7 +290,7 @@ export default function HomePage() {
                                 <div className="min-w-0">
                                   <p className="truncate text-[15px] font-bold text-[#1f366d] dark:text-[#edf3ff]">{review.companyName ?? "-"}</p>
                                   <p className="mt-0.5 text-[11px] text-[#6f82b3] dark:text-[#98abd7]">
-                                    {review.stepName} · 난이도 {formatDifficultyLabel(review.difficulty)}
+                                    {review.stepName} · {formatRecruitmentModeLabel(review.recruitmentMode)} · 난이도 {formatDifficultyLabel(review.difficulty)}
                                   </p>
                                 </div>
                               </div>

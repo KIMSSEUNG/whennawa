@@ -394,10 +394,15 @@ export default function InterviewReviewsPage() {
                 onClick={() => setSelectedReview(item)}
               >
                 <div className="mb-3 flex items-start justify-between gap-3">
-                  <span className="inline-flex h-9 items-center rounded-full border border-[#cfdcff] bg-[#f7faff] px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
-                    {item.stepName}
-                  </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex h-9 items-center rounded-full border border-[#cfdcff] bg-[#f7faff] px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
+                      {item.stepName}
+                    </span>
+                    <span className="inline-flex h-9 items-center rounded-full border border-[#cfdcff] bg-[#f7faff] px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
+                      {getModeLabel(item.recruitmentMode)}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
                     {renderDifficultyBadge(item.difficulty)}
                     {renderLikeButton(item, isLikePending, (event) => {
                       event.stopPropagation()
@@ -444,12 +449,15 @@ export default function InterviewReviewsPage() {
                       <span className="inline-flex h-8 items-center rounded-full border border-[#cfdcff] bg-white px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[0_6px_16px_rgba(111,135,196,0.10)]">
                         {selectedReview.stepName}
                       </span>
+                      <span className="inline-flex h-8 items-center rounded-full border border-[#cfdcff] bg-white px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[0_6px_16px_rgba(111,135,196,0.10)]">
+                        {getModeLabel(selectedReview.recruitmentMode)}
+                      </span>
                       {renderDifficultyBadge(selectedReview.difficulty)}
                     </div>
                   </div>
                   <div className="space-y-1 text-left">
                     <DialogTitle className="text-[19px] font-black tracking-tight text-[#1f366d]">면접 후기 상세</DialogTitle>
-                    <p className="text-[13px] text-[#6f83b3]">{selectedReview.stepName} 경험을 실제 후기 내용으로 확인할 수 있습니다.</p>
+                    <p className="text-[13px] text-[#6f83b3]">{selectedReview.stepName} · {getModeLabel(selectedReview.recruitmentMode)} 경험을 실제 후기 내용으로 확인할 수 있습니다.</p>
                   </div>
                 </DialogHeader>
               </div>

@@ -749,9 +749,14 @@ export function CompanyDetailPanel({
                   onClick={() => handleInterviewReviewClick(review)}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2 text-xs text-[#6f83b3]">
-                    <span className="inline-flex min-w-0 max-w-full items-center rounded-full border border-[#c8d8ff] bg-white px-2.5 py-1 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.96)]">
-                      <span className="truncate">{review.stepName}</span>
-                    </span>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="inline-flex min-w-0 max-w-full items-center rounded-full border border-[#c8d8ff] bg-white px-2.5 py-1 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.96)]">
+                        <span className="truncate">{review.stepName}</span>
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-[#c8d8ff] bg-white px-2.5 py-1 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.96)]">
+                        {getModeLabel(review.recruitmentMode)}
+                      </span>
+                    </div>
                     <span className="inline-flex shrink-0 items-center rounded-full border border-[#c8d8ff] bg-white px-2.5 py-1 font-medium text-[#4f6fb1] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.96)]">
                       {review.difficulty === "HARD" ? "어려움" : review.difficulty === "EASY" ? "쉬움" : "보통"}
                     </span>
