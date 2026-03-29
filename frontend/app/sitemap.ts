@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next"
 import { getSiteUrl } from "@/lib/seo"
 import { toCompanySlug } from "@/lib/company-slug"
-import { toModeSlug } from "@/lib/company-detail-route"
 
 type CompanyListItem = {
   companyId?: number | null
@@ -9,13 +8,6 @@ type CompanyListItem = {
 }
 
 type CompanyStatusItem = {
-  regularTimelines?: Array<{
-    steps: Array<{ label?: string | null }>
-  }> | null
-  internTimelines?: Array<{
-    steps: Array<{ label?: string | null }>
-  }> | null
-  rollingSteps?: Array<{ stepName?: string | null }> | null
   interviewReviews?: Array<{
     reviewId?: number | null
   }> | null
@@ -60,130 +52,29 @@ async function fetchCompanyStatus(companyName: string): Promise<CompanyStatusIte
   }
 }
 
-function buildSearchUrl(siteUrl: string, companyName: string, mode?: "REGULAR" | "INTERN" | "ROLLING", stepName?: string) {
-  const params = new URLSearchParams()
-  params.set("q", companyName)
-  params.set("company", companyName)
-  if (mode) {
-    params.set("mode", toModeSlug(mode))
-  }
-  if (stepName?.trim()) {
-    params.set("step", stepName.trim())
-  }
-  return `${siteUrl}/search?${params.toString()}`
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl()
   const now = new Date()
   const companies = await fetchCompanies()
 
-  const companyRoutes = (
+  const interviewReviewRoutes = (
     await Promise.all(
       companies.map(async (company) => {
         const companyName = company.companyName.trim()
-        if (!companyName) return []
-        const companySlug = toCompanySlug(companyName)
+        if (!companyName) return null
 
         const status = await fetchCompanyStatus(companyName)
-        const regularSteps = Array.from(
-          new Set(
-            status?.regularTimelines?.flatMap((item) => item.steps.map((step) => step.label?.trim())).filter((value): value is string => Boolean(value)) ?? [],
-          ),
-        )
-        const internSteps = Array.from(
-          new Set(
-            status?.internTimelines?.flatMap((item) => item.steps.map((step) => step.label?.trim())).filter((value): value is string => Boolean(value)) ?? [],
-          ),
-        )
-        const rollingSteps = Array.from(
-          new Set(status?.rollingSteps?.map((item) => item.stepName?.trim()).filter((value): value is string => Boolean(value)) ?? []),
-        )
-        const hasRegularData = Boolean(status?.regularTimelines?.some((item) => item.steps?.length))
-        const hasInternData = Boolean(status?.internTimelines?.some((item) => item.steps?.length))
-        const hasRollingData = Boolean(status?.rollingSteps?.length)
-        const hasInterviewReviewData = Boolean(status?.interviewReviews?.length)
-        const hasSearchIndexableData = hasRegularData || hasInternData || hasRollingData
+        if (!status?.interviewReviews?.length) return null
 
-        if (!hasSearchIndexableData && !hasInterviewReviewData) {
-          return []
+        return {
+          url: `${siteUrl}/interview-reviews/${toCompanySlug(companyName)}`,
+          lastModified: now,
+          changeFrequency: "daily" as const,
+          priority: 0.74,
         }
-
-        return [
-          ...(hasSearchIndexableData
-            ? [
-                {
-                  url: buildSearchUrl(siteUrl, companyName),
-                  lastModified: now,
-                  changeFrequency: "daily" as const,
-                  priority: 0.85,
-                },
-              ]
-            : []),
-          ...(hasRegularData
-            ? [
-                {
-                  url: buildSearchUrl(siteUrl, companyName, "REGULAR"),
-                  lastModified: now,
-                  changeFrequency: "daily" as const,
-                  priority: 0.8,
-                },
-              ]
-            : []),
-          ...(hasInternData
-            ? [
-                {
-                  url: buildSearchUrl(siteUrl, companyName, "INTERN"),
-                  lastModified: now,
-                  changeFrequency: "daily" as const,
-                  priority: 0.8,
-                },
-              ]
-            : []),
-          ...(hasRollingData
-            ? [
-                {
-                  url: buildSearchUrl(siteUrl, companyName, "ROLLING"),
-                  lastModified: now,
-                  changeFrequency: "daily" as const,
-                  priority: 0.8,
-                },
-              ]
-            : []),
-          ...(status?.interviewReviews?.length
-            ? [
-                {
-                  url: `${siteUrl}/interview-reviews/${companySlug}`,
-                  lastModified: now,
-                  changeFrequency: "daily" as const,
-                  priority: 0.74,
-                },
-              ]
-            : []),
-          ...regularSteps.map((stepName) => ({
-            url: buildSearchUrl(siteUrl, companyName, "REGULAR", stepName),
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.72,
-          })),
-          ...internSteps.map((stepName) => ({
-            url: buildSearchUrl(siteUrl, companyName, "INTERN", stepName),
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.72,
-          })),
-          ...rollingSteps.map((stepName) => ({
-            url: buildSearchUrl(siteUrl, companyName, "ROLLING", stepName),
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.72,
-          })),
-        ]
       }),
     )
-  )
-    .flat()
-    .filter((route, index, routes) => routes.findIndex((candidate) => candidate.url === route.url) === index)
+  ).filter((route): route is NonNullable<typeof route> => Boolean(route))
 
   return [
     {
@@ -193,11 +84,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
-      url: `${siteUrl}/search`,
+      url: `${siteUrl}/privacy`,
       lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
+      changeFrequency: "monthly",
+      priority: 0.3,
     },
-    ...companyRoutes,
+    {
+      url: `${siteUrl}/terms`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
+    ...interviewReviewRoutes,
   ]
 }
