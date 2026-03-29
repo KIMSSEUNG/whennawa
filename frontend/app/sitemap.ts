@@ -16,6 +16,9 @@ type CompanyStatusItem = {
     steps: Array<{ label?: string | null }>
   }> | null
   rollingSteps?: Array<{ stepName?: string | null }> | null
+  interviewReviews?: Array<{
+    reviewId?: number | null
+  }> | null
 }
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_BASE_URL ?? "").replace(/\/$/, "")
@@ -96,32 +99,67 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const rollingSteps = Array.from(
           new Set(status?.rollingSteps?.map((item) => item.stepName?.trim()).filter((value): value is string => Boolean(value)) ?? []),
         )
+        const hasRegularData = Boolean(status?.regularTimelines?.some((item) => item.steps?.length))
+        const hasInternData = Boolean(status?.internTimelines?.some((item) => item.steps?.length))
+        const hasRollingData = Boolean(status?.rollingSteps?.length)
+        const hasInterviewReviewData = Boolean(status?.interviewReviews?.length)
+        const hasSearchIndexableData = hasRegularData || hasInternData || hasRollingData
+
+        if (!hasSearchIndexableData && !hasInterviewReviewData) {
+          return []
+        }
 
         return [
-          {
-            url: buildSearchUrl(siteUrl, companyName),
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.85,
-          },
-          {
-            url: buildSearchUrl(siteUrl, companyName, "REGULAR"),
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.8,
-          },
-          {
-            url: buildSearchUrl(siteUrl, companyName, "INTERN"),
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.8,
-          },
-          {
-            url: buildSearchUrl(siteUrl, companyName, "ROLLING"),
-            lastModified: now,
-            changeFrequency: "daily" as const,
-            priority: 0.8,
-          },
+          ...(hasSearchIndexableData
+            ? [
+                {
+                  url: buildSearchUrl(siteUrl, companyName),
+                  lastModified: now,
+                  changeFrequency: "daily" as const,
+                  priority: 0.85,
+                },
+              ]
+            : []),
+          ...(hasRegularData
+            ? [
+                {
+                  url: buildSearchUrl(siteUrl, companyName, "REGULAR"),
+                  lastModified: now,
+                  changeFrequency: "daily" as const,
+                  priority: 0.8,
+                },
+              ]
+            : []),
+          ...(hasInternData
+            ? [
+                {
+                  url: buildSearchUrl(siteUrl, companyName, "INTERN"),
+                  lastModified: now,
+                  changeFrequency: "daily" as const,
+                  priority: 0.8,
+                },
+              ]
+            : []),
+          ...(hasRollingData
+            ? [
+                {
+                  url: buildSearchUrl(siteUrl, companyName, "ROLLING"),
+                  lastModified: now,
+                  changeFrequency: "daily" as const,
+                  priority: 0.8,
+                },
+              ]
+            : []),
+          ...(status?.interviewReviews?.length
+            ? [
+                {
+                  url: `${siteUrl}/interview-reviews/${companySlug}`,
+                  lastModified: now,
+                  changeFrequency: "daily" as const,
+                  priority: 0.74,
+                },
+              ]
+            : []),
           ...regularSteps.map((stepName) => ({
             url: buildSearchUrl(siteUrl, companyName, "REGULAR", stepName),
             lastModified: now,

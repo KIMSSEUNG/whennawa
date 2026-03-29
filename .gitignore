@@ -28,3 +28,4 @@ local-docs/
 # Python / misc
 __pycache__/
 *.pyc
+python_local/
