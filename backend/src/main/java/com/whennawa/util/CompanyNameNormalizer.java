@@ -6,8 +6,8 @@ import java.util.regex.Pattern;
 
 public final class CompanyNameNormalizer {
     private static final Pattern COMPANY_TOKENS = Pattern.compile("\\(\\uC8FC\\)|\\uC8FC\\uC2DD\\uD68C\\uC0AC|\\u3231");
-    private static final Pattern KEEP_FOR_DISPLAY = Pattern.compile("[^0-9a-zA-Z\\uAC00-\\uD7A3]");
-    private static final Pattern KEEP_FOR_KEY = Pattern.compile("[^0-9a-zA-Z\\uAC00-\\uD7A3]");
+    private static final Pattern KEEP_FOR_DISPLAY = Pattern.compile("[^0-9a-zA-Z\\uAC00-\\uD7A3&]");
+    private static final Pattern KEEP_FOR_KEY = Pattern.compile("[^0-9a-zA-Z\\uAC00-\\uD7A3&]");
 
     private CompanyNameNormalizer() {
     }
