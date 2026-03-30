@@ -6,10 +6,29 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from 'lucide-react'
-import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker'
+import { DayButton, DayPicker, getDefaultClassNames, useDayPicker } from 'react-day-picker'
+import { format, getMonth, getYear, setMonth, setYear } from 'date-fns'
 
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+type CalendarSelectedValue =
+  | Date
+  | Date[]
+  | { from?: Date; to?: Date }
+  | undefined
+
+type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  buttonVariant?: React.ComponentProps<typeof Button>['variant']
+  selected?: CalendarSelectedValue
+}
 
 function Calendar({
   className,
@@ -19,11 +38,41 @@ function Calendar({
   buttonVariant = 'ghost',
   formatters,
   components,
+  month: controlledMonth,
+  onMonthChange,
+  selected,
+  defaultMonth,
   ...props
-}: React.ComponentProps<typeof DayPicker> & {
-  buttonVariant?: React.ComponentProps<typeof Button>['variant']
-}) {
+}: CalendarProps) {
   const defaultClassNames = getDefaultClassNames()
+  const selectedMonth = React.useMemo(
+    () => resolveCalendarMonth(selected) ?? defaultMonth ?? new Date(),
+    [defaultMonth, selected],
+  )
+  const [internalMonth, setInternalMonth] = React.useState<Date>(selectedMonth)
+
+  React.useEffect(() => {
+    if (!controlledMonth) {
+      setInternalMonth(selectedMonth)
+    }
+  }, [controlledMonth, selectedMonth])
+
+  const month = controlledMonth ?? internalMonth
+
+  const handleMonthChange = React.useCallback(
+    (nextMonth: Date) => {
+      if (!controlledMonth) {
+        setInternalMonth(nextMonth)
+      }
+      onMonthChange?.(nextMonth)
+    },
+    [controlledMonth, onMonthChange],
+  )
+
+  const dayPickerProps = {
+    ...props,
+    ...(selected !== undefined ? { selected } : {}),
+  } as React.ComponentProps<typeof DayPicker>
 
   return (
     <DayPicker
@@ -35,6 +84,8 @@ function Calendar({
         className,
       )}
       captionLayout={captionLayout}
+      month={month}
+      onMonthChange={handleMonthChange}
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString('default', { month: 'short' }),
@@ -62,7 +113,7 @@ function Calendar({
           defaultClassNames.button_next,
         ),
         month_caption: cn(
-          'flex items-center justify-center h-(--cell-size) w-full px-(--cell-size)',
+          'flex items-center justify-center h-(--cell-size) w-full px-10',
           defaultClassNames.month_caption,
         ),
         dropdowns: cn(
@@ -155,6 +206,7 @@ function Calendar({
             <ChevronDownIcon className={cn('size-4', className)} {...props} />
           )
         },
+        MonthCaption: CalendarMonthCaption,
         DayButton: CalendarDayButton,
         WeekNumber: ({ children, ...props }) => {
           return (
@@ -167,8 +219,135 @@ function Calendar({
         },
         ...components,
       }}
-      {...props}
+      defaultMonth={defaultMonth}
+      {...dayPickerProps}
     />
+  )
+}
+
+function CalendarMonthCaption({
+  calendarMonth,
+  className,
+  ...props
+}: React.ComponentProps<'div'> & { calendarMonth: { date: Date } }) {
+  const { goToMonth, previousMonth, nextMonth, dayPickerProps } = useDayPicker()
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const monthDate = calendarMonth.date
+
+  const minYear = React.useMemo(() => {
+    const start = dayPickerProps.startMonth
+    return start
+      ? getYear(start)
+      : Math.min(getYear(monthDate), new Date().getFullYear()) - 15
+  }, [dayPickerProps.startMonth, monthDate])
+
+  const maxYear = React.useMemo(() => {
+    const end = dayPickerProps.endMonth
+    return end
+      ? getYear(end)
+      : Math.max(getYear(monthDate), new Date().getFullYear()) + 10
+  }, [dayPickerProps.endMonth, monthDate])
+
+  const years = React.useMemo(
+    () => Array.from({ length: maxYear - minYear + 1 }, (_, index) => minYear + index),
+    [maxYear, minYear],
+  )
+
+  const changeMonth = (monthIndex: number) => {
+    goToMonth(setMonth(monthDate, monthIndex))
+  }
+
+  const changeYear = (yearValue: number) => {
+    goToMonth(setYear(monthDate, yearValue))
+  }
+
+  return (
+    <div
+      className={cn('relative flex w-full items-center justify-center', className)}
+      {...props}
+    >
+      <button
+        type="button"
+        className="inline-flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
+        onClick={() => setPickerOpen((prev) => !prev)}
+        aria-label={`${format(monthDate, 'MMMM yyyy')} month and year picker`}
+      >
+        <span>{format(monthDate, 'MMMM yyyy')}</span>
+        <ChevronDownIcon
+          className={cn('h-4 w-4 transition-transform', pickerOpen && 'rotate-180')}
+        />
+      </button>
+
+      {pickerOpen ? (
+        <div className="absolute top-10 z-20 flex items-center gap-2 rounded-xl border border-border bg-background p-2 shadow-lg">
+          <Select
+            value={String(getMonth(monthDate))}
+            onValueChange={(value) => changeMonth(Number(value))}
+          >
+            <SelectTrigger className="h-9 w-[8.5rem] bg-background text-sm">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent align="center" className="w-[8.5rem]">
+              {Array.from({ length: 12 }, (_, monthIndex) => (
+                <SelectItem key={monthIndex} value={String(monthIndex)}>
+                  {format(new Date(2026, monthIndex, 1), 'MMMM')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={String(getYear(monthDate))}
+            onValueChange={(value) => changeYear(Number(value))}
+          >
+            <SelectTrigger className="h-9 w-[6.5rem] bg-background text-sm">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent align="center" className="w-[6.5rem]">
+              {years.map((year) => (
+                <SelectItem key={year} value={String(year)}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 px-2 text-xs"
+            onClick={() => setPickerOpen(false)}
+          >
+            Done
+          </Button>
+        </div>
+      ) : null}
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute left-0 h-8 w-8"
+        onClick={() => previousMonth && goToMonth(previousMonth)}
+        disabled={!previousMonth}
+        aria-label="Previous month"
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+      </Button>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute right-0 h-8 w-8"
+        onClick={() => nextMonth && goToMonth(nextMonth)}
+        disabled={!nextMonth}
+        aria-label="Next month"
+      >
+        <ChevronRightIcon className="h-4 w-4" />
+      </Button>
+    </div>
   )
 }
 
@@ -208,6 +387,30 @@ function CalendarDayButton({
       {...props}
     />
   )
+}
+
+function resolveCalendarMonth(
+  selected: CalendarSelectedValue,
+): Date | undefined {
+  if (!selected) {
+    return undefined
+  }
+  if (selected instanceof Date) {
+    return selected
+  }
+  if (typeof selected === 'object') {
+    if ('from' in selected && selected.from instanceof Date) {
+      return selected.from
+    }
+    if ('to' in selected && selected.to instanceof Date) {
+      return selected.to
+    }
+  }
+  if (Array.isArray(selected)) {
+    const firstDate = selected.find((item): item is Date => item instanceof Date)
+    return firstDate
+  }
+  return undefined
 }
 
 export { Calendar, CalendarDayButton }
