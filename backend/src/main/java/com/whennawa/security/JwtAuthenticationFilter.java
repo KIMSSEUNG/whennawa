@@ -1,6 +1,7 @@
 package com.whennawa.security;
 
 import com.whennawa.entity.User;
+import com.whennawa.exception.AuthTokenException;
 import com.whennawa.repository.UserRepository;
 import com.whennawa.service.AuthCookieService;
 import com.whennawa.service.RefreshTokenService;
@@ -119,6 +120,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean tryAuthenticateWithRefresh(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = authCookieService.resolveRefreshToken(request);
         if (refreshToken == null || refreshToken.isBlank()) {
+            log.debug("Refresh auth skipped: refresh_token cookie missing");
             return false;
         }
         try {
@@ -126,8 +128,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String accessToken = jwtService.createAccessToken(user);
             authCookieService.setAccessCookie(response, accessToken);
             authenticate(user);
+            log.debug("Refresh auth success: userId={}", user.getId());
             return true;
+        } catch (AuthTokenException ex) {
+            log.warn("Refresh auth failed: {}", ex.getMessage());
+            SecurityContextHolder.clearContext();
+            return false;
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.warn("Refresh auth failed: invalid JWT - {}", ex.getMessage());
+            SecurityContextHolder.clearContext();
+            return false;
         } catch (Exception ex) {
+            log.error("Refresh auth failed: unexpected error", ex);
             SecurityContextHolder.clearContext();
             return false;
         }

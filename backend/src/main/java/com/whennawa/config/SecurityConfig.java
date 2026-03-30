@@ -63,6 +63,7 @@ public class SecurityConfig {
             )
             .csrf(csrf -> csrf.ignoringRequestMatchers("/api/auth/**", "/api/**", "/webhooks/**", "/h2-console/**"))
             .securityContext(sc -> sc.securityContextRepository(new NullSecurityContextRepository()))
+            .requestCache(requestCache -> requestCache.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**", "/webhooks/**", "/oauth2/**", "/api/oauth2/**", "/login/**",

@@ -27,15 +27,15 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             String fullPath = query == null ? uri : uri + "?" + query;
             String cookieHeader = request.getHeader("Cookie");
             String authHeader = request.getHeader("Authorization");
-            log.debug(
-                "API {} {} -> {} ({} ms) Cookie={} Authorization={}",
-                request.getMethod(),
-                fullPath,
-                response.getStatus(),
-                duration,
-                cookieHeader,
-                authHeader
-            );
+//            log.debug(
+//                "API {} {} -> {} ({} ms) Cookie={} Authorization={}",
+//                request.getMethod(),
+//                fullPath,
+//                response.getStatus(),
+//                duration,
+//                cookieHeader,
+//                authHeader
+//            );
         }
     }
 
