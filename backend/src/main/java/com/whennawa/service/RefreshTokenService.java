@@ -35,6 +35,7 @@ public class RefreshTokenService {
         LocalDateTime expiresAt = LocalDateTime.ofInstant(
             claims.getExpiration().toInstant(), ZoneOffset.UTC);
         String hash = hash(refreshToken);
+        tokenRepository.deleteAllByUserId(user.getId());
         tokenRepository.save(new UserRefreshToken(user, hash, expiresAt));
         return new IssuedToken(refreshToken, expiresAt);
     }
@@ -43,7 +44,7 @@ public class RefreshTokenService {
     public RotationResult rotateToken(String refreshToken) {
         Claims claims = parseAndValidate(refreshToken);
         String hash = hash(refreshToken);
-        Optional<UserRefreshToken> storedOpt = tokenRepository.findByTokenHash(hash);
+        Optional<UserRefreshToken> storedOpt = tokenRepository.findByTokenHashWithUser(hash);
         UserRefreshToken stored = storedOpt.orElseThrow(() -> new AuthTokenException("Refresh token not found"));
         if (stored.isRevoked()) {
             throw new AuthTokenException("Refresh token revoked");
@@ -58,8 +59,6 @@ public class RefreshTokenService {
         if (!stored.getUser().getId().equals(tokenUserId)) {
             throw new AuthTokenException("Refresh token user mismatch");
         }
-        stored.revoke(now);
-        tokenRepository.save(stored);
         IssuedToken newToken = issueToken(stored.getUser());
         return new RotationResult(stored.getUser(), newToken.token(), newToken.expiresAt());
     }
@@ -68,7 +67,7 @@ public class RefreshTokenService {
     public User validateTokenAndGetUser(String refreshToken) {
         Claims claims = parseAndValidate(refreshToken);
         String hash = hash(refreshToken);
-        UserRefreshToken stored = tokenRepository.findByTokenHash(hash)
+        UserRefreshToken stored = tokenRepository.findByTokenHashWithUser(hash)
             .orElseThrow(() -> new AuthTokenException("Refresh token not found"));
         if (stored.isRevoked()) {
             throw new AuthTokenException("Refresh token revoked");

@@ -11,6 +11,14 @@ import org.springframework.data.repository.query.Param;
 public interface UserRefreshTokenRepository extends JpaRepository<UserRefreshToken, Long> {
     Optional<UserRefreshToken> findByTokenHash(String tokenHash);
 
+    @Query("""
+        select t
+        from UserRefreshToken t
+        join fetch t.user
+        where t.tokenHash = :tokenHash
+        """)
+    Optional<UserRefreshToken> findByTokenHashWithUser(@Param("tokenHash") String tokenHash);
+
     @Modifying
     @Query("update UserRefreshToken t set t.revokedAt = :now where t.user.id = :userId and t.revokedAt is null")
     int revokeAllActive(@Param("userId") Long userId, @Param("now") LocalDateTime now);
