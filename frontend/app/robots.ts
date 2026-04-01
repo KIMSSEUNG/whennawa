@@ -7,7 +7,12 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: [
+          "/",
+          "/search",
+          "/interview-reviews/",
+          "/board/*/summary",
+        ],
         disallow: [
           "/admin",
           "/login",

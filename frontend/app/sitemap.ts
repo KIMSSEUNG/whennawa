@@ -57,6 +57,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
   const companies = await fetchCompanies()
 
+  const companySummaryRoutes = companies
+    .map((company) => {
+      const companyName = company.companyName.trim()
+      if (!companyName) return null
+
+      return {
+        url: `${siteUrl}/board/${toCompanySlug(companyName)}/summary`,
+        lastModified: now,
+        changeFrequency: "daily" as const,
+        priority: 0.82,
+      }
+    })
+    .filter((route): route is NonNullable<typeof route> => Boolean(route))
+
   const interviewReviewRoutes = (
     await Promise.all(
       companies.map(async (company) => {
@@ -90,11 +104,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
     {
+      url: `${siteUrl}/search`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
       url: `${siteUrl}/terms`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.3,
     },
+    ...companySummaryRoutes,
     ...interviewReviewRoutes,
   ]
 }

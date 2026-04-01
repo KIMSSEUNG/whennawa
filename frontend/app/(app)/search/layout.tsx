@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "회사 채용 일정 검색",
   description: "회사명을 검색해 채용 흐름과 발표 일정을 확인할 수 있는 내부 검색 페이지입니다.",
   robots: {
-    index: false,
+    index: true,
     follow: true,
   },
 }
