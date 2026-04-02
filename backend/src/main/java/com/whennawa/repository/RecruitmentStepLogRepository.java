@@ -16,12 +16,12 @@ public interface RecruitmentStepLogRepository extends JpaRepository<RecruitmentS
     List<RecruitmentStepLog> findByCompanyNameIgnoreCaseAndRecruitmentMode(String companyName, RecruitmentMode recruitmentMode);
 
     @Query("""
-        select log.currentStepName
+        select log.stepName
         from RecruitmentStepLog log
-        where log.currentStepName is not null
+        where log.stepName is not null
           and log.recruitmentMode = :recruitmentMode
-          and trim(log.currentStepName) <> ''
-        group by log.currentStepName
+          and trim(log.stepName) <> ''
+        group by log.stepName
         order by sum(coalesce(log.reportCount, 1)) desc, max(log.updatedAt) desc
         """)
     List<String> findTopStepNamesByRecruitmentMode(@Param("recruitmentMode") RecruitmentMode recruitmentMode);
@@ -29,8 +29,8 @@ public interface RecruitmentStepLogRepository extends JpaRepository<RecruitmentS
     @Query("""
         select log
         from RecruitmentStepLog log
-        where log.currentStepName is not null
-          and trim(log.currentStepName) <> ''
+        where log.stepName is not null
+          and trim(log.stepName) <> ''
         order by log.updatedAt desc, log.recruitmentLogId desc
         """)
     List<RecruitmentStepLog> findRecentLogs(Pageable pageable);
@@ -38,27 +38,26 @@ public interface RecruitmentStepLogRepository extends JpaRepository<RecruitmentS
     @Query("""
         select log
         from RecruitmentStepLog log
-        where log.currentStepName is not null
-          and trim(log.currentStepName) <> ''
+        where log.stepName is not null
+          and trim(log.stepName) <> ''
         order by log.updatedAt desc, log.recruitmentLogId desc
         """)
     List<RecruitmentStepLog> findAllForHotCompanies();
 
-    Optional<RecruitmentStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+    Optional<RecruitmentStepLog> findFirstByCompanyNameAndRecruitmentModeAndStepNameAndResultTypeAndSourceTypeAndBaseDateAndReportedDate(
         String companyName,
         RecruitmentMode recruitmentMode,
-        String currentStepName,
-        String prevStepName,
+        String stepName,
         RollingReportType resultType,
         LogSourceType sourceType,
-        LocalDate prevReportedDate,
+        LocalDate baseDate,
         LocalDate reportedDate
     );
 
-    Optional<RecruitmentStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndResultTypeAndSourceType(
+    Optional<RecruitmentStepLog> findFirstByCompanyNameAndRecruitmentModeAndStepNameAndResultTypeAndSourceType(
         String companyName,
         RecruitmentMode recruitmentMode,
-        String currentStepName,
+        String stepName,
         RollingReportType resultType,
         LogSourceType sourceType
     );

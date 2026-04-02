@@ -21,9 +21,8 @@ public class ReportCreateRequest {
     private LocalDate reportedDate;
 
     private RollingReportType rollingResultType;
-    private LocalDate prevReportedDate;
-    private String prevStepName;
-    private String currentStepName;
+    private LocalDate baseDate;
+    private String stepName;
     private Long jobCategoryId;
     @Size(max = 100)
     private String rollingJobName;

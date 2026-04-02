@@ -5,7 +5,6 @@ import {
   fetchAdminReports,
   fetchReportJobCategories,
   fetchRollingReportCurrentStepNames,
-  fetchRollingReportPrevStepNames,
   processAdminReport,
   discardAdminReport,
   updateAdminReport,
@@ -34,9 +33,8 @@ type EditFormState = {
   rollingJobName: string
   otherJobName: string
   rollingResultType: RollingReportType
-  prevReportedDate: string
-  prevStepName: string
-  currentStepName: string
+  baseDate: string
+  stepName: string
   reportedDate: string
   noResponse: boolean
 }
@@ -50,10 +48,8 @@ export default function AdminReportPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<EditFormState | null>(null)
   const [editJobCategories, setEditJobCategories] = useState<ReportJobCategory[]>([])
-  const [editPrevSuggestions, setEditPrevSuggestions] = useState<string[]>([])
-  const [editCurrentSuggestions, setEditCurrentSuggestions] = useState<string[]>([])
-  const [showEditPrevSuggestions, setShowEditPrevSuggestions] = useState(false)
-  const [showEditCurrentSuggestions, setShowEditCurrentSuggestions] = useState(false)
+  const [editStepSuggestions, setEditStepSuggestions] = useState<string[]>([])
+  const [showEditStepSuggestions, setShowEditStepSuggestions] = useState(false)
   const [expandedInterviewReviewIds, setExpandedInterviewReviewIds] = useState<number[]>([])
   const [message, setMessage] = useState<string | null>(null)
 
@@ -104,10 +100,10 @@ export default function AdminReportPage() {
 
   const beginEdit = async (report: ReportItem) => {
     setEditingId(report.reportId)
-    const rawCurrent = (report.currentStepName ?? "").trim()
+    const rawStep = (report.stepName ?? "").trim()
     const isNoResponse =
       report.rollingResultType === "NO_RESPONSE_REPORTED" ||
-      (!report.prevReportedDate && !report.reportedDate)
+      (!report.baseDate && !report.reportedDate)
     const categories = await fetchReportJobCategories(report.companyName)
     setEditJobCategories(categories)
     const hasReportedCategory = report.jobCategoryId != null && categories.some((item) => item.jobCategoryId === report.jobCategoryId)
@@ -123,9 +119,8 @@ export default function AdminReportPage() {
       rollingJobName: (report.jobCategoryName ?? report.otherJobName ?? "").trim(),
       otherJobName: report.otherJobName ?? "",
       rollingResultType: report.rollingResultType ?? "DATE_REPORTED",
-      prevReportedDate: report.prevReportedDate ? toDateInput(report.prevReportedDate) : "",
-      prevStepName: (report.prevStepName ?? "").trim(),
-      currentStepName: rawCurrent,
+      baseDate: report.baseDate ? toDateInput(report.baseDate) : "",
+      stepName: rawStep,
       reportedDate: toDateInput(report.reportedDate),
       noResponse: isNoResponse,
     })
@@ -135,17 +130,15 @@ export default function AdminReportPage() {
     setEditingId(null)
     setEditForm(null)
     setEditJobCategories([])
-    setEditPrevSuggestions([])
-    setEditCurrentSuggestions([])
-    setShowEditPrevSuggestions(false)
-    setShowEditCurrentSuggestions(false)
+    setEditStepSuggestions([])
+    setShowEditStepSuggestions(false)
   }
 
   const saveEdit = async () => {
     if (!editingId || !editForm) return
 
     const isNonRolling = editForm.recruitmentMode !== "ROLLING"
-    const currentStepName = editForm.currentStepName.trim()
+    const stepName = editForm.stepName.trim()
     const selectedJobCategoryId = Number(editForm.jobCategoryId)
     const rollingJobName = editForm.rollingJobName.trim()
     const selectedJobCategoryName =
@@ -177,22 +170,18 @@ export default function AdminReportPage() {
       }
     }
 
-    if (!currentStepName) {
-      setMessage("현재 전형명을 입력해 주세요.")
-      return
-    }
-    if (!editForm.noResponse && !editForm.prevStepName.trim()) {
-      setMessage("이전 전형명을 입력해 주세요.")
+    if (!stepName) {
+      setMessage("전형명을 입력해 주세요.")
       return
     }
 
     if (!editForm.noResponse) {
-      if (!editForm.prevReportedDate || !editForm.reportedDate) {
-        setMessage("이전 발표일과 현재 발표일을 입력해 주세요.")
+      if (!editForm.baseDate || !editForm.reportedDate) {
+        setMessage("지원/응시일과 결과 발표일을 입력해 주세요.")
         return
       }
-      if (new Date(editForm.prevReportedDate) >= new Date(editForm.reportedDate)) {
-        setMessage("이전 발표일이 현재 발표일보다 이전 날짜여야 합니다.")
+      if (new Date(editForm.baseDate) > new Date(editForm.reportedDate)) {
+        setMessage("지원/응시일이 결과 발표일보다 늦을 수 없습니다.")
         return
       }
     }
@@ -210,9 +199,8 @@ export default function AdminReportPage() {
           : editForm.noResponse
             ? "NO_RESPONSE_REPORTED"
             : "DATE_REPORTED",
-        prevReportedDate: editForm.noResponse ? undefined : editForm.prevReportedDate,
-        prevStepName: editForm.noResponse ? undefined : editForm.prevStepName.trim(),
-        currentStepName: currentStepName,
+        baseDate: editForm.noResponse ? undefined : editForm.baseDate,
+        stepName: stepName,
         reportedDate: editForm.noResponse ? undefined : editForm.reportedDate,
       }, scope)
       await loadReports()
@@ -269,47 +257,25 @@ export default function AdminReportPage() {
 
   useEffect(() => {
     if (!editForm || editingId == null) {
-      setEditPrevSuggestions([])
-      return
-    }
-    let cancelled = false
-    const handle = setTimeout(async () => {
-      const data = await fetchRollingReportPrevStepNames(
-        editForm.companyName,
-        editForm.prevStepName,
-        editForm.recruitmentMode,
-        { jobCategoryId: editForm.jobCategoryId ? Number(editForm.jobCategoryId) : null },
-      )
-      if (cancelled) return
-      setEditPrevSuggestions(Array.from(new Set((data ?? []).filter((item) => item && item.trim()))))
-    }, 120)
-    return () => {
-      cancelled = true
-      clearTimeout(handle)
-    }
-  }, [editForm?.companyName, editForm?.prevStepName, editForm?.recruitmentMode, editForm?.jobCategoryId, editingId])
-
-  useEffect(() => {
-    if (!editForm || editingId == null) {
-      setEditCurrentSuggestions([])
+      setEditStepSuggestions([])
       return
     }
     let cancelled = false
     const handle = setTimeout(async () => {
       const data = await fetchRollingReportCurrentStepNames(
         editForm.companyName,
-        editForm.currentStepName,
+        editForm.stepName,
         editForm.recruitmentMode,
         { jobCategoryId: editForm.jobCategoryId ? Number(editForm.jobCategoryId) : null },
       )
       if (cancelled) return
-      setEditCurrentSuggestions(Array.from(new Set((data ?? []).filter((item) => item && item.trim()))))
+      setEditStepSuggestions(Array.from(new Set((data ?? []).filter((item) => item && item.trim()))))
     }, 120)
     return () => {
       cancelled = true
       clearTimeout(handle)
     }
-  }, [editForm?.companyName, editForm?.currentStepName, editForm?.recruitmentMode, editForm?.jobCategoryId, editingId])
+  }, [editForm?.companyName, editForm?.stepName, editForm?.recruitmentMode, editForm?.jobCategoryId, editingId])
 
   return (
     <div className="page-shell [--page-max:64rem] py-6">
@@ -353,8 +319,8 @@ export default function AdminReportPage() {
             const isIntern = report.recruitmentMode === "INTERN"
             const isNoResponse =
               report.rollingResultType === "NO_RESPONSE_REPORTED" ||
-              (!report.prevReportedDate && !report.reportedDate)
-            const currentStepLabel = report.currentStepName ?? "-"
+              (!report.baseDate && !report.reportedDate)
+            const stepLabel = (report.stepName ?? "").trim() || "-"
             const modeLabel = isRegular ? "공채" : isIntern ? "인턴" : "수시"
             const interviewState = buildInterviewPreview(report.interviewReviewContent)
             const expanded = isInterviewExpanded(report.reportId)
@@ -383,14 +349,11 @@ export default function AdminReportPage() {
                     <p className="text-sm text-muted-foreground">직군: {jobLabel}</p>
                     <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}건</p>
                     <p className="text-sm text-muted-foreground">
-                      이전 발표일: {report.prevReportedDate ? toDateInput(report.prevReportedDate) : "-"} ·
-                      현재 발표일: {report.reportedDate ? toDateInput(report.reportedDate) : "-"}
+                      지원/응시일: {report.baseDate ? toDateInput(report.baseDate) : "-"} ·
+                      결과 발표일: {report.reportedDate ? toDateInput(report.reportedDate) : "-"}
                     </p>
                     <p className="text-sm mt-1">
-                      이전 전형명: {report.prevStepName ?? "-"}
-                    </p>
-                    <p className="text-sm">
-                      현재 전형명: {currentStepLabel}
+                      전형명: {stepLabel}
                     </p>
                     <p className="text-sm mt-1">
                       면접 난이도: {formatDifficultyLabel(report.interviewDifficulty)}
@@ -558,7 +521,7 @@ export default function AdminReportPage() {
                           setEditForm({
                             ...editForm,
                             noResponse: !editForm.noResponse,
-                            prevReportedDate: !editForm.noResponse ? "" : editForm.prevReportedDate,
+                            baseDate: !editForm.noResponse ? "" : editForm.baseDate,
                             reportedDate: !editForm.noResponse ? "" : editForm.reportedDate,
                           })
                         }
@@ -573,82 +536,27 @@ export default function AdminReportPage() {
                       </button>
                     </div>
 
-                    {!editForm.noResponse && (
-                      <>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">이전 전형명</label>
-                          <div className="relative">
-                            <Input
-                              value={editForm.prevStepName}
-                              onChange={(e) => setEditForm({ ...editForm, prevStepName: e.target.value })}
-                              onFocus={() => setShowEditPrevSuggestions(true)}
-                              onBlur={() => setTimeout(() => setShowEditPrevSuggestions(false), 120)}
-                              placeholder="예: 1차 면접"
-                            />
-                            {showEditPrevSuggestions && editPrevSuggestions.length > 0 && (
-                              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-border/60 bg-card p-1.5 shadow-lg">
-                                <div className="max-h-48 overflow-auto">
-                                  {editPrevSuggestions.map((stepName) => (
-                                    <button
-                                      key={`admin-edit-prev-${stepName}`}
-                                      type="button"
-                                      onMouseDown={(event) => event.preventDefault()}
-                                      onClick={() => {
-                                        setEditForm({ ...editForm, prevStepName: stepName })
-                                        setShowEditPrevSuggestions(false)
-                                      }}
-                                      className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent/60"
-                                    >
-                                      {stepName}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">이전 전형 발표일</label>
-                          <Input
-                            type="date"
-                            value={editForm.prevReportedDate}
-                            onChange={(e) => setEditForm({ ...editForm, prevReportedDate: e.target.value })}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">현재 전형 발표일</label>
-                          <Input
-                            type="date"
-                            value={editForm.reportedDate}
-                            onChange={(e) => setEditForm({ ...editForm, reportedDate: e.target.value })}
-                          />
-                        </div>
-                      </>
-                    )}
-
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">현재 전형명</label>
+                      <label className="text-sm font-medium">전형명</label>
                       <div className="relative">
                         <Input
-                          value={editForm.currentStepName}
-                          onChange={(e) => setEditForm({ ...editForm, currentStepName: e.target.value })}
-                          onFocus={() => setShowEditCurrentSuggestions(true)}
-                          onBlur={() => setTimeout(() => setShowEditCurrentSuggestions(false), 120)}
-                          placeholder="예: 1차 면접 발표"
+                          value={editForm.stepName}
+                          onChange={(e) => setEditForm({ ...editForm, stepName: e.target.value })}
+                          onFocus={() => setShowEditStepSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowEditStepSuggestions(false), 120)}
+                          placeholder="예: 서류, 코딩테스트, 1차 면접"
                         />
-                        {showEditCurrentSuggestions && editCurrentSuggestions.length > 0 && (
+                        {showEditStepSuggestions && editStepSuggestions.length > 0 && (
                           <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-border/60 bg-card p-1.5 shadow-lg">
                             <div className="max-h-48 overflow-auto">
-                              {editCurrentSuggestions.map((stepName) => (
+                              {editStepSuggestions.map((stepName) => (
                                 <button
-                                  key={`admin-edit-current-${stepName}`}
+                                  key={`admin-edit-step-${stepName}`}
                                   type="button"
                                   onMouseDown={(event) => event.preventDefault()}
                                   onClick={() => {
-                                    setEditForm({ ...editForm, currentStepName: stepName })
-                                    setShowEditCurrentSuggestions(false)
+                                    setEditForm({ ...editForm, stepName })
+                                    setShowEditStepSuggestions(false)
                                   }}
                                   className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent/60"
                                 >
@@ -660,6 +568,28 @@ export default function AdminReportPage() {
                         )}
                       </div>
                     </div>
+
+                    {!editForm.noResponse && (
+                      <>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">지원/응시일</label>
+                          <Input
+                            type="date"
+                            value={editForm.baseDate}
+                            onChange={(e) => setEditForm({ ...editForm, baseDate: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">결과 발표일</label>
+                          <Input
+                            type="date"
+                            value={editForm.reportedDate}
+                            onChange={(e) => setEditForm({ ...editForm, reportedDate: e.target.value })}
+                          />
+                        </div>
+                      </>
+                    )}
 
                     <div className="md:col-span-2 flex flex-wrap gap-2">
                       <Button type="button" onClick={saveEdit}>

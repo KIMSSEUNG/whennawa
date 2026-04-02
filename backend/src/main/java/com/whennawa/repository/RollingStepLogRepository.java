@@ -18,12 +18,12 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
     List<RollingStepLog> findByCompanyNameIgnoreCaseAndRecruitmentMode(String companyName, RecruitmentMode recruitmentMode);
 
     @Query("""
-        select log.currentStepName
+        select log.stepName
         from RollingStepLog log
-        where log.currentStepName is not null
+        where log.stepName is not null
           and log.recruitmentMode = :recruitmentMode
-          and trim(log.currentStepName) <> ''
-        group by log.currentStepName
+          and trim(log.stepName) <> ''
+        group by log.stepName
         order by sum(coalesce(log.reportCount, 1)) desc, max(log.updatedAt) desc
         """)
     List<String> findTopStepNamesByRecruitmentMode(@Param("recruitmentMode") RecruitmentMode recruitmentMode);
@@ -31,8 +31,8 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
     @Query("""
         select log
         from RollingStepLog log
-        where log.currentStepName is not null
-          and trim(log.currentStepName) <> ''
+        where log.stepName is not null
+          and trim(log.stepName) <> ''
         order by log.updatedAt desc, log.rollingLogId desc
         """)
     List<RollingStepLog> findRecentLogs(Pageable pageable);
@@ -40,48 +40,46 @@ public interface RollingStepLogRepository extends JpaRepository<RollingStepLog, 
     @Query("""
         select log
         from RollingStepLog log
-        where log.currentStepName is not null
-          and trim(log.currentStepName) <> ''
+        where log.stepName is not null
+          and trim(log.stepName) <> ''
         order by log.updatedAt desc, log.rollingLogId desc
         """)
     List<RollingStepLog> findAllForHotCompanies();
 
-    Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+    Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndStepNameAndRollingResultTypeAndSourceTypeAndBaseDateAndReportedDate(
         String companyName,
         RecruitmentMode recruitmentMode,
-        String currentStepName,
-        String prevStepName,
+        String stepName,
         RollingReportType rollingResultType,
         LogSourceType sourceType,
-        LocalDate prevReportedDate,
+        LocalDate baseDate,
         LocalDate reportedDate
     );
 
-    Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceType(
+    Optional<RollingStepLog> findFirstByCompanyNameAndRecruitmentModeAndStepNameAndRollingResultTypeAndSourceType(
         String companyName,
         RecruitmentMode recruitmentMode,
-        String currentStepName,
+        String stepName,
         RollingReportType rollingResultType,
         LogSourceType sourceType
     );
 
-    Optional<RollingStepLog> findFirstByCompanyNameAndRollingJobAndRecruitmentModeAndCurrentStepNameAndPrevStepNameAndRollingResultTypeAndSourceTypeAndPrevReportedDateAndReportedDate(
+    Optional<RollingStepLog> findFirstByCompanyNameAndRollingJobAndRecruitmentModeAndStepNameAndRollingResultTypeAndSourceTypeAndBaseDateAndReportedDate(
         String companyName,
         RollingJob rollingJob,
         RecruitmentMode recruitmentMode,
-        String currentStepName,
-        String prevStepName,
+        String stepName,
         RollingReportType rollingResultType,
         LogSourceType sourceType,
-        LocalDate prevReportedDate,
+        LocalDate baseDate,
         LocalDate reportedDate
     );
 
-    Optional<RollingStepLog> findFirstByCompanyNameAndRollingJobAndRecruitmentModeAndCurrentStepNameAndRollingResultTypeAndSourceType(
+    Optional<RollingStepLog> findFirstByCompanyNameAndRollingJobAndRecruitmentModeAndStepNameAndRollingResultTypeAndSourceType(
         String companyName,
         RollingJob rollingJob,
         RecruitmentMode recruitmentMode,
-        String currentStepName,
+        String stepName,
         RollingReportType rollingResultType,
         LogSourceType sourceType
     );

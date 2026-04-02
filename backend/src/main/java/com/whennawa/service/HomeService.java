@@ -68,10 +68,10 @@ public class HomeService {
         Map<String, HotCompanyAggregate> aggregates = new HashMap<>();
 
         for (RecruitmentStepLog log : recruitmentStepLogRepository.findAllForHotCompanies()) {
-            mergeHotCompany(aggregates, log.getCompanyName(), log.getCurrentStepName(), log.getUpdatedAt(), log.getReportCount());
+            mergeHotCompany(aggregates, log.getCompanyName(), log.getStepName(), log.getUpdatedAt(), log.getReportCount());
         }
         for (RollingStepLog log : rollingStepLogRepository.findAllForHotCompanies()) {
-            mergeHotCompany(aggregates, log.getCompanyName(), log.getCurrentStepName(), log.getUpdatedAt(), log.getReportCount());
+            mergeHotCompany(aggregates, log.getCompanyName(), log.getStepName(), log.getUpdatedAt(), log.getReportCount());
         }
 
         return aggregates.values().stream()
@@ -93,27 +93,27 @@ public class HomeService {
     }
 
     private HomeLatestReportItem toItem(RecruitmentStepLog log) {
-        if (log == null || isBlank(log.getCompanyName()) || isBlank(log.getCurrentStepName())) {
+        if (log == null || isBlank(log.getCompanyName()) || isBlank(log.getStepName())) {
             return null;
         }
         return new HomeLatestReportItem(
             resolveCompanyId(log.getCompanyName()),
             log.getCompanyName().trim(),
-            log.getCurrentStepName().trim(),
+            log.getStepName().trim(),
             log.getRecruitmentMode() == null ? RecruitmentMode.REGULAR : log.getRecruitmentMode(),
             fallbackUpdatedAt(log.getUpdatedAt(), log.getCreatedAt())
         );
     }
 
     private HomeLatestReportItem toItem(RollingStepLog log) {
-        if (log == null || isBlank(log.getCompanyName()) || isBlank(log.getCurrentStepName())) {
+        if (log == null || isBlank(log.getCompanyName()) || isBlank(log.getStepName())) {
             return null;
         }
         RecruitmentMode mode = log.getRecruitmentMode() == null ? RecruitmentMode.ROLLING : log.getRecruitmentMode();
         return new HomeLatestReportItem(
             resolveCompanyId(log.getCompanyName()),
             log.getCompanyName().trim(),
-            log.getCurrentStepName().trim(),
+            log.getStepName().trim(),
             mode,
             fallbackUpdatedAt(log.getUpdatedAt(), log.getCreatedAt())
         );

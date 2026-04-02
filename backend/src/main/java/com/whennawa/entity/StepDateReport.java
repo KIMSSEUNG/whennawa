@@ -51,14 +51,11 @@ public class StepDateReport extends BaseEntity {
     @Column(name = "rolling_result_type", length = 32)
     private RollingReportType rollingResultType;
 
-    @Column(name = "prev_reported_date")
-    private LocalDate prevReportedDate;
+    @Column(name = "base_date")
+    private LocalDate baseDate;
 
-    @Column(name = "prev_step_name", length = 100)
-    private String prevStepName;
-
-    @Column(name = "current_step_name", length = 100)
-    private String currentStepName;
+    @Column(name = "step_name", length = 100)
+    private String stepName;
 
     @Column(name = "reported_date")
     private LocalDate reportedDate;

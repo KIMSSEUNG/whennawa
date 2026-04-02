@@ -58,17 +58,17 @@ function getLeadTimeMessages(keyword: string, leadTime: KeywordLeadTime) {
   const messages: string[] = []
 
   if (leadTime.medianDays != null) {
-    messages.push(`${target} 결과는 이전 발표일(지원서 접수/마감) 기준 보통 ${leadTime.medianDays}일 후 발표됐어요.`)
+    messages.push(`${target} 결과는 지원/응시일 기준 보통 ${leadTime.medianDays}일 후 발표됐어요.`)
   }
 
   if (leadTime.minDays != null && leadTime.maxDays != null) {
     if (leadTime.minDays !== leadTime.maxDays) {
-      messages.push(`가장 빨랐던 사례는 이전 발표일(지원서 접수/마감) 기준 ${leadTime.minDays}일, 가장 늦었던 사례는 ${leadTime.maxDays}일이었어요.`)
+      messages.push(`가장 빨랐던 사례는 지원/응시일 기준 ${leadTime.minDays}일, 가장 늦었던 사례는 ${leadTime.maxDays}일이었어요.`)
     }
   } else if (leadTime.minDays != null) {
-    messages.push(`가장 빨랐던 사례는 이전 발표일(지원서 접수/마감) 기준 ${leadTime.minDays}일이었어요.`)
+    messages.push(`가장 빨랐던 사례는 지원/응시일 기준 ${leadTime.minDays}일이었어요.`)
   } else if (leadTime.maxDays != null) {
-    messages.push(`가장 늦었던 사례는 이전 발표일(지원서 접수/마감) 기준 ${leadTime.maxDays}일이었어요.`)
+    messages.push(`가장 늦었던 사례는 지원/응시일 기준 ${leadTime.maxDays}일이었어요.`)
   }
 
   return messages
