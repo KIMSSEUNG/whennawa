@@ -433,6 +433,9 @@ export function GlobalReportModal() {
                   </div>
                 )}
               </div>
+              <p className="text-xs text-muted-foreground">
+                예: 서류 전형, 코딩 테스트 전형, 1차 면접 전형
+              </p>
             </div>
 
             <button
