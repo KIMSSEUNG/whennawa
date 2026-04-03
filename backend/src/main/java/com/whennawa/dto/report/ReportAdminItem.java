@@ -17,9 +17,8 @@ public class ReportAdminItem {
     private final String companyName;
     private final RecruitmentMode recruitmentMode;
     private final RollingReportType rollingResultType;
-    private final LocalDate prevReportedDate;
-    private final String prevStepName;
-    private final String currentStepName;
+    private final LocalDate baseDate;
+    private final String stepName;
     private final LocalDate reportedDate;
     private final ReportStatus status;
     private final Long jobCategoryId;

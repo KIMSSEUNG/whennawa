@@ -28,53 +28,48 @@ public interface StepDateReportRepository extends JpaRepository<StepDateReport, 
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndPrevStepNameAndCurrentStepNameAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndReportedDateAndStepNameAndStatusAndDeletedAtIsNull(
         String companyName,
         java.time.LocalDate reportedDate,
-        String prevStepName,
-        String currentStepName,
+        String stepName,
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndStepNameAndBaseDateAndReportedDateAndStatusAndDeletedAtIsNull(
         String companyName,
         RecruitmentMode recruitmentMode,
         RollingReportType rollingResultType,
-        String prevStepName,
-        String currentStepName,
-        java.time.LocalDate prevReportedDate,
+        String stepName,
+        java.time.LocalDate baseDate,
         java.time.LocalDate reportedDate,
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndPrevReportedDateAndReportedDateAndStatusAndJobCategoryAndOtherJobNameAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndStepNameAndBaseDateAndReportedDateAndStatusAndJobCategoryAndOtherJobNameAndDeletedAtIsNull(
         String companyName,
         RecruitmentMode recruitmentMode,
         RollingReportType rollingResultType,
-        String prevStepName,
-        String currentStepName,
-        java.time.LocalDate prevReportedDate,
+        String stepName,
+        java.time.LocalDate baseDate,
         java.time.LocalDate reportedDate,
         ReportStatus status,
         com.whennawa.entity.JobCategory jobCategory,
         String otherJobName
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndStatusAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndStepNameAndStatusAndDeletedAtIsNull(
         String companyName,
         RecruitmentMode recruitmentMode,
         RollingReportType rollingResultType,
-        String prevStepName,
-        String currentStepName,
+        String stepName,
         ReportStatus status
     );
 
-    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndPrevStepNameAndCurrentStepNameAndStatusAndJobCategoryAndOtherJobNameAndDeletedAtIsNull(
+    Optional<StepDateReport> findFirstByCompanyNameAndRecruitmentModeAndRollingResultTypeAndStepNameAndStatusAndJobCategoryAndOtherJobNameAndDeletedAtIsNull(
         String companyName,
         RecruitmentMode recruitmentMode,
         RollingReportType rollingResultType,
-        String prevStepName,
-        String currentStepName,
+        String stepName,
         ReportStatus status,
         com.whennawa.entity.JobCategory jobCategory,
         String otherJobName

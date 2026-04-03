@@ -217,7 +217,7 @@ public class CompanySearchService {
             if (log == null) {
                 continue;
             }
-            if (!normalizeKeyword(log.getCurrentStepName()).equals(normalizedKeyword)) {
+            if (!normalizeKeyword(log.getStepName()).equals(normalizedKeyword)) {
                 continue;
             }
             RollingReportType type = log.getResultType() == null
@@ -226,10 +226,10 @@ public class CompanySearchService {
             if (type != RollingReportType.DATE_REPORTED) {
                 continue;
             }
-            if (log.getPrevReportedDate() == null || log.getReportedDate() == null) {
+            if (log.getBaseDate() == null || log.getReportedDate() == null) {
                 continue;
             }
-            long diff = ChronoUnit.DAYS.between(log.getPrevReportedDate(), log.getReportedDate());
+            long diff = ChronoUnit.DAYS.between(log.getBaseDate(), log.getReportedDate());
             if (diff >= 0) {
                 int reportCount = log.getReportCount() == null ? 1 : Math.max(log.getReportCount(), 1);
                 for (int i = 0; i < reportCount; i++) {
@@ -321,7 +321,7 @@ public class CompanySearchService {
             if (log == null) {
                 continue;
             }
-            String stepName = log.getCurrentStepName();
+            String stepName = log.getStepName();
             if (stepName == null || stepName.isBlank()) {
                 continue;
             }
@@ -338,10 +338,10 @@ public class CompanySearchService {
                 noResponseCounts.merge(key, (long) reportCount, Long::sum);
                 continue;
             }
-            if (log.getPrevReportedDate() == null || log.getReportedDate() == null) {
+            if (log.getBaseDate() == null || log.getReportedDate() == null) {
                 continue;
             }
-            long diff = ChronoUnit.DAYS.between(log.getPrevReportedDate(), log.getReportedDate());
+            long diff = ChronoUnit.DAYS.between(log.getBaseDate(), log.getReportedDate());
             if (diff < 0 || diff > appProperties.getReport().getRollingMaxDiffDays()) {
                 continue;
             }
@@ -404,7 +404,7 @@ public class CompanySearchService {
             if (log == null) {
                 continue;
             }
-            String label = log.getCurrentStepName();
+            String label = log.getStepName();
             if (label == null || label.isBlank()) {
                 continue;
             }
@@ -417,8 +417,8 @@ public class CompanySearchService {
             }
             LocalDateTime occurredAt = reportedDate.atStartOfDay();
             Long diffDays = null;
-            if (log.getPrevReportedDate() != null) {
-                long diff = ChronoUnit.DAYS.between(log.getPrevReportedDate(), reportedDate);
+            if (log.getBaseDate() != null) {
+                long diff = ChronoUnit.DAYS.between(log.getBaseDate(), reportedDate);
                 diffDays = diff >= 0 ? diff : null;
             }
             CompanyStatusStep step = new CompanyStatusStep("REPORTED", label.trim(), occurredAt, diffDays);

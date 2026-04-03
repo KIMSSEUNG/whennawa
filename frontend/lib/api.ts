@@ -148,9 +148,8 @@ type ReportItemInput = {
   companyName: string
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
-  prevReportedDate: Date | string | null
-  prevStepName: string | null
-  currentStepName: string | null
+  baseDate: Date | string | null
+  stepName: string | null
   reportedDate: Date | string | null
   status: ReportStatus
   jobCategoryId: number | null
@@ -275,8 +274,8 @@ type RollingPredictionInput = {
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "")
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "false"
-const DEFAULT_ROLLING_STEP_CURRENT_SAMPLES = ["서류 발표", "코딩 테스트 발표", "1차 면접 발표", "2차 면접 발표", "최종 발표"]
-const DEFAULT_ROLLING_STEP_PREV_SAMPLES = ["서류", "코딩 테스트", "1차 면접", "2차 면접", "최종 면접"]
+const DEFAULT_ROLLING_STEP_CURRENT_SAMPLES = ["서류 전형", "코딩 테스트 전형", "1차 면접 전형", "2차 면접 전형", "최종 면접 전형"]
+const DEFAULT_ROLLING_STEP_PREV_SAMPLES = ["서류 전형", "코딩 테스트 전형", "1차 면접 전형", "2차 면접 전형", "최종 면접 전형"]
 const DEFAULT_ROLLING_STEP_PAIRS: Array<{ prev: string; current: string }> = [
   { prev: "서류", current: "서류 발표" },
   { prev: "코딩 테스트", current: "코딩 테스트 발표" },
@@ -284,8 +283,8 @@ const DEFAULT_ROLLING_STEP_PAIRS: Array<{ prev: string; current: string }> = [
   { prev: "2차 면접", current: "2차 면접 발표" },
   { prev: "최종 면접", current: "최종 발표" },
 ]
-const DEFAULT_INTERN_STEP_CURRENT_SAMPLES = ["서류 발표", "코딩 테스트 발표", "1차 면접 발표", "최종 발표", "인턴 합격 발표"]
-const DEFAULT_INTERN_STEP_PREV_SAMPLES = ["서류", "코딩 테스트", "1차 면접", "최종 면접", "인턴 지원"]
+const DEFAULT_INTERN_STEP_CURRENT_SAMPLES = ["서류 전형", "코딩 테스트 전형", "1차 면접 전형", "최종 면접 전형", "인턴 전형"]
+const DEFAULT_INTERN_STEP_PREV_SAMPLES = ["서류 전형", "코딩 테스트 전형", "1차 면접 전형", "최종 면접 전형", "인턴 전형"]
 const DEFAULT_INTERN_STEP_PAIRS: Array<{ prev: string; current: string }> = [
   { prev: "서류", current: "서류 발표" },
   { prev: "코딩 테스트", current: "코딩 테스트 발표" },
@@ -302,6 +301,22 @@ type UserInfoResponse = {
 
 const toDate = (value: Date | string) => (value instanceof Date ? value : new Date(value))
 const toDateOrNull = (value: Date | string | null | undefined) => (value ? toDate(value) : null)
+
+function normalizeSuggestedStepName(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? ""
+  if (!trimmed) return ""
+  const withoutAnnouncement = trimmed.replace(/\s*발표$/, "").trim()
+  const normalized = withoutAnnouncement || trimmed
+  if (normalized.endsWith("전형")) return normalized
+  return `${normalized} 전형`
+}
+
+function normalizeStepSuggestions(values: string[]) {
+  const normalized = values
+    .map((value) => normalizeSuggestedStepName(value))
+    .filter(Boolean)
+  return Array.from(new Set(normalized))
+}
 
 const normalizeSearchCompany = (company: CompanySearchItemInput): CompanySearchItem => ({
   ...company,
@@ -348,7 +363,7 @@ const normalizeCompanyStatus = (status: CompanyStatusInput): CompanyStatus => ({
 
 const normalizeReportItem = (item: ReportItemInput): ReportItem => ({
   ...item,
-  prevReportedDate: toDateOrNull(item.prevReportedDate),
+  baseDate: toDateOrNull(item.baseDate),
   reportedDate: toDateOrNull(item.reportedDate),
 })
 
@@ -367,9 +382,8 @@ function createDefaultMockAdminReports(): ReportItemInput[] {
       companyName: "Naver",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      prevReportedDate: null,
-      prevStepName: null,
-      currentStepName: null,
+      baseDate: null,
+      stepName: null,
       reportedDate: new Date(),
       status: "PENDING",
       jobCategoryId: 1,
@@ -385,9 +399,8 @@ function createDefaultMockAdminReports(): ReportItemInput[] {
       companyName: "Kakao",
       recruitmentMode: "ROLLING",
       rollingResultType: "DATE_REPORTED",
-      prevReportedDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
-      prevStepName: "서류",
-      currentStepName: "1차 면접 발표",
+      baseDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10),
+      stepName: "1차 면접",
       reportedDate: new Date(),
       status: "PENDING",
       jobCategoryId: 999,
@@ -1265,9 +1278,8 @@ export type ReportCreateRequest = {
   rollingJobName?: string
   otherJobName?: string | null
   rollingResultType?: RollingReportType | null
-  prevReportedDate?: string | null
-  prevStepName?: string | null
-  currentStepName?: string | null
+  baseDate?: string | null
+  stepName?: string | null
   reportedDate?: string | null
   notificationMessage?: string | null
   todayAnnouncement?: boolean
@@ -1370,7 +1382,7 @@ export async function fetchRollingReportCurrentStepNames(
     await delay(120)
   }
   const normalizedQuery = query?.trim().toLowerCase() ?? ""
-  const fallback = mode === "INTERN" ? DEFAULT_INTERN_STEP_CURRENT_SAMPLES : DEFAULT_ROLLING_STEP_CURRENT_SAMPLES
+  const fallback = normalizeStepSuggestions(mode === "INTERN" ? DEFAULT_INTERN_STEP_CURRENT_SAMPLES : DEFAULT_ROLLING_STEP_CURRENT_SAMPLES)
   if (USE_MOCK) {
     if (!normalizedQuery) return fallback
     return fallback.filter((name) => name.toLowerCase().includes(normalizedQuery))
@@ -1384,7 +1396,8 @@ export async function fetchRollingReportCurrentStepNames(
     if (options?.jobCategoryId != null) params.set("jobCategoryId", String(options.jobCategoryId))
     const data = await request<string[]>(`/api/reports/rolling-steps?${params.toString()}`)
     if (Array.isArray(data) && data.length > 0) {
-      return data
+      const normalized = normalizeStepSuggestions(data)
+      if (normalized.length > 0) return normalized
     }
   } catch {
     // fall back to built-in defaults when API is unavailable
@@ -1403,7 +1416,7 @@ export async function fetchRollingReportPrevStepNames(
     await delay(120)
   }
   const normalizedQuery = query?.trim().toLowerCase() ?? ""
-  const fallback = mode === "INTERN" ? DEFAULT_INTERN_STEP_PREV_SAMPLES : DEFAULT_ROLLING_STEP_PREV_SAMPLES
+  const fallback = normalizeStepSuggestions(mode === "INTERN" ? DEFAULT_INTERN_STEP_PREV_SAMPLES : DEFAULT_ROLLING_STEP_PREV_SAMPLES)
   if (USE_MOCK) {
     if (!normalizedQuery) return fallback
     return fallback.filter((name) => name.toLowerCase().includes(normalizedQuery))
@@ -1417,7 +1430,8 @@ export async function fetchRollingReportPrevStepNames(
     if (options?.jobCategoryId != null) params.set("jobCategoryId", String(options.jobCategoryId))
     const data = await request<string[]>(`/api/reports/rolling-steps?${params.toString()}`)
     if (Array.isArray(data) && data.length > 0) {
-      return data
+      const normalized = normalizeStepSuggestions(data)
+      if (normalized.length > 0) return normalized
     }
   } catch {
     // fall back to built-in defaults when API is unavailable
@@ -1489,10 +1503,9 @@ export async function createReport(payload: ReportCreateRequest): Promise<{ repo
       companyName: normalizedCompanyName,
       recruitmentMode: payload.recruitmentMode,
       rollingResultType:
-        payload.rollingResultType ?? (payload.prevReportedDate || payload.reportedDate ? "DATE_REPORTED" : "NO_RESPONSE_REPORTED"),
-      prevReportedDate: payload.prevReportedDate ?? null,
-      prevStepName: payload.prevStepName ?? null,
-      currentStepName: payload.currentStepName ?? null,
+        payload.rollingResultType ?? (payload.baseDate || payload.reportedDate ? "DATE_REPORTED" : "NO_RESPONSE_REPORTED"),
+      baseDate: payload.baseDate ?? null,
+      stepName: payload.stepName ?? null,
       reportedDate: payload.reportedDate ?? null,
       status: "PENDING",
       jobCategoryId,
@@ -1600,9 +1613,8 @@ export type ReportUpdateRequest = {
   rollingJobName?: string
   otherJobName?: string
   rollingResultType?: RollingReportType | null
-  prevReportedDate?: string | null
-  prevStepName?: string | null
-  currentStepName?: string | null
+  baseDate?: string | null
+  stepName?: string | null
   reportedDate?: string | null
 }
 
@@ -1624,9 +1636,8 @@ export async function updateAdminReport(
     target.companyName = payload.companyName
     target.recruitmentMode = payload.recruitmentMode
     target.rollingResultType = payload.rollingResultType ?? null
-    target.prevReportedDate = payload.prevReportedDate ?? null
-    target.prevStepName = payload.prevStepName ?? null
-    target.currentStepName = payload.currentStepName ?? null
+    target.baseDate = payload.baseDate ?? null
+    target.stepName = payload.stepName ?? null
     target.reportedDate = payload.reportedDate ?? null
     if (payload.recruitmentMode === "ROLLING") {
       target.jobCategoryId = 999
@@ -1671,9 +1682,8 @@ export async function assignAdminReport(reportId: number, scope: AdminReportScop
       companyName: "Assigned",
       recruitmentMode: "REGULAR",
       rollingResultType: null,
-      prevReportedDate: null,
-      prevStepName: null,
-      currentStepName: null,
+      baseDate: null,
+      stepName: null,
       reportedDate: new Date(),
       status: "PENDING",
       jobCategoryId: null,

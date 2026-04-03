@@ -37,11 +37,8 @@ public class RecruitmentStepLog extends BaseEntity {
     @Column(name = "company_name", length = 100, nullable = false)
     private String companyName;
 
-    @Column(name = "current_step_name", length = 100, nullable = false)
-    private String currentStepName;
-
-    @Column(name = "prev_step_name", length = 100)
-    private String prevStepName;
+    @Column(name = "step_name", length = 100, nullable = false)
+    private String stepName;
 
     @Convert(converter = RollingReportTypeConverter.class)
     @Column(name = "result_type", length = 32, nullable = false)
@@ -51,8 +48,8 @@ public class RecruitmentStepLog extends BaseEntity {
     @Column(name = "recruitment_mode", length = 16, nullable = false)
     private RecruitmentMode recruitmentMode = RecruitmentMode.REGULAR;
 
-    @Column(name = "prev_reported_date")
-    private LocalDate prevReportedDate;
+    @Column(name = "base_date")
+    private LocalDate baseDate;
 
     @Column(name = "reported_date")
     private LocalDate reportedDate;

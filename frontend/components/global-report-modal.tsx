@@ -6,8 +6,6 @@ import {
   createReport,
   fetchReportJobCategories,
   fetchRollingReportCurrentStepNames,
-  fetchRollingReportPrevStepNames,
-  resolveRollingStepPair,
   searchCompanies,
 } from "@/lib/api"
 import type { ReportJobCategory } from "@/lib/api"
@@ -82,16 +80,13 @@ export function GlobalReportModal() {
 
   const [prevDate, setPrevDate] = useState(() => toDateInput(getKoreaToday()))
   const [reportedDate, setReportedDate] = useState(() => toDateInput(getKoreaToday()))
-  const [prevStepName, setPrevStepName] = useState("")
-  const [currentStepName, setCurrentStepName] = useState("")
+  const [stepName, setStepName] = useState("")
   const [noResponse, setNoResponse] = useState(false)
   const [isPrevDateOpen, setIsPrevDateOpen] = useState(false)
   const [isReportedDateOpen, setIsReportedDateOpen] = useState(false)
-  const [isPrevStepFocused, setIsPrevStepFocused] = useState(false)
-  const [isCurrentStepFocused, setIsCurrentStepFocused] = useState(false)
+  const [isStepFocused, setIsStepFocused] = useState(false)
 
-  const [prevSuggestions, setPrevSuggestions] = useState<string[]>([])
-  const [currentSuggestions, setCurrentSuggestions] = useState<string[]>([])
+  const [stepSuggestions, setStepSuggestions] = useState<string[]>([])
   const [interviewReviewContent, setInterviewReviewContent] = useState("")
   const [interviewDifficulty, setInterviewDifficulty] = useState<InterviewDifficulty>("MEDIUM")
 
@@ -139,8 +134,7 @@ export function GlobalReportModal() {
   const isOtherCategory = selectedJobCategoryName.trim() === "기타"
   const showCompanySuggestionList =
     !isCompanyLocked && isCompanyFocused && trimmedCompany.length > 0 && companySuggestions.length > 0
-  const showPrevSuggestionList = isPrevStepFocused && prevStepName.trim().length > 0 && prevSuggestions.length > 0
-  const showCurrentSuggestionList = isCurrentStepFocused && currentStepName.trim().length > 0 && currentSuggestions.length > 0
+  const showStepSuggestionList = isStepFocused && stepName.trim().length > 0 && stepSuggestions.length > 0
 
   useEffect(() => {
     if (!trimmedCompany) {
@@ -179,73 +173,21 @@ export function GlobalReportModal() {
   useEffect(() => {
     let cancelled = false
     const handle = setTimeout(async () => {
-      const data = await fetchRollingReportPrevStepNames(trimmedCompany, prevStepName, mode, {
+      const data = await fetchRollingReportCurrentStepNames(trimmedCompany, stepName, mode, {
         jobCategoryId: mode === "ROLLING" ? null : jobCategoryId ? Number(jobCategoryId) : null,
       })
       if (cancelled) return
-      setPrevSuggestions(Array.from(new Set((data ?? []).filter((item) => item && item.trim()))))
+      setStepSuggestions(Array.from(new Set((data ?? []).filter((item) => item && item.trim()))))
     }, 120)
     return () => {
       cancelled = true
       clearTimeout(handle)
     }
-  }, [trimmedCompany, prevStepName, mode, jobCategoryId])
+  }, [trimmedCompany, stepName, mode, jobCategoryId])
 
-  useEffect(() => {
-    let cancelled = false
-    const handle = setTimeout(async () => {
-      const data = await fetchRollingReportCurrentStepNames(trimmedCompany, currentStepName, mode, {
-        jobCategoryId: mode === "ROLLING" ? null : jobCategoryId ? Number(jobCategoryId) : null,
-      })
-      if (cancelled) return
-      setCurrentSuggestions(Array.from(new Set((data ?? []).filter((item) => item && item.trim()))))
-    }, 120)
-    return () => {
-      cancelled = true
-      clearTimeout(handle)
-    }
-  }, [trimmedCompany, currentStepName, mode, jobCategoryId])
-
-  const applyPairFromPrevIfEmpty = async (value: string) => {
-    if (!value.trim() || currentStepName.trim()) return
-    const paired = await resolveRollingStepPair("prev_to_current", value, mode, {
-      companyName: trimmedCompany || undefined,
-      jobCategoryId: mode === "ROLLING" ? null : jobCategoryId ? Number(jobCategoryId) : null,
-    })
-    if (paired) setCurrentStepName(paired)
-  }
-
-  const applyPairFromCurrentIfEmpty = async (value: string) => {
-    if (!value.trim() || prevStepName.trim()) return
-    const paired = await resolveRollingStepPair("current_to_prev", value, mode, {
-      companyName: trimmedCompany || undefined,
-      jobCategoryId: mode === "ROLLING" ? null : jobCategoryId ? Number(jobCategoryId) : null,
-    })
-    if (paired) setPrevStepName(paired)
-  }
-
-  const handleSelectPrevSuggestion = async (value: string) => {
-    setPrevStepName(value)
-    setIsPrevStepFocused(false)
-    if (!currentStepName.trim()) {
-      const paired = await resolveRollingStepPair("prev_to_current", value, mode, {
-        companyName: trimmedCompany || undefined,
-        jobCategoryId: mode === "ROLLING" ? null : jobCategoryId ? Number(jobCategoryId) : null,
-      })
-      if (paired) setCurrentStepName(paired)
-    }
-  }
-
-  const handleSelectCurrentSuggestion = async (value: string) => {
-    setCurrentStepName(value)
-    setIsCurrentStepFocused(false)
-    if (!prevStepName.trim()) {
-      const paired = await resolveRollingStepPair("current_to_prev", value, mode, {
-        companyName: trimmedCompany || undefined,
-        jobCategoryId: mode === "ROLLING" ? null : jobCategoryId ? Number(jobCategoryId) : null,
-      })
-      if (paired) setPrevStepName(paired)
-    }
+  const handleSelectStepSuggestion = (value: string) => {
+    setStepName(value)
+    setIsStepFocused(false)
   }
 
   const handleSelectCompanySuggestion = (value: string) => {
@@ -259,8 +201,8 @@ export function GlobalReportModal() {
       setMessage("회사명을 입력해 주세요.")
       return
     }
-    if (!currentStepName.trim()) {
-      setMessage("현재 전형명을 입력해 주세요.")
+    if (!stepName.trim()) {
+      setMessage("전형명을 입력해 주세요.")
       return
     }
 
@@ -290,26 +232,22 @@ export function GlobalReportModal() {
     }
 
     if (!noResponse) {
-      if (!prevStepName.trim()) {
-        setMessage("이전 전형명을 입력해 주세요.")
-        return
-      }
       if (!prevDate || !reportedDate) {
-        setMessage("이전/현재 발표일을 입력해 주세요.")
+        setMessage("지원/응시일과 결과 발표일을 입력해 주세요.")
         return
       }
       if (!toDateOrNull(prevDate) || !toDateOrNull(reportedDate)) {
-        setMessage("발표일은 YYYY-MM-DD 형식으로 입력해 주세요.")
+        setMessage("날짜는 YYYY-MM-DD 형식으로 입력해 주세요.")
         return
       }
-      if (toDate(prevDate) >= toDate(reportedDate)) {
-        setMessage("이전 발표일은 현재 발표일보다 이전이어야 합니다.")
+      if (toDate(prevDate) > toDate(reportedDate)) {
+        setMessage("지원/응시일은 결과 발표일보다 늦을 수 없습니다.")
         return
       }
       if (isTodayAnnouncement) {
         const today = toDateInput(getKoreaToday())
         if (reportedDate !== today) {
-          setMessage("오늘 결과 발표 제보는 현재 발표일이 오늘이어야 합니다.")
+          setMessage("오늘 결과 발표 제보는 결과 발표일이 오늘이어야 합니다.")
           return
         }
       }
@@ -325,9 +263,8 @@ export function GlobalReportModal() {
         rollingJobName: mode === "ROLLING" ? rollingJobName.trim() : undefined,
         otherJobName: mode === "ROLLING" ? undefined : isOtherCategory ? otherJobName.trim() : undefined,
         rollingResultType: noResponse ? "NO_RESPONSE_REPORTED" : "DATE_REPORTED",
-        prevReportedDate: noResponse ? undefined : prevDate,
-        prevStepName: noResponse ? undefined : prevStepName.trim(),
-        currentStepName: currentStepName.trim(),
+        baseDate: noResponse ? undefined : prevDate,
+        stepName: stepName.trim(),
         reportedDate: noResponse ? undefined : reportedDate,
         todayAnnouncement: mode === "REGULAR" && isTodayAnnouncement,
         interviewReviewContent: interviewReviewContent.trim() ? interviewReviewContent.trim() : undefined,
@@ -465,87 +402,40 @@ export function GlobalReportModal() {
               )}
             </div>
 
-            <div className="grid gap-2.5 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">이전 전형명</label>
-                <div className="relative">
-                  <Input
-                    value={prevStepName}
-                    onChange={(e) => setPrevStepName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return
-                      e.preventDefault()
-                      void applyPairFromPrevIfEmpty(prevStepName)
-                    }}
-                    onFocus={() => setIsPrevStepFocused(true)}
-                    onBlur={() => {
-                      setIsPrevStepFocused(false)
-                      applyPairFromPrevIfEmpty(prevStepName)
-                    }}
-                    placeholder="예: 서류"
-                    required={!noResponse}
-                    className={compactFieldClass}
-                  />
-                  {showPrevSuggestionList && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
-                      <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">추천 전형명</p>
-                      <div className="max-h-48 overflow-auto">
-                        {prevSuggestions.slice(0, 8).map((name) => (
-                          <button
-                            key={`prev-${name}`}
-                            type="button"
-                            onMouseDown={(e) => e.preventDefault()}
-                            className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
-                            onClick={() => handleSelectPrevSuggestion(name)}
-                          >
-                            {name}
-                          </button>
-                        ))}
-                      </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">전형명</label>
+              <div className="relative">
+                <Input
+                  value={stepName}
+                  onChange={(e) => setStepName(e.target.value)}
+                  onFocus={() => setIsStepFocused(true)}
+                  onBlur={() => setIsStepFocused(false)}
+                  placeholder="예: 서류, 코딩테스트, 1차 면접"
+                  required
+                  className={compactFieldClass}
+                />
+                {showStepSuggestionList && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
+                    <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">추천 전형명</p>
+                    <div className="max-h-48 overflow-auto">
+                      {stepSuggestions.slice(0, 8).map((name) => (
+                        <button
+                          key={`step-${name}`}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
+                          onClick={() => handleSelectStepSuggestion(name)}
+                        >
+                          {name}
+                        </button>
+                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">현재 전형명</label>
-                <div className="relative">
-                  <Input
-                    value={currentStepName}
-                    onChange={(e) => setCurrentStepName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return
-                      e.preventDefault()
-                      void applyPairFromCurrentIfEmpty(currentStepName)
-                    }}
-                    onFocus={() => setIsCurrentStepFocused(true)}
-                    onBlur={() => {
-                      setIsCurrentStepFocused(false)
-                      applyPairFromCurrentIfEmpty(currentStepName)
-                    }}
-                    placeholder="예: 서류 발표"
-                    required
-                    className={compactFieldClass}
-                  />
-                  {showCurrentSuggestionList && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-border/60 bg-card p-2 shadow-lg">
-                      <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">추천 전형명</p>
-                      <div className="max-h-48 overflow-auto">
-                        {currentSuggestions.slice(0, 8).map((name) => (
-                          <button
-                            key={`current-${name}`}
-                            type="button"
-                            onMouseDown={(e) => e.preventDefault()}
-                            className="w-full rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-accent/60"
-                            onClick={() => handleSelectCurrentSuggestion(name)}
-                          >
-                            {name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                예: 서류 전형, 코딩 테스트 전형, 1차 면접 전형
+              </p>
             </div>
 
             <button
@@ -566,7 +456,7 @@ export function GlobalReportModal() {
             {!noResponse && (
               <div className="grid gap-2.5 md:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">이전 발표일</label>
+                  <label className="text-sm font-medium">지원/응시일</label>
                   <div className="flex items-center gap-2">
                     <Input
                       value={prevDate}
@@ -587,7 +477,7 @@ export function GlobalReportModal() {
                           size="icon"
                           variant="outline"
                           className={compactIconButtonClass}
-                          aria-label={`이전 발표일 달력 열기 (${toDisplayDate(prevDate)})`}
+                          aria-label={`지원/응시일 달력 열기 (${toDisplayDate(prevDate)})`}
                         >
                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                         </Button>
@@ -603,7 +493,7 @@ export function GlobalReportModal() {
                           }}
                           disabled={(date) => {
                             const current = toDateOrNull(reportedDate)
-                            return current ? date >= current : false
+                            return current ? date > current : false
                           }}
                         />
                       </PopoverContent>
@@ -611,7 +501,7 @@ export function GlobalReportModal() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">현재 발표일</label>
+                  <label className="text-sm font-medium">결과 발표일</label>
                   <div className="flex items-center gap-2">
                     <Input
                       value={reportedDate}
@@ -640,7 +530,7 @@ export function GlobalReportModal() {
                           size="icon"
                           variant="outline"
                           className={compactIconButtonClass}
-                          aria-label={`현재 발표일 달력 열기 (${toDisplayDate(reportedDate)})`}
+                          aria-label={`결과 발표일 달력 열기 (${toDisplayDate(reportedDate)})`}
                           disabled={isTodayAnnouncement}
                         >
                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -657,7 +547,7 @@ export function GlobalReportModal() {
                           }}
                           disabled={(date) => {
                             const prev = toDateOrNull(prevDate)
-                            return prev ? date <= prev : false
+                            return prev ? date < prev : false
                           }}
                         />
                       </PopoverContent>

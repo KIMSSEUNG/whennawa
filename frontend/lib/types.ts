@@ -68,9 +68,8 @@ export interface ReportItem {
   companyName: string
   recruitmentMode: RecruitmentMode
   rollingResultType: RollingReportType | null
-  prevReportedDate: Date | null
-  prevStepName: string | null
-  currentStepName: string | null
+  baseDate: Date | null
+  stepName: string | null
   reportedDate: Date | null
   status: ReportStatus
   jobCategoryId: number | null

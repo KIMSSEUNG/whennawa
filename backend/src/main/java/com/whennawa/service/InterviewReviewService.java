@@ -58,7 +58,7 @@ public class InterviewReviewService {
         review.setReport(report);
         review.setRollingReport(null);
         review.setRecruitmentMode(report.getRecruitmentMode() == null ? RecruitmentMode.REGULAR : report.getRecruitmentMode());
-        review.setStepName(resolveStepName(report.getPrevStepName(), report.getCurrentStepName()));
+        review.setStepName(resolveStepName(report.getStepName()));
         review.setDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
         review.setContent(profanityMasker.mask(content));
         review.setActive(true);
@@ -83,7 +83,7 @@ public class InterviewReviewService {
         review.setReport(report);
         review.setRollingReport(null);
         review.setRecruitmentMode(report.getRecruitmentMode() == null ? RecruitmentMode.REGULAR : report.getRecruitmentMode());
-        review.setStepName(resolveStepName(report.getPrevStepName(), report.getCurrentStepName()));
+        review.setStepName(resolveStepName(report.getStepName()));
         review.setDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
         review.setContent(profanityMasker.mask(content));
         review.setActive(true);
@@ -108,7 +108,7 @@ public class InterviewReviewService {
         review.setReport(null);
         review.setRollingReport(report);
         review.setRecruitmentMode(RecruitmentMode.ROLLING);
-        review.setStepName(resolveStepName(report.getPrevStepName(), report.getCurrentStepName()));
+        review.setStepName(resolveStepName(report.getStepName()));
         review.setDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
         review.setContent(profanityMasker.mask(content));
         review.setActive(true);
@@ -133,7 +133,7 @@ public class InterviewReviewService {
         review.setReport(null);
         review.setRollingReport(report);
         review.setRecruitmentMode(RecruitmentMode.ROLLING);
-        review.setStepName(resolveStepName(report.getPrevStepName(), report.getCurrentStepName()));
+        review.setStepName(resolveStepName(report.getStepName()));
         review.setDifficulty(difficulty == null ? InterviewDifficulty.MEDIUM : difficulty);
         review.setContent(profanityMasker.mask(content));
         review.setActive(true);
@@ -337,12 +337,11 @@ public class InterviewReviewService {
         return trimmed.isBlank() ? null : trimmed;
     }
 
-    private String resolveStepName(String prevStepName, String currentStepName) {
-        String raw = (prevStepName != null && !prevStepName.isBlank()) ? prevStepName : currentStepName;
-        if (raw == null || raw.isBlank()) {
+    private String resolveStepName(String stepName) {
+        if (stepName == null || stepName.isBlank()) {
             return "면접";
         }
-        String trimmed = raw.trim();
+        String trimmed = stepName.trim();
         return trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
     }
 
