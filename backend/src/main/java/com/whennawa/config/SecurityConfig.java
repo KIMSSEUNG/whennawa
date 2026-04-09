@@ -69,6 +69,7 @@ public class SecurityConfig {
                 .requestMatchers("/h2-console/**", "/webhooks/**", "/oauth2/**", "/api/oauth2/**", "/login/**",
                     "/api/login/**",
                     "/api/auth/login/**",
+                    "/actuator/health", "/actuator/prometheus",
                     "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/refresh").permitAll()

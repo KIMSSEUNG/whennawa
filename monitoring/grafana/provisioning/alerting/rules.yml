@@ -1,0 +1,252 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: 언제나와-호스트-자원
+    folder: 언제나와 알림
+    interval: 1m
+    rules:
+      - uid: whennawa-host-cpu-high
+        title: 호스트 CPU 사용률 높음
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PROMETHEUS_WHENNAWA
+            model:
+              datasource:
+                type: prometheus
+                uid: PROMETHEUS_WHENNAWA
+              editorMode: code
+              expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m])) * 100)
+              instant: true
+              intervalMs: 1000
+              legendFormat: "{{instance}}"
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 호스트 CPU 사용률이 90%를 초과했습니다.
+        labels:
+          severity: warning
+          cooldown: 1h
+          scope: host
+        isPaused: false
+
+      - uid: whennawa-host-bandwidth-high
+        title: 호스트 대역폭 사용률 높음
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PROMETHEUS_WHENNAWA
+            model:
+              datasource:
+                type: prometheus
+                uid: PROMETHEUS_WHENNAWA
+              editorMode: code
+              expr: ((sum(rate(node_network_receive_bytes_total{job="node-exporter",device!~"lo|docker.*|veth.*"}[5m])) + sum(rate(node_network_transmit_bytes_total{job="node-exporter",device!~"lo|docker.*|veth.*"}[5m]))) / sum(node_network_speed_bytes{job="node-exporter",device!~"lo|docker.*|veth.*"} > 0)) * 100
+              instant: true
+              intervalMs: 1000
+              legendFormat: "{{instance}}"
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 호스트 대역폭 사용률이 링크 속도 기준 90%를 초과했습니다.
+        labels:
+          severity: warning
+          cooldown: 1h
+          scope: host
+        isPaused: false
+
+      - uid: whennawa-host-memory-high
+        title: 호스트 메모리 사용률 높음
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PROMETHEUS_WHENNAWA
+            model:
+              datasource:
+                type: prometheus
+                uid: PROMETHEUS_WHENNAWA
+              editorMode: code
+              expr: (1 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})) * 100
+              instant: true
+              intervalMs: 1000
+              legendFormat: "{{instance}}"
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 호스트 메모리 사용률이 90%를 초과했습니다.
+        labels:
+          severity: warning
+          cooldown: 1h
+          scope: host
+        isPaused: false
+
+  - orgId: 1
+    name: 언제나와-HTTP-오류
+    folder: 언제나와 알림
+    interval: 5m
+    rules:
+      - uid: whennawa-http-5xx
+        title: HTTP 5xx 오류 감지
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: PROMETHEUS_WHENNAWA
+            model:
+              datasource:
+                type: prometheus
+                uid: PROMETHEUS_WHENNAWA
+              editorMode: code
+              expr: sum(increase(http_server_requests_seconds_count{job="backend-actuator",status=~"5.."}[6h]))
+              instant: true
+              intervalMs: 1000
+              legendFormat: "최근 6시간 5xx"
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 최근 6시간 동안 HTTP 5xx 오류가 감지되었습니다.
+        labels:
+          severity: warning
+          cooldown: 6h
+          scope: application
+        isPaused: false
