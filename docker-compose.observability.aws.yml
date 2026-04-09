@@ -1,0 +1,71 @@
+services:
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: whennawa-node-exporter
+    restart: unless-stopped
+    command:
+      - "--path.rootfs=/host"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)"
+    ports:
+      - "9100:9100"
+    volumes:
+      - "/:/host:ro,rslave"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: whennawa-cadvisor
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "9200:8080"
+    volumes:
+      - "/:/rootfs:ro"
+      - "/var/run:/var/run:ro"
+      - "/sys:/sys:ro"
+      - "/var/lib/docker:/var/lib/docker:ro"
+      - "/dev/disk:/dev/disk:ro"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: whennawa-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "./monitoring/prometheus/prometheus.aws.yml:/etc/prometheus/prometheus.yml:ro"
+      - "prometheus-data:/prometheus"
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    container_name: whennawa-grafana
+    restart: unless-stopped
+    depends_on:
+      - node-exporter
+      - cadvisor
+      - prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - ./.env
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_DOMAIN: 3.36.87.146
+      GF_SERVER_ROOT_URL: http://3.36.87.146:3001
+    volumes:
+      - "grafana-data:/var/lib/grafana"
+      - "./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro"
+      - "./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro"
+
+volumes:
+  prometheus-data:
+  grafana-data:

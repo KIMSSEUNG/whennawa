@@ -67,7 +67,7 @@ public class RollingReport extends BaseEntity {
     @Column(name = "other_job_name", length = 20)
     private String otherJobName;
 
-    @Column(name = "interview_review_content", length = 2000)
+    @Column(name = "interview_review_content", columnDefinition = "TEXT")
     private String interviewReviewContent;
 
     @Enumerated(EnumType.STRING)

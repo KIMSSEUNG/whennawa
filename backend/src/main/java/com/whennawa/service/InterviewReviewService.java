@@ -323,7 +323,7 @@ public class InterviewReviewService {
         if (trimmed.isBlank()) {
             return null;
         }
-        if (trimmed.length() > 2000) {
+        if (trimmed.length() > 5000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Interview review is too long");
         }
         return trimmed;

@@ -1,0 +1,17 @@
+[Unit]
+Description=WhenNawa Monitoring Stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/whennawa-monitoring
+ExecStart=/usr/bin/docker compose -f /opt/whennawa-monitoring/docker-compose.observability.aws.yml up -d
+ExecStartPost=/usr/bin/python3 /opt/whennawa-monitoring/monitoring/scripts/send_startup_summary.py
+ExecStop=/usr/bin/docker compose -f /opt/whennawa-monitoring/docker-compose.observability.aws.yml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

@@ -707,9 +707,6 @@ function SearchPageClient() {
                   <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
                     {selectedInterviewReview.stepName}
                   </span>
-                  <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
-                    {selectedInterviewReview.difficulty === "HARD" ? "어려움" : selectedInterviewReview.difficulty === "EASY" ? "쉬움" : "보통"}
-                  </span>
                 </div>
                 <DialogTitle className="text-left text-base text-foreground">면접 후기 상세</DialogTitle>
               </DialogHeader>
@@ -721,9 +718,18 @@ function SearchPageClient() {
                 </div>
               </div>
               <div className="mt-1 flex items-center justify-between gap-3">
-                <span className="text-xs text-muted-foreground">
-                  {selectedInterviewReview.createdAt.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
-                </span>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[#6f83b3]">
+                  <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
+                    {selectedInterviewReview.recruitmentMode === "REGULAR"
+                      ? "공채"
+                      : selectedInterviewReview.recruitmentMode === "INTERN"
+                        ? "인턴"
+                        : "수시"}
+                  </span>
+                  <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
+                    {selectedInterviewReview.difficulty === "HARD" ? "어려움" : selectedInterviewReview.difficulty === "EASY" ? "쉬움" : "보통"}
+                  </span>
+                </div>
               </div>
             </div>
           )}

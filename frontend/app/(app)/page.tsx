@@ -120,7 +120,7 @@ export default function HomePage() {
       <SeoJsonLd data={buildWebsiteJsonLd()} />
       <div className="page-shell [--page-max:1280px] pb-8 pt-4 md:pt-8">
         <div className="mx-auto flex w-full flex-col gap-5 md:gap-6">
-          <section className="relative overflow-hidden rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-4 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] dark:border-[#31415f] dark:bg-[linear-gradient(135deg,#142240_0%,#1c315d_58%,#1a3a6f_100%)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.38)] md:px-8 md:pb-8 md:pt-9">
+          <section className="relative overflow-visible rounded-[30px] border border-[#d8e5ff] bg-[linear-gradient(135deg,#3772f5_0%,#2b62e6_58%,#3a7be8_100%)] px-4 pb-6 pt-7 shadow-[0_30px_80px_rgba(65,105,220,0.18)] dark:border-[#31415f] dark:bg-[linear-gradient(135deg,#142240_0%,#1c315d_58%,#1a3a6f_100%)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.38)] md:px-8 md:pb-8 md:pt-9">
             <Image src="/design-previews/icon/hero-background.png" alt="" fill priority className="object-cover object-center" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(34,76,192,0.12)_0%,rgba(34,76,192,0.2)_62%,rgba(78,183,210,0.16)_100%)]" />
             <div className="absolute -right-16 -top-20 hidden h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(223,246,255,0.34)_0%,rgba(223,246,255,0)_72%)] md:block" />
@@ -135,23 +135,25 @@ export default function HomePage() {
 
               <form
                 onSubmit={handleSearch}
-                className="mt-7 flex w-full max-w-full flex-col gap-2 rounded-[20px] bg-white/94 p-2 shadow-[0_18px_40px_rgba(18,47,126,0.18)] backdrop-blur-sm dark:bg-[#111b2f]/92 dark:shadow-[0_18px_40px_rgba(0,0,0,0.36)] md:max-w-[760px] md:flex-row md:items-center"
+                className="relative z-40 mt-7 flex w-full max-w-full flex-col gap-2 rounded-[20px] bg-white/94 p-2 shadow-[0_18px_40px_rgba(18,47,126,0.18)] backdrop-blur-sm dark:bg-[#111b2f]/92 dark:shadow-[0_18px_40px_rgba(0,0,0,0.36)] md:max-w-[760px] md:flex-row md:items-center"
               >
                 <div className="relative min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-3 rounded-[16px] border border-[#d9e5ff] bg-[#f9fbff] px-4 py-3 dark:border-[#31415f] dark:bg-[#0f1729]">
-                  <Search className="h-4 w-4 shrink-0 text-[#6c87c7] dark:text-[#8fa7df]" />
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value)
-                      setShowRelatedSuggestions(true)
-                    }}
-                    onFocus={() => setShowRelatedSuggestions(true)}
-                    placeholder="기업명 또는 공고를 입력하세요"
-                    className="w-full bg-transparent text-sm font-medium text-[#223d7a] outline-none placeholder:text-[#8ca2cf] dark:text-[#eef4ff] dark:placeholder:text-[#7f93bb]"
-                  />
-                  <span className="hidden text-xs font-semibold text-[#8ca2cf] dark:text-[#7f93bb] md:inline">⌘ /</span>
+                  <div className="relative flex min-w-0 items-center rounded-[16px] border border-[#d9e5ff] bg-[#f9fbff] px-4 py-3 dark:border-[#31415f] dark:bg-[#0f1729]">
+                    <Search className="h-4 w-4 shrink-0 text-[#6c87c7] dark:text-[#8fa7df]" />
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value)
+                        setShowRelatedSuggestions(true)
+                      }}
+                      onFocus={() => setShowRelatedSuggestions(true)}
+                      placeholder="기업명 또는 공고를 입력하세요"
+                      className="home-search-input w-full min-w-0 appearance-none bg-transparent pl-3 pr-12 text-sm font-medium text-[#223d7a] outline-none placeholder:text-[#8ca2cf] dark:text-[#eef4ff] dark:placeholder:text-[#7f93bb] md:pr-14"
+                    />
+                    <span className="pointer-events-none absolute right-4 hidden text-xs font-semibold text-[#8ca2cf] dark:text-[#7f93bb] md:inline">
+                      ⌘ /
+                    </span>
                   </div>
                   {shouldShowRelatedSuggestions && (
                     <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-30 rounded-[20px] border border-[#dfe6ff] bg-white p-2 text-left shadow-[0_18px_36px_rgba(97,118,177,0.14)] dark:border-[#31415f] dark:bg-[#16213a] dark:shadow-[0_22px_44px_rgba(0,0,0,0.38)]">

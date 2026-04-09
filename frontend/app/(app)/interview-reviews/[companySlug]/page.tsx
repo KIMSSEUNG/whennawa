@@ -13,12 +13,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-const formatDifficultyLabel = (difficulty: InterviewReview["difficulty"]) => {
-  if (difficulty === "HARD") return "어려움"
-  if (difficulty === "EASY") return "쉬움"
-  return "보통"
-}
-
 const getDifficultyTone = (difficulty: InterviewReview["difficulty"]) => {
   if (difficulty === "HARD") {
     return {
@@ -398,24 +392,19 @@ export default function InterviewReviewsPage() {
                     <span className="inline-flex h-9 items-center rounded-full border border-[#cfdcff] bg-[#f7faff] px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
                       {item.stepName}
                     </span>
-                    <span className="inline-flex h-9 items-center rounded-full border border-[#cfdcff] bg-[#f7faff] px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.88)]">
+                    <span className="inline-flex h-8 items-center rounded-full border border-[#cfdcff] bg-[#f7faff] px-2.5 text-[13px] font-semibold text-[#3f5fa8]">
                       {getModeLabel(item.recruitmentMode)}
                     </span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
                     {renderDifficultyBadge(item.difficulty)}
-                    {renderLikeButton(item, isLikePending, (event) => {
-                      event.stopPropagation()
-                      void toggleLike(item)
-                    })}
                   </div>
                 </div>
                 <p className={`break-words text-sm text-foreground ${expandable ? "line-clamp-1" : ""}`}>{item.content}</p>
                 {expandable && <span className="mt-1 inline-block text-xs text-primary">자세히 보기</span>}
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="text-xs text-muted-foreground">
-                    {item.createdAt.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
-                  </span>
+                <div className="mt-3 flex items-center justify-end gap-3">
+                  {renderLikeButton(item, isLikePending, (event) => {
+                    event.stopPropagation()
+                    void toggleLike(item)
+                  })}
                 </div>
               </article>
             )
@@ -449,7 +438,7 @@ export default function InterviewReviewsPage() {
                       <span className="inline-flex h-8 items-center rounded-full border border-[#cfdcff] bg-white px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[0_6px_16px_rgba(111,135,196,0.10)]">
                         {selectedReview.stepName}
                       </span>
-                      <span className="inline-flex h-8 items-center rounded-full border border-[#cfdcff] bg-white px-3 text-[13px] font-bold text-[#3f5fa8] shadow-[0_6px_16px_rgba(111,135,196,0.10)]">
+                      <span className="inline-flex h-8 items-center rounded-full border border-[#cfdcff] bg-white px-2.5 text-[13px] font-semibold text-[#3f5fa8]">
                         {getModeLabel(selectedReview.recruitmentMode)}
                       </span>
                       {renderDifficultyBadge(selectedReview.difficulty)}
@@ -463,15 +452,14 @@ export default function InterviewReviewsPage() {
               </div>
 
               <div className="min-h-0 flex-1 overflow-hidden">
-                <div className="nawa-scrollbar h-full w-full overflow-y-auto rounded-[22px] border border-[#dbe5ff] bg-white px-4 py-5 text-[15px] leading-7 text-foreground whitespace-pre-wrap break-words shadow-[0_12px_28px_rgba(110,132,190,0.10)] [scrollbar-gutter:auto] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                  {selectedReview.content}
+                <div className="nawa-scrollbar h-full w-full overflow-y-auto rounded-[22px] border border-[#dbe5ff] bg-white px-4 py-5 shadow-[0_12px_28px_rgba(110,132,190,0.10)] [scrollbar-gutter:auto] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-foreground">
+                    {selectedReview.content}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-[18px] border border-[#e8efff] bg-white/72 px-4 py-3">
-                <span className="text-[13px] font-medium text-[#6f83b3]">
-                  {selectedReview.createdAt.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
-                </span>
+              <div className="flex items-center justify-end px-1">
                 {renderLikeButton(
                   selectedReview,
                   pendingLikeReviewIds.includes(selectedReview.reviewId),

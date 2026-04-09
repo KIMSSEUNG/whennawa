@@ -1,0 +1,15 @@
+[Unit]
+Description=WhenNawa Alert Webhook Mailer
+Requires=docker.service
+After=docker.service network-online.target whennawa-monitoring.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/whennawa-monitoring
+ExecStart=/usr/bin/python3 /opt/whennawa-monitoring/monitoring/scripts/alert_webhook_server.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
