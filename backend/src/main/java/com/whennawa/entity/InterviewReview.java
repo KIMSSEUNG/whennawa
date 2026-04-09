@@ -54,7 +54,7 @@ public class InterviewReview extends BaseEntity {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private InterviewDifficulty difficulty = InterviewDifficulty.MEDIUM;
 
-    @Column(name = "content", length = 2000, nullable = false)
+    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
 
     @Column(name = "like_count", nullable = false)

@@ -60,6 +60,7 @@ function normalizeDateInput(value: string) {
 }
 
 export function GlobalReportModal() {
+  const interviewReviewMaxLength = 5000
   const compactFieldClass = "h-10 rounded-xl px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
   const compactIconButtonClass = "h-10 w-10 shrink-0 rounded-xl border-border/70 bg-background hover:bg-accent/40"
   const compactSelectTriggerClass = "h-10 rounded-xl px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
@@ -716,10 +717,13 @@ export function GlobalReportModal() {
                     </div>
                     <Textarea
                       value={interviewReviewContent}
-                      onChange={(e) => setInterviewReviewContent(e.target.value.slice(0, 2000))}
+                      onChange={(e) => setInterviewReviewContent(e.target.value.slice(0, interviewReviewMaxLength))}
                       placeholder="면접 분위기, 질문 유형, 준비 팁 등을 적어주세요."
                       className="nawa-scrollbar min-h-[112px] h-[14vh] resize-none overflow-x-hidden overflow-y-auto rounded-xl border-border/70 bg-gradient-to-b from-background to-muted/20 text-sm leading-5 focus-visible:ring-2"
                     />
+                    <div className="text-right text-xs text-muted-foreground">
+                      {interviewReviewContent.length}/{interviewReviewMaxLength}
+                    </div>
                   </div>
 
                   <div className="sticky bottom-0 z-10 -mx-1 flex items-center justify-between gap-3 border-t border-border/60 bg-background/95 px-1 pb-1 pt-3 backdrop-blur">
@@ -775,10 +779,13 @@ export function GlobalReportModal() {
                     </p>
                     <Textarea
                       value={interviewReviewContent}
-                      onChange={(e) => setInterviewReviewContent(e.target.value.slice(0, 2000))}
+                      onChange={(e) => setInterviewReviewContent(e.target.value.slice(0, interviewReviewMaxLength))}
                       placeholder="예: 실무 질문 비중, 압박 여부, 준비했던 내용과 실제 질문 차이 등을 적어 주세요."
                       className="nawa-scrollbar h-[18vh] min-h-[140px] resize-none overflow-x-hidden overflow-y-auto rounded-xl border-border/70 bg-gradient-to-b from-background to-muted/20 text-sm leading-5 focus-visible:ring-2"
                     />
+                    <div className="text-right text-xs text-muted-foreground">
+                      {interviewReviewContent.length}/{interviewReviewMaxLength}
+                    </div>
                   </div>
 
                   <div className="sticky bottom-0 z-10 -mx-1 flex items-center justify-between gap-3 border-t border-border/60 bg-background/95 px-1 pb-1 pt-3 backdrop-blur">

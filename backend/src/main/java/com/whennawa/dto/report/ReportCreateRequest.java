@@ -30,7 +30,7 @@ public class ReportCreateRequest {
     private String otherJobName;
     private String notificationMessage;
     private Boolean todayAnnouncement;
-    @Size(max = 2000)
+    @Size(max = 5000)
     private String interviewReviewContent;
     private InterviewDifficulty interviewDifficulty;
 }
