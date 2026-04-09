@@ -239,6 +239,22 @@ body {
   background-color: color-mix(in oklab, var(--primary) 58%, transparent);
 }
 
+.home-search-input::-webkit-search-decoration,
+.home-search-input::-webkit-search-cancel-button,
+.home-search-input::-webkit-search-results-button,
+.home-search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.home-search-input::-ms-clear,
+.home-search-input::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 @layer utilities {
   .shell-backdrop {
     background-color: var(--shell-backdrop);
