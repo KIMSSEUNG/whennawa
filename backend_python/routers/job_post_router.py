@@ -4,7 +4,7 @@ from functools import lru_cache
 import traceback
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BACKEND_DIR.parent
@@ -14,7 +14,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
+    from db.connection import open_transaction
+    from db.repository import fetch_recent_analysis_results
     from schemas.job_post_schema import JobPostAnalyzeResponse
+    from schemas.job_post_schema import JobPostRecentAnalysisItem
     from services.company_crawl_service import CompanyCrawlService
     from services.job_post_analysis_service import (
         CompanyCrawlError,
@@ -26,7 +29,10 @@ try:
     from services.job_post_parser_service import JobPostParserService
     from services.model_stage_service import build_model_stage_services
 except ModuleNotFoundError:
+    from backend.db.connection import open_transaction
+    from backend.db.repository import fetch_recent_analysis_results
     from backend.schemas.job_post_schema import JobPostAnalyzeResponse
+    from backend.schemas.job_post_schema import JobPostRecentAnalysisItem
     from backend.services.company_crawl_service import CompanyCrawlService
     from backend.services.job_post_analysis_service import (
         CompanyCrawlError,
@@ -155,6 +161,22 @@ async def analyze_job_post(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"서버 내부 오류가 발생했다: {exc}",
         ) from exc
+
+
+@router.get("/recent", response_model=list[JobPostRecentAnalysisItem])
+async def get_recent_job_post_analyses(
+    userId: str = Query(default=""),
+    limit: int = Query(default=3, ge=1, le=10),
+):
+    user_id = (userId or "").strip() or "anonymous"
+    _debug(f"recent request start user_id={user_id!r} limit={limit}")
+
+    with open_transaction() as conn:
+        return fetch_recent_analysis_results(
+            conn,
+            user_id=user_id,
+            limit=limit,
+        )
 
 
 def _validate_request_fields(

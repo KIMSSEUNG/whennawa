@@ -36,6 +36,27 @@ export type EssayAnalysisRequest = {
   userId: string
 }
 
+export async function fetchEssayRecentAnalyses(
+  userId: string,
+  limit = 3,
+): Promise<EssayRecentAnalysisItem[]> {
+  const params = new URLSearchParams({
+    userId,
+    limit: String(limit),
+  })
+
+  const response = await fetch(`${ESSAY_API_BASE_URL}/api/job-post/recent?${params.toString()}`, {
+    method: "GET",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+
+  return (await response.json()) as EssayRecentAnalysisItem[]
+}
+
 const ESSAY_API_BASE_URL = (process.env.NEXT_PUBLIC_ESSAY_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "")
 
 async function readErrorMessage(response: Response) {

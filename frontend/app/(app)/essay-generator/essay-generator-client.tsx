@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import {
   useEffect,
@@ -13,7 +13,17 @@ import { Check, Copy, FileText, Loader2, Sparkles, Upload, X } from "lucide-reac
 
 import { getUser } from "@/lib/api"
 import { careerBoardTheme } from "@/lib/career-board-theme"
-import { analyzeEssayJobPost, type EssayAnalysisResponse } from "@/lib/essay-api"
+import {
+  analyzeEssayJobPost,
+  type EssayAnalysisResponse,
+  type EssayRecentAnalysisItem,
+  fetchEssayRecentAnalyses,
+} from "@/lib/essay-api"
+import {
+  clearEssayImageDraft,
+  loadEssayImageDraft,
+  saveEssayImageDraft,
+} from "@/lib/essay-draft-store"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -115,6 +125,45 @@ function normalizeImageFiles(files: File[]) {
   return files.filter((file) => file.type.startsWith("image/"))
 }
 
+function extractImageFilesFromClipboard(event: ClipboardEvent<HTMLElement>) {
+  const filesFromList = Array.from(event.clipboardData.files ?? [])
+  const imageFilesFromList = normalizeImageFiles(filesFromList)
+  if (imageFilesFromList.length > 0) {
+    return imageFilesFromList
+  }
+
+  const imageFilesFromItems = Array.from(event.clipboardData.items ?? [])
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => file !== null)
+
+  return normalizeImageFiles(imageFilesFromItems)
+}
+
+function storedImagesToItems(images: Array<{ id: string; name: string; type: string; lastModified: number; blob: Blob }>) {
+  return images.map((item) => {
+    const file = new File([item.blob], item.name || "image", {
+      type: item.type || item.blob.type || "image/*",
+      lastModified: item.lastModified || Date.now(),
+    })
+    return {
+      id: item.id,
+      file,
+      previewUrl: URL.createObjectURL(item.blob),
+    }
+  })
+}
+
+function imageItemsToStoredImages(items: ImageFileItem[]) {
+  return items.map((item) => ({
+    id: item.id,
+    name: item.file.name,
+    type: item.file.type,
+    lastModified: item.file.lastModified,
+    blob: item.file,
+  }))
+}
+
 function CopyButton({
   text,
   label = "복사",
@@ -172,14 +221,72 @@ function PromptDialog() {
   )
 }
 
+function ImageGuideDialog() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        공고 이미지 넣기 참고
+      </Button>
+      <DialogContent className="sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>공고 이미지 넣기 참고</DialogTitle>
+          <DialogDescription>
+            공고 이미지에서 필요한 부분만 넣어주면 자소서가 더 잘 나옵니다.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-[#d9e5ff] bg-[#f8fbff] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-[#20356b]">[전체 영역]</p>
+              <span className={careerBoardTheme.tag}>전체 페이지</span>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-[#e4ebff] bg-white">
+              <img
+                src="/example/%EC%A0%84%EC%B2%B4%EC%98%81%EC%97%AD.png"
+                alt="공고 전체 영역 예시"
+                className="h-auto w-full object-contain"
+              />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-[#394b73]">
+              전체 영역이 이렇다면
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#d9e5ff] bg-[#f8fbff] p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-[#20356b]">[참고 영역]</p>
+              <span className={careerBoardTheme.tag}>핵심 영역</span>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-[#e4ebff] bg-white">
+              <img
+                src="/example/%ED%95%B4%EB%8B%B9%EC%98%81%EC%97%AD.png"
+                alt="공고 참고 영역 예시"
+                className="h-auto w-full object-contain"
+              />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-[#394b73]">
+              해당 영역만을 넣으면 더욱 자소서가 잘 나옵니다.
+            </p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function ResultCard({
   title,
   text,
   onCopy,
+  onView,
 }: {
   title: string
   text: string
   onCopy: () => void
+  onView?: () => void
 }) {
   return (
     <div className="rounded-2xl border border-[#dce5ff] bg-[#fbfdff] p-4 shadow-[0_10px_28px_rgba(72,101,170,0.08)]">
@@ -188,10 +295,17 @@ function ResultCard({
           <p className="text-sm font-semibold text-[#27407a]">{title}</p>
           <p className="text-xs text-[#6e7ca8]">복사해서 바로 활용할 수 있는 초안입니다.</p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={onCopy}>
-          <Copy className="size-4" />
-          복사
-        </Button>
+        <div className="flex items-center gap-2">
+          {onView ? (
+            <Button type="button" variant="outline" size="sm" onClick={onView}>
+              보기
+            </Button>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" onClick={onCopy}>
+            <Copy className="size-4" />
+            복사
+          </Button>
+        </div>
       </div>
       <ScrollArea className="h-[220px] rounded-xl border border-[#e4ebff] bg-white px-4 py-3 sm:h-[260px]">
         <div className="whitespace-pre-wrap text-[15px] leading-7 text-[#22345f]">
@@ -199,6 +313,91 @@ function ResultCard({
         </div>
       </ScrollArea>
     </div>
+  )
+}
+
+function RecentAnalysisDialog({
+  item,
+  open,
+  onOpenChange,
+  onCopyEmotion,
+  onCopyFormal,
+}: {
+  item: EssayRecentAnalysisItem | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCopyEmotion: () => void
+  onCopyFormal: () => void
+}) {
+  const createdAt = item ? new Date(item.createdAt) : null
+  const createdAtLabel =
+    createdAt && !Number.isNaN(createdAt.getTime())
+      ? new Intl.DateTimeFormat("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(createdAt)
+      : ""
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>저장된 결과 보기</DialogTitle>
+          <DialogDescription>현재 계정 기준으로 저장된 결과를 전체 내용으로 확인할 수 있습니다.</DialogDescription>
+        </DialogHeader>
+
+        {item ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className={careerBoardTheme.tag}>{item.companyName || "회사명 없음"}</span>
+              <span className={careerBoardTheme.tag}>{item.targetPosition || "직무 없음"}</span>
+              <span className={careerBoardTheme.tag}>{createdAtLabel || "시간 정보 없음"}</span>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-[#dce5ff] bg-[#fbfdff] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#27407a]">감성형</p>
+                    <p className="text-xs text-[#6e7ca8]">전체 저장 내용을 확인할 수 있습니다.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={onCopyEmotion}>
+                    <Copy className="size-4" />
+                    복사
+                  </Button>
+                </div>
+                <ScrollArea className="h-[340px] rounded-xl border border-[#e4ebff] bg-white px-4 py-3">
+                  <div className="whitespace-pre-wrap text-[15px] leading-7 text-[#22345f]">
+                    {item.essayEmotionText || "저장된 내용이 없습니다."}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              <div className="rounded-2xl border border-[#dce5ff] bg-[#fbfdff] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#27407a]">정돈형</p>
+                    <p className="text-xs text-[#6e7ca8]">전체 저장 내용을 확인할 수 있습니다.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={onCopyFormal}>
+                    <Copy className="size-4" />
+                    복사
+                  </Button>
+                </div>
+                <ScrollArea className="h-[340px] rounded-xl border border-[#e4ebff] bg-white px-4 py-3">
+                  <div className="whitespace-pre-wrap text-[15px] leading-7 text-[#22345f]">
+                    {item.essayFormalText || "저장된 내용이 없습니다."}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -224,6 +423,9 @@ export default function EssayGeneratorClient({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [result, setResult] = useState<EssayAnalysisResponse | null>(null)
   const [copiedSection, setCopiedSection] = useState<string | null>(null)
+  const [savedRecentAnalyses, setSavedRecentAnalyses] = useState<EssayRecentAnalysisItem[]>([])
+  const [selectedRecentAnalysis, setSelectedRecentAnalysis] = useState<EssayRecentAnalysisItem | null>(null)
+  const [isRecentAnalysisDialogOpen, setIsRecentAnalysisDialogOpen] = useState(false)
 
   useEffect(() => {
     previewItemsRef.current = imageItems
@@ -245,6 +447,10 @@ export default function EssayGeneratorClient({
 
         const userId = user?.id?.trim() || null
         setCurrentUserId(userId)
+        if (!userId) {
+          setSavedRecentAnalyses([])
+          return
+        }
 
         const draft = readEssayDraft(getEssayDraftStorageKey(userId)) ?? readEssayDraft(ESSAY_DRAFT_STORAGE_KEY)
         if (draft) {
@@ -253,6 +459,27 @@ export default function EssayGeneratorClient({
           setCompanyUrl(draft.companyUrl || "")
           setExperienceText(draft.experienceText || "")
           setEssayPrompt(draft.essayPrompt || "")
+        }
+
+        const storedImages = await loadEssayImageDraft(userId)
+        if (cancelled) return
+
+        if (storedImages.length > 0) {
+          const restoredItems = storedImagesToItems(storedImages)
+          setImageItems((current) => {
+            current.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+            return restoredItems
+          })
+        }
+
+        try {
+          const recent = await fetchEssayRecentAnalyses(userId, 3)
+          if (cancelled) return
+          setSavedRecentAnalyses(recent)
+        } catch {
+          if (!cancelled) {
+            setSavedRecentAnalyses([])
+          }
         }
       } finally {
         if (!cancelled) {
@@ -280,6 +507,12 @@ export default function EssayGeneratorClient({
     })
   }, [companyName, targetPosition, companyUrl, experienceText, essayPrompt, currentUserId])
 
+  useEffect(() => {
+    if (!draftHydratedRef.current) return
+
+    void saveEssayImageDraft(currentUserId, imageItemsToStoredImages(imageItems))
+  }, [imageItems, currentUserId])
+
   const addFiles = (incoming: File[]) => {
     const nextFiles = normalizeImageFiles(incoming)
     if (!nextFiles.length) return
@@ -304,10 +537,11 @@ export default function EssayGeneratorClient({
     addFiles(Array.from(event.dataTransfer.files ?? []))
   }
 
-  const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
-    const clipboardFiles = Array.from(event.clipboardData.files ?? [])
-    if (clipboardFiles.some((file) => file.type.startsWith("image/"))) {
+  const handlePaste = (event: ClipboardEvent<HTMLElement>) => {
+    const clipboardFiles = extractImageFilesFromClipboard(event)
+    if (clipboardFiles.length > 0) {
       event.preventDefault()
+      event.stopPropagation()
       addFiles(clipboardFiles)
     }
   }
@@ -323,6 +557,53 @@ export default function EssayGeneratorClient({
   const clearImages = () => {
     imageItems.forEach((item) => URL.revokeObjectURL(item.previewUrl))
     setImageItems([])
+  }
+
+  const clearAll = async () => {
+    try {
+      imageItems.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+      setCompanyName(initialCompanyName)
+      setTargetPosition(initialTargetPosition)
+      setCompanyUrl("")
+      setExperienceText("")
+      setEssayPrompt("")
+      setImageItems([])
+      setErrorMessage(null)
+      setResult(null)
+      setCopiedSection(null)
+      setSelectedRecentAnalysis(null)
+      setIsRecentAnalysisDialogOpen(false)
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+
+      if (draftHydratedRef.current) {
+        saveEssayDraft(currentUserId, {
+          companyName: initialCompanyName,
+          targetPosition: initialTargetPosition,
+          companyUrl: "",
+          experienceText: "",
+          essayPrompt: "",
+        })
+        await clearEssayImageDraft(currentUserId)
+      }
+    } catch {
+      // Ignore storage cleanup errors and keep the UI responsive.
+    }
+  }
+
+  const openRecentAnalysis = (item: EssayRecentAnalysisItem) => {
+    setSelectedRecentAnalysis(item)
+    setIsRecentAnalysisDialogOpen(true)
+  }
+
+  const copyRecentAnalysis = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Ignore clipboard failures.
+    }
   }
 
   const copyText = async (section: "emotion" | "formal", text: string) => {
@@ -378,7 +659,7 @@ export default function EssayGeneratorClient({
   const heroChips = ['로그인 후 사용 가능']
 
   const hasResult = Boolean(result)
-  const recentAnalyses = result?.recentAnalyses ?? []
+  const recentAnalyses = result?.recentAnalyses ?? savedRecentAnalyses
 
   const formatRecentAnalysisTime = (value: string) => {
     const date = new Date(value)
@@ -392,30 +673,79 @@ export default function EssayGeneratorClient({
     }).format(date)
   }
 
+  const recentAnalysesSection =
+    recentAnalyses.length > 0 ? (
+      <div className="rounded-2xl border border-[#e2eaff] bg-[#f8fbff] p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[#27407a]">최근 저장된 결과</p>
+            <p className="text-xs text-[#6e7ca8]">현재 계정 기준 최신 3건입니다.</p>
+          </div>
+        </div>
+        <div className="grid gap-2 xl:grid-cols-3">
+          {recentAnalyses.map((item, index) => {
+            const summary = item.essayFormalText || item.essayEmotionText || "저장된 결과가 없습니다."
+            return (
+              <button
+                key={`${item.id}-${index}`}
+                type="button"
+                onClick={() => openRecentAnalysis(item)}
+                className="rounded-xl border border-white/70 bg-white px-3 py-2.5 text-left shadow-[0_8px_20px_rgba(71,96,171,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(71,96,171,0.08)]"
+              >
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#20356b]">
+                      {item.companyName || "회사명 없음"}
+                    </p>
+                    <p className="truncate text-xs text-[#5f6d97]">
+                      {item.targetPosition || "직무 없음"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[#7b86a8]">
+                      {formatRecentAnalysisTime(item.createdAt)}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-medium text-[#8090b6]">#{index + 1}</span>
+                </div>
+                <p className="mt-2 line-clamp-1 text-sm leading-5 text-[#394b73]">
+                  {summary}
+                </p>
+                <p className="mt-2 text-[11px] font-medium text-[#3657b7]">전체 보기</p>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    ) : null
+
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(239,244,255,0.95),rgba(244,247,255,0.88)_36%,rgba(249,251,255,1)_74%)] text-[#22345f]">
+    <main
+      className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(239,244,255,0.95),rgba(244,247,255,0.88)_36%,rgba(249,251,255,1)_74%)] text-[#22345f]"
+      onPasteCapture={handlePaste}
+    >
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-5 md:px-6 md:py-6">
         <section className={careerBoardTheme.heroSection}>
           <div className={careerBoardTheme.heroTopLine} />
           <div className={careerBoardTheme.heroGlowRight} />
           <div className={careerBoardTheme.heroGlowLeft} />
 
-          <div className="relative z-10">
-            <p className={careerBoardTheme.heroEyebrow}>자소서 생성기</p>
-            <h1 className={careerBoardTheme.heroTitle}>
-              공고와 경력을 반영해 자소서를 생성합니다
-            </h1>
-            <p className={careerBoardTheme.heroDescription}>
-              회사 정보, 채용공고, 경력을 함께 반영해 감성형과 정돈형 두 버전의 자소서를 만듭니다.
-              <br />
-              (단 로그인 후 사용이 가능합니다.)
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {heroChips.map((chip) => (
-                <span key={chip} className={careerBoardTheme.tag}>
-                  {chip}
-                </span>
-              ))}
+          <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className={careerBoardTheme.heroEyebrow}>자소서 생성기</p>
+              <h1 className={careerBoardTheme.heroTitle}>
+                공고와 경력을 반영해 자소서를 생성합니다
+              </h1>
+              <p className={careerBoardTheme.heroDescription}>
+                회사 정보, 채용공고, 경력을 함께 반영해 감성형과 정돈형 두 버전의 자소서를 만듭니다.
+                <br />
+                (단 로그인 후 사용이 가능합니다.)
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {heroChips.map((chip) => (
+                  <span key={chip} className={careerBoardTheme.tag}>
+                    {chip}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -432,7 +762,17 @@ export default function EssayGeneratorClient({
                     회사와 경력을 함께 넣으면 초안 품질이 더 안정적입니다.
                   </CardDescription>
                 </div>
-                <PromptDialog />
+                <div className="flex flex-wrap gap-2">
+                  <PromptDialog />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearAll}
+                  >
+                    전체 초기화
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
@@ -476,12 +816,25 @@ export default function EssayGeneratorClient({
                   value={experienceText}
                   onChange={(event) => setExperienceText(event.target.value)}
                   onPaste={handlePaste}
-                  placeholder="경력 내용을 번호 블록 형태로 입력해 주세요."
+                  placeholder="자소서에 참고 될 경험들을 넣어주세요. 위에 프롬프트 보기를 눌러서 해당 형식으로 변환해 넣으면 더욱 잘 만들어집니다."
                   className="h-[190px] resize-none overflow-y-auto border-[#d9e5ff] bg-white px-4 py-3 text-[15px] leading-7 text-[#22345f] placeholder:text-[#95a2c4] focus-visible:border-[#8ea9ff] focus-visible:ring-[#8ea9ff]/30"
                 />
               </div>
 
               <div className="rounded-2xl border border-dashed border-[#c9d7ff] bg-[linear-gradient(180deg,#fbfdff_0%,#f6f9ff_100%)] p-4">
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-[#22345f]">공고 이미지 / 스크린샷</label>
+                    <p className="text-xs text-[#7b86a8]">
+                      이미지를 붙여넣거나 선택해 자소서 생성에 사용할 수 있습니다.
+                    </p>
+                    <p className="text-xs font-medium text-[#3560f0]">
+                      (공고 이미지 넣기 참고를 꼭 확인해서 작성해주세요!)
+                    </p>
+                  </div>
+                  <ImageGuideDialog />
+                </div>
+
                 <div
                   className="flex cursor-pointer flex-col gap-4 rounded-2xl border border-[#e2eaff] bg-white px-4 py-5 text-center shadow-sm transition hover:border-[#b8cbff]"
                   onClick={() => fileInputRef.current?.click()}
@@ -584,7 +937,7 @@ export default function EssayGeneratorClient({
                 <Textarea
                   value={essayPrompt}
                   onChange={(event) => setEssayPrompt(event.target.value)}
-                  placeholder="예: 지원동기, 직무 역량, 입사 후 포부"
+                  placeholder="예: 지원동기, 직무 역량, 입사 후 포부 - (1개의 문항만 넣어주세요)"
                   className="h-[120px] resize-none overflow-y-auto border-[#d9e5ff] bg-white px-4 py-3 text-[15px] leading-7 text-[#22345f] placeholder:text-[#95a2c4] focus-visible:border-[#8ea9ff] focus-visible:ring-[#8ea9ff]/30"
                 />
               </div>
@@ -676,46 +1029,13 @@ export default function EssayGeneratorClient({
                           : "정돈형 초안을 복사했습니다."}
                       </div>
                     ) : null}
-                    {recentAnalyses.length > 0 ? (
-                      <div className="rounded-2xl border border-[#e2eaff] bg-[#f8fbff] p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-[#27407a]">최근 저장된 결과</p>
-                            <p className="text-xs text-[#6e7ca8]">현재 계정 기준 최신 3건입니다.</p>
-                          </div>
-                          <span className={careerBoardTheme.tag}>TOP 3</span>
-                        </div>
-                        <div className="space-y-2">
-                          {recentAnalyses.map((item, index) => {
-                            const summary = item.essayFormalText || item.essayEmotionText || "저장된 결과가 없습니다."
-                            return (
-                              <div
-                                key={`${item.id}-${index}`}
-                                className="rounded-xl border border-white/70 bg-white px-3 py-3 shadow-[0_8px_20px_rgba(71,96,171,0.05)]"
-                              >
-                                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold text-[#20356b]">
-                                      {item.companyName || "회사명 없음"} · {item.targetPosition || "직무 없음"}
-                                    </p>
-                                    <p className="mt-0.5 text-xs text-[#7b86a8]">
-                                      {formatRecentAnalysisTime(item.createdAt)}
-                                    </p>
-                                  </div>
-                                  <span className="text-[11px] font-medium text-[#8090b6]">#{index + 1}</span>
-                                </div>
-                                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#394b73]">
-                                  {summary}
-                                </p>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
                   </>
                 ) : (
-                  <div className="flex min-h-[380px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#dce6ff] bg-[#fbfdff] px-6 py-10 text-center sm:min-h-[520px]">
+                  <div
+                    className={`flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#dce6ff] bg-[#fbfdff] px-6 py-10 text-center ${
+                      recentAnalysesSection ? "min-h-[240px] sm:min-h-[300px]" : "min-h-[380px] sm:min-h-[520px]"
+                    }`}
+                  >
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#edf3ff] text-[#3557c8]">
                       <FileText className="size-6" />
                     </div>
@@ -732,11 +1052,35 @@ export default function EssayGeneratorClient({
                     </div>
                   </div>
                 )}
+
+                {recentAnalysesSection}
               </CardContent>
             </Card>
           </div>
         </div>
+
+        <RecentAnalysisDialog
+          item={selectedRecentAnalysis}
+          open={isRecentAnalysisDialogOpen}
+          onOpenChange={(open) => {
+            setIsRecentAnalysisDialogOpen(open)
+            if (!open) {
+              setSelectedRecentAnalysis(null)
+            }
+          }}
+          onCopyEmotion={() => {
+            if (selectedRecentAnalysis?.essayEmotionText) {
+              void copyRecentAnalysis(selectedRecentAnalysis.essayEmotionText)
+            }
+          }}
+          onCopyFormal={() => {
+            if (selectedRecentAnalysis?.essayFormalText) {
+              void copyRecentAnalysis(selectedRecentAnalysis.essayFormalText)
+            }
+          }}
+        />
       </div>
     </main>
   )
 }
+
