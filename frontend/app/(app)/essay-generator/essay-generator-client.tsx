@@ -55,7 +55,10 @@ const EXPERIENCE_PROMPT = `아래 경력을 자소서 생성에 적합한 형태
 규칙:
 - 경력에 없는 내용은 추가하지 마세요.
 - 각 프로젝트는 하나의 번호 블록으로 유지하세요.
-- 문장은 짧고 명확하게 작성하세요.`
+- 문장은 짧고 명확하게 작성하세요.
+
+{자기 경험 내용}`
+
 
 function makeImageId(file: File) {
   return `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 10)}`
@@ -143,7 +146,7 @@ function ResultCard({
           복사
         </Button>
       </div>
-      <ScrollArea className="h-[260px] rounded-xl border border-[#e4ebff] bg-white px-4 py-3">
+      <ScrollArea className="h-[220px] rounded-xl border border-[#e4ebff] bg-white px-4 py-3 sm:h-[260px]">
         <div className="whitespace-pre-wrap text-[15px] leading-7 text-[#22345f]">
           {text || "생성된 결과가 여기에 표시됩니다."}
         </div>
@@ -276,7 +279,7 @@ export default function EssayGeneratorClient({
     }
   }
 
-  const heroChips = ["OCR", "RAG", "감성형 / 정돈형"]
+  const heroChips = ['로그인 후 사용 가능']
 
   const hasResult = Boolean(result)
 
@@ -290,11 +293,13 @@ export default function EssayGeneratorClient({
 
           <div className="relative z-10">
             <p className={careerBoardTheme.heroEyebrow}>자소서 생성기</p>
-            <h1 className={`${careerBoardTheme.heroTitle} whitespace-nowrap`}>
+            <h1 className={careerBoardTheme.heroTitle}>
               공고와 경력을 반영해 자소서를 생성합니다
             </h1>
             <p className={careerBoardTheme.heroDescription}>
               회사 정보, 채용공고, 경력을 함께 반영해 감성형과 정돈형 두 버전의 자소서를 만듭니다.
+              <br />
+              (단 로그인 후 사용이 가능합니다.)
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {heroChips.map((chip) => (
@@ -307,7 +312,7 @@ export default function EssayGeneratorClient({
         </section>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          <Card className={`${careerBoardTheme.card} overflow-hidden py-0 shadow-[0_18px_40px_rgba(71,96,171,0.08)]`}>
+          <Card className={`${careerBoardTheme.card} flex min-h-0 flex-col overflow-hidden py-0 shadow-[0_18px_40px_rgba(71,96,171,0.08)]`}>
             <CardHeader className="border-b border-[#edf2ff] px-5 py-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -322,7 +327,7 @@ export default function EssayGeneratorClient({
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-5 px-5 py-5">
+            <CardContent className="min-h-0 space-y-5 px-4 py-4 sm:px-5 sm:py-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-[#22345f]">회사명</label>
@@ -503,7 +508,7 @@ export default function EssayGeneratorClient({
           </Card>
 
           <div ref={resultRef}>
-            <Card className={`${careerBoardTheme.card} overflow-hidden py-0 shadow-[0_18px_40px_rgba(71,96,171,0.08)]`}>
+            <Card className={`${careerBoardTheme.card} flex min-h-0 flex-col overflow-hidden py-0 shadow-[0_18px_40px_rgba(71,96,171,0.08)]`}>
               <CardHeader className="border-b border-[#edf2ff] px-5 py-5">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -531,7 +536,7 @@ export default function EssayGeneratorClient({
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-4 px-5 py-5">
+              <CardContent className="min-h-0 space-y-4 px-4 py-4 sm:px-5 sm:py-5">
                 {hasResult ? (
                   <>
                     <ResultCard
@@ -564,7 +569,7 @@ export default function EssayGeneratorClient({
                     ) : null}
                   </>
                 ) : (
-                  <div className="flex min-h-[520px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#dce6ff] bg-[#fbfdff] px-6 py-10 text-center">
+                  <div className="flex min-h-[380px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#dce6ff] bg-[#fbfdff] px-6 py-10 text-center sm:min-h-[520px]">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#edf3ff] text-[#3557c8]">
                       <FileText className="size-6" />
                     </div>

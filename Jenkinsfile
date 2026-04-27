@@ -16,14 +16,8 @@ pipeline {
     stage('Deploy') {
       steps {
         sh '''
-          # Build backend and frontend images
-          docker compose build backend frontend
-
-          # Start backend and frontend containers
-          docker compose up -d backend frontend
-
-          # Start dozzle separately without touching other services
-          docker compose up -d dozzle
+          # Build and start the full stack
+          docker compose up -d --build
         '''
       }
     }
@@ -37,7 +31,7 @@ pipeline {
             echo ==== Docker Status ====
             docker ps || true
             echo ==== Docker Logs ====
-            docker compose logs --tail=200 backend frontend dozzle || true
+            docker compose logs --tail=200 db postgres backend essay-backend frontend dozzle || true
           '''
         } else {
           echo 'Skipping docker diagnostics because no workspace/node context is available.'

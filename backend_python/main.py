@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import sys
 
@@ -27,13 +28,35 @@ from routers.job_post_router import router as job_post_router
 from routers.company_router import router as company_router
 
 
-# 서버 시작 전에 backend/.env를 먼저 읽는다.
+# 서버 시작 전에 backend_python/.env를 먼저 읽는다.
 load_environment()
+
+
+def _parse_csv_env(name: str, fallback: list[str]) -> list[str]:
+    raw = os.getenv(name, "")
+    values = [item.strip() for item in raw.split(",") if item.strip()]
+    return values or fallback
+
+
+APP_HOST = os.getenv("APP_HOST", "127.0.0.1").strip() or "127.0.0.1"
+APP_PORT = int(os.getenv("APP_PORT", "8000"))
+APP_ROOT_PATH = os.getenv("APP_ROOT_PATH", "").strip()
+APP_RELOAD = os.getenv("APP_RELOAD", "false").strip().lower() in {"1", "true", "yes", "on"}
+APP_CORS_ALLOWED_ORIGINS = _parse_csv_env(
+    "APP_CORS_ALLOWED_ORIGINS",
+    [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+)
 
 app = FastAPI(
     title="Job Post OCR Analyzer",
     version="0.1.0",
     description="Upload a job posting image and extract structured fields with OCR.",
+    root_path=APP_ROOT_PATH,
 )
 
 
@@ -44,12 +67,7 @@ def run_database_migrations() -> None:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=APP_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,4 +84,4 @@ async def health_check() -> dict[str, str]:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host=APP_HOST, port=APP_PORT, reload=APP_RELOAD)

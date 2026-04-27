@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: mysql:8.0.36
@@ -12,12 +10,30 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-    ports:
-      - "3306:3306"
+    expose:
+      - "3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: whennawa-postgres
+    restart: unless-stopped
+    env_file:
+      - /home/ubuntu/whennawa-env/backend_python.env
+    environment:
+      TZ: "Asia/Seoul"
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -33,8 +49,32 @@ services:
         condition: service_healthy
     env_file:
       - /home/ubuntu/whennawa-env/backend.env
+    environment:
+      APP_CORS_ALLOWED_ORIGINS: "https://whennawa.shop,http://localhost:3000,http://127.0.0.1:3000"
+      APP_AUTH_COOKIE_SECURE: "true"
+      APP_FRONTEND_BASE_URL: "https://whennawa.shop"
     ports:
       - "8080:8080"
+
+  essay-backend:
+    build:
+      context: ./backend_python
+      dockerfile: Dockerfile
+    container_name: whennawa-essay-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - /home/ubuntu/whennawa-env/backend_python.env
+    environment:
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8000"
+      APP_ROOT_PATH: "/essay"
+      APP_RELOAD: "false"
+      APP_CORS_ALLOWED_ORIGINS: "https://whennawa.shop,http://localhost:3000,http://127.0.0.1:3000"
+    ports:
+      - "8000:8000"
 
   frontend:
     build:
@@ -42,13 +82,19 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: "https://whennawa.shop"
+        NEXT_PUBLIC_ESSAY_API_BASE_URL: "https://whennawa.shop/essay"
         NEXT_PUBLIC_USE_MOCK_DATA: "false"
     container_name: whennawa-frontend
     restart: unless-stopped
     depends_on:
       - backend
+      - essay-backend
     env_file:
       - /home/ubuntu/whennawa-env/frontend.env
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: "https://whennawa.shop"
+      NEXT_PUBLIC_ESSAY_API_BASE_URL: "https://whennawa.shop/essay"
+      NEXT_PUBLIC_USE_MOCK_DATA: "false"
     ports:
       - "3000:3000"
 
@@ -63,3 +109,4 @@ services:
 
 volumes:
   mysql-data:
+  postgres-data:

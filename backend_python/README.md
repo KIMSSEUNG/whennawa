@@ -7,9 +7,13 @@
 - `LLM_PROVIDER=openapi`
 - `PYTHONUTF8=1`
 - `PYTHONIOENCODING=utf-8`
+- `APP_HOST=0.0.0.0` in Docker
+- `APP_PORT=8000`
+- `APP_ROOT_PATH=/essay` when proxied behind Nginx
+- `APP_CORS_ALLOWED_ORIGINS=https://whennawa.shop`
 
 ## OCR Test Mode
-- Set `OCR_TEST=true` in `backend/.env`
+- Set `OCR_TEST=true` in `backend_python/.env`
 - Set `OCR_TEST_TEXT` to the text you want to reuse as OCR output
 - In this mode, uploaded images are not sent to the OCR provider
 
@@ -27,7 +31,7 @@
 - `routers/company_router.py`
 
 ## Database Migrations
-- Set `DATABASE_URL` in `backend/.env`, or use `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+- Set `DATABASE_URL` in `backend_python/.env`, or use `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
 - On app startup, `db/migrator.py` applies pending SQL migrations from `db/migrations/`
 - This is the Python-side equivalent of Flyway-style schema versioning
 
