@@ -85,6 +85,41 @@ def save_analysis_result(
     return dict(row)
 
 
+def fetch_recent_analysis_results(
+    conn: psycopg.Connection,
+    *,
+    user_id: str,
+    limit: int = 3,
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        select *
+        from analysis_results
+        where user_id = %s
+        order by created_at desc, id desc
+        limit %s
+        """,
+        (
+            _normalize_user_id(user_id),
+            max(1, limit),
+        ),
+    ).fetchall()
+    results: list[dict[str, Any]] = []
+    for row in rows:
+        created_at = row["created_at"]
+        results.append(
+            {
+                "id": row["id"],
+                "companyName": (row["company_name"] or ""),
+                "targetPosition": (row["target_position"] or ""),
+                "essayEmotionText": (row["essay_emotion_text"] or ""),
+                "essayFormalText": (row["essay_formal_text"] or ""),
+                "createdAt": created_at.isoformat() if created_at else "",
+            }
+        )
+    return results
+
+
 def upsert_company(
     conn: psycopg.Connection,
     *,

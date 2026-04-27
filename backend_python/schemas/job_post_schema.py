@@ -3,6 +3,15 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class JobPostRecentAnalysisItem(BaseModel):
+    id: int
+    companyName: str = ""
+    targetPosition: str = ""
+    essayEmotionText: str = ""
+    essayFormalText: str = ""
+    createdAt: str = ""
+
+
 class JobPostAnalyzeResponse(BaseModel):
     companyName: str = ""
     position: str = ""
@@ -19,3 +28,4 @@ class JobPostAnalyzeResponse(BaseModel):
     rawText: str = ""
     confidence: Literal["high", "medium", "low"] = "low"
     missingFields: list[str] = Field(default_factory=list)
+    recentAnalyses: list[JobPostRecentAnalysisItem] = Field(default_factory=list)

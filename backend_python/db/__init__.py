@@ -9,6 +9,7 @@ from .normalization import (
 )
 from .repository import (
     ChunkInsertResult,
+    fetch_recent_analysis_results,
     save_analysis_result,
     insert_crawl_snapshot,
     RagChunkSearchResult,

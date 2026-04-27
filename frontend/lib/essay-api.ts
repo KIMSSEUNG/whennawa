@@ -14,6 +14,16 @@ export type EssayAnalysisResponse = {
   rawText: string
   confidence: "high" | "medium" | "low"
   missingFields: string[]
+  recentAnalyses: EssayRecentAnalysisItem[]
+}
+
+export type EssayRecentAnalysisItem = {
+  id: number
+  companyName: string
+  targetPosition: string
+  essayEmotionText: string
+  essayFormalText: string
+  createdAt: string
 }
 
 export type EssayAnalysisRequest = {
@@ -23,6 +33,7 @@ export type EssayAnalysisRequest = {
   experienceText: string
   essayPrompt: string
   files: File[]
+  userId: string
 }
 
 const ESSAY_API_BASE_URL = (process.env.NEXT_PUBLIC_ESSAY_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "")
@@ -49,6 +60,7 @@ export async function analyzeEssayJobPost(input: EssayAnalysisRequest): Promise<
   formData.append("companyUrl", input.companyUrl)
   formData.append("experienceText", input.experienceText)
   formData.append("essayPrompt", input.essayPrompt)
+  formData.append("userId", input.userId)
   input.files.forEach((file) => {
     formData.append("files", file, file.name)
   })

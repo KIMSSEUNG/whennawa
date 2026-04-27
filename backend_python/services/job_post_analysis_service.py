@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 try:
     from db.connection import open_transaction
     from db.repository import (
+        fetch_recent_analysis_results,
         save_crawl_snapshot_and_refresh_chunks,
         save_analysis_result,
         upsert_application_and_refresh_chunks,
@@ -31,6 +32,7 @@ try:
 except ModuleNotFoundError:
     from backend.db.connection import open_transaction
     from backend.db.repository import (
+        fetch_recent_analysis_results,
         save_crawl_snapshot_and_refresh_chunks,
         save_analysis_result,
         upsert_application_and_refresh_chunks,
@@ -226,6 +228,13 @@ class JobPostAnalysisService:
                     "analysis result saved "
                     f"analysis_result_id={saved_row['id']} user_id={user_id!r}"
                 )
+
+        with open_transaction() as conn:
+            parsed["recentAnalyses"] = fetch_recent_analysis_results(
+                conn,
+                user_id=user_id,
+                limit=3,
+            )
 
         return JobPostAnalyzeResponse(**parsed)
 

@@ -45,6 +45,53 @@ type ImageFileItem = {
   previewUrl: string
 }
 
+type EssayDraft = {
+  companyName: string
+  targetPosition: string
+  companyUrl: string
+  experienceText: string
+  essayPrompt: string
+}
+
+const ESSAY_DRAFT_STORAGE_KEY = "essay-generator-draft-v1"
+
+function getEssayDraftStorageKey(userId: string | null) {
+  return userId ? `${ESSAY_DRAFT_STORAGE_KEY}:${userId}` : ESSAY_DRAFT_STORAGE_KEY
+}
+
+function readEssayDraft(storageKey: string): EssayDraft | null {
+  if (typeof window === "undefined") return null
+
+  try {
+    const raw = window.localStorage.getItem(storageKey)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<EssayDraft>
+    return {
+      companyName: typeof parsed.companyName === "string" ? parsed.companyName : "",
+      targetPosition: typeof parsed.targetPosition === "string" ? parsed.targetPosition : "",
+      companyUrl: typeof parsed.companyUrl === "string" ? parsed.companyUrl : "",
+      experienceText: typeof parsed.experienceText === "string" ? parsed.experienceText : "",
+      essayPrompt: typeof parsed.essayPrompt === "string" ? parsed.essayPrompt : "",
+    }
+  } catch {
+    return null
+  }
+}
+
+function saveEssayDraft(userId: string | null, draft: EssayDraft) {
+  if (typeof window === "undefined") return
+
+  const payload = JSON.stringify(draft)
+  const keys = new Set([ESSAY_DRAFT_STORAGE_KEY, getEssayDraftStorageKey(userId)])
+  for (const key of keys) {
+    try {
+      window.localStorage.setItem(key, payload)
+    } catch {
+      // Ignore quota / storage errors.
+    }
+  }
+}
+
 const EXPERIENCE_PROMPT = `아래 경력을 자소서 생성에 적합한 형태로 간결하게 정리하세요.
 
 1. 프로젝트명 - 한 줄 요약
@@ -164,12 +211,14 @@ export default function EssayGeneratorClient({
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const resultRef = useRef<HTMLDivElement | null>(null)
   const previewItemsRef = useRef<ImageFileItem[]>([])
+  const draftHydratedRef = useRef(false)
 
   const [companyName, setCompanyName] = useState(initialCompanyName)
   const [targetPosition, setTargetPosition] = useState(initialTargetPosition)
   const [companyUrl, setCompanyUrl] = useState("")
   const [experienceText, setExperienceText] = useState("")
   const [essayPrompt, setEssayPrompt] = useState("")
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [imageItems, setImageItems] = useState<ImageFileItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -185,6 +234,51 @@ export default function EssayGeneratorClient({
       previewItemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl))
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const hydrateDraft = async () => {
+      try {
+        const user = await getUser()
+        if (cancelled) return
+
+        const userId = user?.id?.trim() || null
+        setCurrentUserId(userId)
+
+        const draft = readEssayDraft(getEssayDraftStorageKey(userId)) ?? readEssayDraft(ESSAY_DRAFT_STORAGE_KEY)
+        if (draft) {
+          setCompanyName(draft.companyName || initialCompanyName)
+          setTargetPosition(draft.targetPosition || initialTargetPosition)
+          setCompanyUrl(draft.companyUrl || "")
+          setExperienceText(draft.experienceText || "")
+          setEssayPrompt(draft.essayPrompt || "")
+        }
+      } finally {
+        if (!cancelled) {
+          draftHydratedRef.current = true
+        }
+      }
+    }
+
+    void hydrateDraft()
+
+    return () => {
+      cancelled = true
+    }
+  }, [initialCompanyName, initialTargetPosition])
+
+  useEffect(() => {
+    if (!draftHydratedRef.current) return
+
+    saveEssayDraft(currentUserId, {
+      companyName,
+      targetPosition,
+      companyUrl,
+      experienceText,
+      essayPrompt,
+    })
+  }, [companyName, targetPosition, companyUrl, experienceText, essayPrompt, currentUserId])
 
   const addFiles = (incoming: File[]) => {
     const nextFiles = normalizeImageFiles(incoming)
@@ -258,6 +352,7 @@ export default function EssayGeneratorClient({
         router.push(`/login?reason=session_expired&next=${encodeURIComponent(nextPath)}`)
         return
       }
+      setCurrentUserId(user.id)
 
       const response = await analyzeEssayJobPost({
         companyName: companyName.trim(),
@@ -266,6 +361,7 @@ export default function EssayGeneratorClient({
         experienceText: experienceText.trim(),
         essayPrompt: essayPrompt.trim(),
         files: imageItems.map((item) => item.file),
+        userId: user.id,
       })
 
       setResult(response)
@@ -282,6 +378,19 @@ export default function EssayGeneratorClient({
   const heroChips = ['로그인 후 사용 가능']
 
   const hasResult = Boolean(result)
+  const recentAnalyses = result?.recentAnalyses ?? []
+
+  const formatRecentAnalysisTime = (value: string) => {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date)
+  }
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(239,244,255,0.95),rgba(244,247,255,0.88)_36%,rgba(249,251,255,1)_74%)] text-[#22345f]">
@@ -565,6 +674,43 @@ export default function EssayGeneratorClient({
                         {copiedSection === "emotion"
                           ? "감성형 초안을 복사했습니다."
                           : "정돈형 초안을 복사했습니다."}
+                      </div>
+                    ) : null}
+                    {recentAnalyses.length > 0 ? (
+                      <div className="rounded-2xl border border-[#e2eaff] bg-[#f8fbff] p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-[#27407a]">최근 저장된 결과</p>
+                            <p className="text-xs text-[#6e7ca8]">현재 계정 기준 최신 3건입니다.</p>
+                          </div>
+                          <span className={careerBoardTheme.tag}>TOP 3</span>
+                        </div>
+                        <div className="space-y-2">
+                          {recentAnalyses.map((item, index) => {
+                            const summary = item.essayFormalText || item.essayEmotionText || "저장된 결과가 없습니다."
+                            return (
+                              <div
+                                key={`${item.id}-${index}`}
+                                className="rounded-xl border border-white/70 bg-white px-3 py-3 shadow-[0_8px_20px_rgba(71,96,171,0.05)]"
+                              >
+                                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-[#20356b]">
+                                      {item.companyName || "회사명 없음"} · {item.targetPosition || "직무 없음"}
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-[#7b86a8]">
+                                      {formatRecentAnalysisTime(item.createdAt)}
+                                    </p>
+                                  </div>
+                                  <span className="text-[11px] font-medium text-[#8090b6]">#{index + 1}</span>
+                                </div>
+                                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#394b73]">
+                                  {summary}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     ) : null}
                   </>
