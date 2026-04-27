@@ -56,6 +56,26 @@ def _debug(message: str) -> None:
     print(f"[job_post_router] {message}", flush=True)
 
 
+def _user_friendly_crawl_error(message: str) -> str:
+    lower_message = message.lower()
+    if "companyurl 형식" in lower_message or "invalid url" in lower_message:
+        return "공고 URL 형식이 올바르지 않습니다. 주소를 다시 확인해 주세요."
+    if "추출 가능한 페이지를 찾지 못했다" in message:
+        return "공고 페이지를 불러오지 못했습니다. 해당 URL이 공고 페이지인지 확인해 주세요."
+    if "html 문서가 아니어서" in lower_message:
+        return "공고 페이지를 읽지 못했습니다. 접근이 제한된 페이지일 수 있습니다."
+    return "공고 페이지를 불러오지 못했습니다. URL을 다시 확인해 주세요."
+
+
+def _user_friendly_ocr_error(message: str) -> str:
+    lower_message = message.lower()
+    if "invalid image" in lower_message:
+        return "이미지 파일 형식이 올바르지 않습니다. PNG, JPG, JPEG, WEBP 파일만 업로드해 주세요."
+    if "did not extract any text" in lower_message or "텍스트를 추출하지 못했습니다" in message:
+        return "이미지에서 텍스트를 읽지 못했습니다. 공고 이미지가 선명한지 확인해 주세요."
+    return "이미지 인식에 실패했습니다. 다른 공고 이미지로 다시 시도해 주세요."
+
+
 @lru_cache
 def get_model_services():
     services = build_model_stage_services()
@@ -129,28 +149,28 @@ async def analyze_job_post(
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            detail="이미지 파일 형식이 올바르지 않습니다. PNG, JPG, JPEG, WEBP 파일만 업로드해 주세요.",
         ) from exc
     except OCRProviderUnavailableError as exc:
         _debug(f"OCRProviderUnavailableError: {exc}")
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="이미지 인식 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
         ) from exc
     except OCRExecutionError as exc:
         _debug(f"OCRExecutionError: {exc}")
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
+            detail=_user_friendly_ocr_error(str(exc)),
         ) from exc
     except CompanyCrawlError as exc:
         _debug(f"CompanyCrawlError: {exc}")
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
+            detail=_user_friendly_crawl_error(str(exc)),
         ) from exc
     except HTTPException:
         raise
@@ -159,7 +179,7 @@ async def analyze_job_post(
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"서버 내부 오류가 발생했다: {exc}",
+            detail="처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
         ) from exc
 
 
@@ -192,37 +212,37 @@ def _validate_request_fields(
     if not company_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="companyName은 필수다.",
+            detail="회사명을 입력해 주세요.",
         )
     if not target_position:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="targetPosition은 필수다.",
+            detail="지원 직무를 입력해 주세요.",
         )
     if not company_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="companyUrl은 필수다.",
+            detail="공고 URL을 입력해 주세요.",
         )
     if not _is_valid_url(company_url):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="companyUrl 형식이 올바르지 않다.",
+            detail="공고 URL 형식이 올바르지 않습니다. https:// 로 시작하는 주소를 입력해 주세요.",
         )
     if not experience_text:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="experienceText는 필수다.",
+            detail="경험 내용을 입력해 주세요.",
         )
     if len(essay_prompt) > MAX_ESSAY_PROMPT_LENGTH:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="essayPrompt는 300자 이하여야 한다.",
+            detail="자소서 문항은 300자 이하여야 합니다.",
         )
     if not ocr_test_mode and not files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="채용공고 이미지가 필요합니다.",
+            detail="공고 이미지를 첨부해 주세요.",
         )
 
 

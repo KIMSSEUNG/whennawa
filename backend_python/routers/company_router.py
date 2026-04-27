@@ -30,13 +30,24 @@ def _debug(message: str) -> None:
     print(f"[company_router] {message}", flush=True)
 
 
+def _user_friendly_crawl_error(message: str) -> str:
+    lower_message = message.lower()
+    if "companyurl 형식" in lower_message or "invalid url" in lower_message:
+        return "공고 URL 형식이 올바르지 않습니다. 주소를 다시 확인해 주세요."
+    if "추출 가능한 페이지를 찾지 못했다" in message:
+        return "공고 페이지를 불러오지 못했습니다. 해당 URL이 공고 페이지인지 확인해 주세요."
+    if "html 문서가 아니어서" in lower_message:
+        return "공고 페이지를 읽지 못했습니다. 접근이 제한된 페이지일 수 있습니다."
+    return "공고 페이지를 불러오지 못했습니다. URL을 다시 확인해 주세요."
+
+
 @router.post("/crawl", response_model=CompanyCrawlResponse)
 async def crawl_company(companyUrl: str = Form(default="")):
     company_url = companyUrl.strip()
     if not company_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="companyUrl은 필수다.",
+            detail="공고 URL을 입력해 주세요.",
         )
 
     _debug(f"crawl start company_url={company_url!r}")
@@ -66,12 +77,12 @@ async def crawl_company(companyUrl: str = Form(default="")):
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
+            detail=_user_friendly_crawl_error(str(exc)),
         ) from exc
     except Exception as exc:
         _debug(f"unexpected crawl error: {exc}")
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"회사 크롤링 중 서버 오류가 발생했다: {exc}",
+            detail="공고 페이지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         ) from exc
