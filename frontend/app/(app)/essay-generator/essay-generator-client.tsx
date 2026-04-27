@@ -1045,11 +1045,6 @@ export default function EssayGeneratorClient({
                     <p className="mt-2 max-w-[320px] text-sm leading-6 text-[#7a86a6]">
                       회사명, 지원 직무, 경력 내용, 자소서 문항을 입력한 뒤 자소서 초안을 생성해 주세요.
                     </p>
-                    <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs text-[#6a78a0]">
-                      <span className={careerBoardTheme.tag}>OCR</span>
-                      <span className={careerBoardTheme.tag}>RAG</span>
-                      <span className={careerBoardTheme.tag}>감성형 / 정돈형</span>
-                    </div>
                   </div>
                 )}
 
@@ -1083,4 +1078,3 @@ export default function EssayGeneratorClient({
     </main>
   )
 }
-
