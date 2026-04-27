@@ -10,13 +10,13 @@ import { getUser } from "@/lib/api"
 type Role = "USER" | "ADMIN" | null
 
 const userTabs = [
-  { href: "/search", label: "발표 검색", icon: SearchCheck },
+  { href: "/search", label: "검색 화면", icon: SearchCheck },
   { href: "/profile", label: "프로필", icon: UserRound },
 ]
 
 const adminTabs = [
-  { href: "/admin/reports", label: "공고 검수", icon: SearchCheck },
-  { href: "/admin/company-requests", label: "회사 검수", icon: UserRound },
+  { href: "/admin/reports", label: "관리자 통계", icon: SearchCheck },
+  { href: "/admin/company-requests", label: "회사 요청 관리", icon: UserRound },
   { href: "/profile", label: "프로필", icon: UserRound },
 ]
 
@@ -64,14 +64,8 @@ export function BottomTabBar() {
   }, [])
 
   const tabs = (role === "ADMIN" ? adminTabs : userTabs).flatMap((tab) => {
-    if (tab.href !== "/profile") {
-      return [tab]
-    }
-
-    if (isAuthenticated && role === "USER") {
-      return [tab]
-    }
-
+    if (tab.href !== "/profile") return [tab]
+    if (isAuthenticated && role === "USER") return [tab]
     return [
       {
         href: `/login?next=${encodeURIComponent(pathname ?? "/")}`,
@@ -88,7 +82,6 @@ export function BottomTabBar() {
           {tabs.map((tab) => {
             const isActive = tab.href === "/profile" ? pathname === "/profile" : pathname === tab.href
             const Icon = tab.icon
-
             return (
               <Link
                 key={tab.href}

@@ -317,13 +317,18 @@ export default function AdminReportPage() {
             const isOnHold = report.onHold
             const isRegular = report.recruitmentMode === "REGULAR"
             const isIntern = report.recruitmentMode === "INTERN"
-            const isNoResponse =
-              report.rollingResultType === "NO_RESPONSE_REPORTED" ||
-              (!report.baseDate && !report.reportedDate)
+            const hasDateInfo = Boolean(report.baseDate || report.reportedDate)
+            const hasInterviewReview = Boolean(report.interviewReviewContent?.trim())
+            const isNoResponse = report.rollingResultType === "NO_RESPONSE_REPORTED"
             const stepLabel = (report.stepName ?? "").trim() || "-"
             const modeLabel = isRegular ? "공채" : isIntern ? "인턴" : "수시"
             const interviewState = buildInterviewPreview(report.interviewReviewContent)
             const expanded = isInterviewExpanded(report.reportId)
+            const reportTypeLabels = [
+              ...(hasDateInfo ? ["날짜 제보"] : []),
+              ...(isNoResponse ? ["결과 미수신"] : []),
+              ...(hasInterviewReview ? ["면접 제보"] : []),
+            ]
             const jobLabel = report.jobCategoryName
               ? report.jobCategoryName === "기타" && report.otherJobName?.trim()
                 ? `기타 (${report.otherJobName.trim()})`
@@ -344,35 +349,45 @@ export default function AdminReportPage() {
                   <div>
                     <h3 className="text-lg font-semibold">{report.companyName}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {modeLabel} · {isNoResponse ? "결과 미수신" : "날짜 제보"}
+                      {modeLabel} · {reportTypeLabels.length > 0 ? reportTypeLabels.join(" + ") : "기타 제보"}
                     </p>
                     <p className="text-sm text-muted-foreground">직군: {jobLabel}</p>
                     <p className="text-sm text-muted-foreground">중복 제보: {report.reportCount}건</p>
-                    <p className="text-sm text-muted-foreground">
-                      지원/응시일: {report.baseDate ? toDateInput(report.baseDate) : "-"} ·
-                      결과 발표일: {report.reportedDate ? toDateInput(report.reportedDate) : "-"}
-                    </p>
+                    {hasDateInfo ? (
+                      <p className="text-sm text-muted-foreground">
+                        지원/응시일: {report.baseDate ? toDateInput(report.baseDate) : "-"} ·
+                        결과 발표일: {report.reportedDate ? toDateInput(report.reportedDate) : "-"}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        날짜 정보: 없음{hasInterviewReview ? " (면접 제보만 접수됨)" : ""}
+                      </p>
+                    )}
                     <p className="text-sm mt-1">
                       전형명: {stepLabel}
                     </p>
-                    <p className="text-sm mt-1">
-                      면접 난이도: {formatDifficultyLabel(report.interviewDifficulty)}
-                    </p>
-                    <div className="mt-1">
-                      <p className="text-sm text-muted-foreground">면접 후기</p>
-                      <div className="mt-1 rounded-lg border border-border/60 bg-background/60 p-2 text-sm whitespace-pre-wrap break-words">
-                        {expanded ? report.interviewReviewContent?.trim() || "-" : interviewState.text}
-                      </div>
-                      {interviewState.hasMore && (
-                        <button
-                          type="button"
-                          onClick={() => toggleInterviewExpanded(report.reportId)}
-                          className="mt-1 text-xs text-primary hover:underline"
-                        >
-                          {expanded ? "접기" : "더보기"}
-                        </button>
-                      )}
-                    </div>
+                    {hasInterviewReview && (
+                      <>
+                        <p className="text-sm mt-1">
+                          면접 난이도: {formatDifficultyLabel(report.interviewDifficulty)}
+                        </p>
+                        <div className="mt-1">
+                          <p className="text-sm text-muted-foreground">면접 후기</p>
+                          <div className="mt-1 rounded-lg border border-border/60 bg-background/60 p-2 text-sm whitespace-pre-wrap break-words">
+                            {expanded ? report.interviewReviewContent?.trim() || "-" : interviewState.text}
+                          </div>
+                          {interviewState.hasMore && (
+                            <button
+                              type="button"
+                              onClick={() => toggleInterviewExpanded(report.reportId)}
+                              className="mt-1 text-xs text-primary hover:underline"
+                            >
+                              {expanded ? "접기" : "더보기"}
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-end gap-1">

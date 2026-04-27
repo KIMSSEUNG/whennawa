@@ -1,0 +1,14 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+pydantic==2.11.4
+Pillow==11.2.1
+numpy==1.26.4
+PyMuPDF==1.26.0
+httpx==0.28.1
+python-dotenv==1.0.1
+psycopg[binary]==3.2.9
+sqlparse==0.5.3
+
+paddleocr==2.8.1
+easyocr==1.7.2

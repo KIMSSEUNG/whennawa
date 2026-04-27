@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CalendarClock, MessageSquareText, Search } from "lucide-react"
+import { CalendarClock, MessageSquareText, Search, Sparkles } from "lucide-react"
 import { CompanyDetailPanel } from "@/components/company-detail-panel"
-import { CompanyIcon } from "@/components/company-icon"
 import { CompanyChatRoom } from "@/components/chat/company-chat-room"
+import { CompanyIcon } from "@/components/company-icon"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { fetchCompanyLeadTime, fetchCompanyStatus } from "@/lib/api"
 import { buildCompanyDetailPath, type CompanyDetailMode } from "@/lib/company-detail-route"
+import { buildEssayGeneratorPath } from "@/lib/essay-route"
 import { toCompanySlug } from "@/lib/company-slug"
 import type { CompanySearchItem, CompanyStatus, InterviewReview, KeywordLeadTime } from "@/lib/types"
 
@@ -76,6 +77,11 @@ export function CompanySearchDetailPage({
       lastResultAt: null,
     }),
     [companyName, status?.companyId],
+  )
+
+  const essayGeneratorHref = useMemo(
+    () => buildEssayGeneratorPath(companyName, currentStep),
+    [companyName, currentStep],
   )
 
   const modeStepLinks = useMemo(
@@ -160,16 +166,19 @@ export function CompanySearchDetailPage({
             <div className="flex items-center gap-4">
               <CompanyIcon companyId={company.companyId} companyName={companyName} size={56} textClassName="text-xl" />
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold tracking-[0.2em] text-[#6c83bb] dark:text-[#8ea4d8]">COMPANY DETAIL</p>
+                <p className="text-[11px] font-semibold tracking-[0.2em] text-[#6c83bb] dark:text-[#8ea4d8]">
+                  COMPANY DETAIL
+                </p>
                 <h1 className="mt-2 truncate text-[28px] font-black tracking-tight text-[#203872] dark:text-[#edf3ff] md:text-[34px]">
                   {companyName}
                 </h1>
                 <p className="mt-2 max-w-[640px] text-sm leading-6 text-[#6177af] dark:text-[#9cb0df] md:text-[15px]">
-                  {companyName} 서류 발표, 면접 결과 발표, 전형별 평균 소요 기간과 실제 후기를 한 페이지에서 확인하세요.
+                  {companyName}의 채용 발표, 면접 결과 발표, 전형별 예상 소요 기간과 세부 일정을 이 페이지에서 확인할 수 있습니다.
                 </p>
               </div>
             </div>
           </div>
+
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/search?q=${encodeURIComponent(companyName)}&company=${encodeURIComponent(companyName)}`}
@@ -185,16 +194,24 @@ export function CompanySearchDetailPage({
               <MessageSquareText className="mr-2 h-4 w-4" />
               게시판 가기
             </Link>
+            <Link
+              href={essayGeneratorHref}
+              className="inline-flex h-11 items-center justify-center rounded-[16px] border border-[#dce4ff] bg-white px-4 text-sm font-semibold text-[#2f5fdd] dark:border-[#31415f] dark:bg-[#16213a] dark:text-[#c8d7ff]"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              자소서 생성기
+            </Link>
           </div>
         </div>
+
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8] dark:border-[#31415f] dark:bg-[#16203a] dark:text-[#bdd0ff]">
             <CalendarClock className="h-3.5 w-3.5" />
-            발표일 평균 소요 기간 확인
+            발표 일정과 전형 소요 기간 확인
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4966a8] dark:border-[#31415f] dark:bg-[#16203a] dark:text-[#bdd0ff]">
             <MessageSquareText className="h-3.5 w-3.5" />
-            실제 면접 후기 바로 확인
+            실제 면접 후기로 바로 확인
           </span>
         </div>
       </section>
@@ -234,29 +251,38 @@ export function CompanySearchDetailPage({
           <div className="rounded-2xl border border-border/60 bg-card p-4">
             <h2 className="text-sm font-semibold text-foreground">페이지 안내</h2>
             <div className="mt-3 space-y-2 text-sm leading-6 text-foreground/85">
-              <p>{companyName}의 공채, 인턴, 수시 전형 데이터를 한 URL에서 모아볼 수 있도록 구성했습니다.</p>
-              <p>전형별 발표일 데이터와 면접 후기를 바탕으로 평균 소요 기간을 바로 확인할 수 있습니다.</p>
+              <p>{companyName}의 공고, 인턴, 상시 전형 데이터를 URL 기준으로 모아볼 수 있도록 구성했습니다.</p>
+              <p>전형별 발표 일정과 면접 소요 기간을 바로 확인할 수 있습니다.</p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={buildCompanyDetailPath(companyName, "REGULAR")} className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground hover:text-foreground">
-                공채 URL
+              <Link
+                href={buildCompanyDetailPath(companyName, "REGULAR")}
+                className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                공고 URL
               </Link>
-              <Link href={buildCompanyDetailPath(companyName, "INTERN")} className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground hover:text-foreground">
+              <Link
+                href={buildCompanyDetailPath(companyName, "INTERN")}
+                className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+              >
                 인턴 URL
               </Link>
-              <Link href={buildCompanyDetailPath(companyName, "ROLLING")} className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground hover:text-foreground">
-                수시 URL
+              <Link
+                href={buildCompanyDetailPath(companyName, "ROLLING")}
+                className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                상시 URL
               </Link>
             </div>
             {status && (
               <div className="mt-4 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">단계별 바로가기</p>
+                <p className="text-xs font-medium text-muted-foreground">전형별 바로가기</p>
                 <div className="space-y-2">
                   {(["REGULAR", "INTERN", "ROLLING"] as const).map((mode) =>
                     modeStepLinks[mode].length > 0 ? (
                       <div key={`detail-step-group-${mode}`}>
                         <p className="mb-1 text-[11px] text-muted-foreground">
-                          {mode === "REGULAR" ? "공채" : mode === "INTERN" ? "인턴" : "수시"}
+                          {mode === "REGULAR" ? "공고" : mode === "INTERN" ? "인턴" : "상시"}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {modeStepLinks[mode].slice(0, 6).map((stepName) => (
@@ -291,7 +317,11 @@ export function CompanySearchDetailPage({
                     {selectedInterviewReview.stepName}
                   </span>
                   <span className="inline-flex items-center rounded-md border border-[#d7e3ff] bg-[#f5f8ff] px-2 py-0.5 font-medium text-[#4f6fb1]">
-                    {selectedInterviewReview.difficulty === "HARD" ? "어려움" : selectedInterviewReview.difficulty === "EASY" ? "쉬움" : "보통"}
+                    {selectedInterviewReview.difficulty === "HARD"
+                      ? "어려움"
+                      : selectedInterviewReview.difficulty === "EASY"
+                        ? "쉬움"
+                        : "보통"}
                   </span>
                 </div>
                 <DialogTitle className="text-left text-base text-foreground">면접 후기 상세</DialogTitle>

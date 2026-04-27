@@ -30,3 +30,9 @@ docs/
 __pycache__/
 *.pyc
 python_local/
+
+# Python essay generator local app
+backend_python/.venv/
+backend_python/.pytest_cache/
+!backend_python/.env.example
+!frontend/.env.example
