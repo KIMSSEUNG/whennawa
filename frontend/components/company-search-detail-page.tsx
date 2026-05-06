@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CalendarClock, MessageSquareText, Search, Sparkles } from "lucide-react"
+import { CalendarClock, MessageSquareText, Search } from "lucide-react"
 import { CompanyDetailPanel } from "@/components/company-detail-panel"
 import { CompanyChatRoom } from "@/components/chat/company-chat-room"
 import { CompanyIcon } from "@/components/company-icon"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { fetchCompanyLeadTime, fetchCompanyStatus } from "@/lib/api"
 import { buildCompanyDetailPath, type CompanyDetailMode } from "@/lib/company-detail-route"
-import { buildEssayGeneratorPath } from "@/lib/essay-route"
 import { toCompanySlug } from "@/lib/company-slug"
 import type { CompanySearchItem, CompanyStatus, InterviewReview, KeywordLeadTime } from "@/lib/types"
 
@@ -77,11 +76,6 @@ export function CompanySearchDetailPage({
       lastResultAt: null,
     }),
     [companyName, status?.companyId],
-  )
-
-  const essayGeneratorHref = useMemo(
-    () => buildEssayGeneratorPath(companyName, currentStep),
-    [companyName, currentStep],
   )
 
   const modeStepLinks = useMemo(
@@ -193,13 +187,6 @@ export function CompanySearchDetailPage({
             >
               <MessageSquareText className="mr-2 h-4 w-4" />
               게시판 가기
-            </Link>
-            <Link
-              href={essayGeneratorHref}
-              className="inline-flex h-11 items-center justify-center rounded-[16px] border border-[#dce4ff] bg-white px-4 text-sm font-semibold text-[#2f5fdd] dark:border-[#31415f] dark:bg-[#16213a] dark:text-[#c8d7ff]"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              자소서 생성기
             </Link>
           </div>
         </div>
